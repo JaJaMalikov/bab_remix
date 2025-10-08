@@ -1,5 +1,6 @@
 import React from "react";
 import { useUi } from "../context/UiContext";
+import { FloatingPanel } from "./FloatingPanel";
 
 export const Inspector: React.FC = () => {
   const { selectedPuppet, selectedLimb, limbIds, angle, setAngle } = useUi();
@@ -16,31 +17,26 @@ export const Inspector: React.FC = () => {
   })();
 
   return (
-    <div
-      style={{
-        position: "absolute",
-        right: 10,
-        top: 10,
-        zIndex: 10,
-        background: "#111a",
-        border: "1px solid #444",
-        padding: 8,
-        borderRadius: 6,
-        color: "#eee",
-        font: "12px system-ui",
-        minWidth: 220,
-      }}
-    >
-      <div style={{ marginBottom: 6, fontWeight: 600 }}>Inspector</div>
-      <div>Limb: {selectedLimb || "(none)"}</div>
-      <div>Pivot: {pivotStr}</div>
-      <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-        <button onClick={onCopy}>Copy id</button>
-        <button onClick={() => setAngle(0)}>Reset angle</button>
+    <FloatingPanel title="Inspector" initialPosition={{ x: window.innerWidth - 320, y: 20 }} width={300} height={240}>
+      <div className="inspector-content">
+        <div className="property-group">
+          <h4>Selection</h4>
+          <div className="property"><label>Limb</label><div>{selectedLimb || "(none)"}</div></div>
+          <div className="property"><label>Pivot</label><div>{pivotStr}</div></div>
+          <div className="property" style={{ gap: 8 }}>
+            <button onClick={onCopy}>Copy id</button>
+            <button onClick={() => setAngle(0)}>Reset angle</button>
+          </div>
+        </div>
+        <div className="property-group">
+          <h4>Transform</h4>
+          <div className="property"><label>Angle</label><div>{Math.round(angle)}°</div></div>
+        </div>
+        <div className="property-group">
+          <h4>Stats</h4>
+          <div className="property"><label>Total limbs</label><div>{limbIds.length}</div></div>
+        </div>
       </div>
-      <div style={{ marginTop: 6 }}>Total limbs: {limbIds.length}</div>
-      <div style={{ marginTop: 6 }}>Angle: {Math.round(angle)}°</div>
-    </div>
+    </FloatingPanel>
   );
 };
-

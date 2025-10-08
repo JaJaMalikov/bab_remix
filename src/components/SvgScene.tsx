@@ -6,10 +6,12 @@ import { useUi } from "../context/UiContext";
 
 export const SvgScene = () => {
   const svgRef = useRef<SVGSVGElement>(null);
+  const viewportRef = useRef<SVGGElement | null>(null);
   const bgRef = useRef<SVGImageElement | null>(null);
   const sceneRef = useRef<SVGGElement | null>(null);
   const viewSizeRef = useRef<{ w: number; h: number } | null>(null);
   const activePuppetRef = useRef<SVGGElement | null>(null);
+  const viewStateRef = useRef({ scale: 1, tx: 0, ty: 0 });
   const {
     selectedLimb,
     angle,
@@ -17,6 +19,7 @@ export const SvgScene = () => {
     setLimbIds: setUiLimbIds,
     setSelectedLimb: setUiSelectedLimb,
     setAngle: setUiAngle,
+    addSceneItem,
   } = useUi();
   const [puppets, setPuppets] = useState<
     { id: string; src: string; anchor: SVGGElement; dropX: number; dropY: number }[]
@@ -50,20 +53,31 @@ export const SvgScene = () => {
     const scale = Math.min(rect.width / w, rect.height / h);
     const offsetX = (rect.width - w * scale) / 2;
     const offsetY = (rect.height - h * scale) / 2;
-    const x = (clientX - rect.left - offsetX) / scale;
-    const y = (clientY - rect.top - offsetY) / scale;
+    // Base scene coords before internal pan/zoom
+    let x = (clientX - rect.left - offsetX) / scale;
+    let y = (clientY - rect.top - offsetY) / scale;
+    // Apply inverse of internal viewport transform
+    const vs = viewStateRef.current;
+    x = (x - vs.tx) / vs.scale;
+    y = (y - vs.ty) / vs.scale;
     return { x, y };
   };
 
-  const ensureScene = () => {
+  const ensureContainers = () => {
     const svg = svgRef.current!;
+    if (!viewportRef.current) {
+      const v = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      v.setAttribute("data-viewport", "true");
+      svg.appendChild(v);
+      viewportRef.current = v;
+    }
     if (!sceneRef.current) {
       const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
       g.setAttribute("data-scene", "true");
-      svg.appendChild(g);
+      viewportRef.current!.appendChild(g);
       sceneRef.current = g;
     }
-    return sceneRef.current;
+    return { viewport: viewportRef.current!, scene: sceneRef.current! };
   };
 
   const setDecor = async (href: string) => {
@@ -81,18 +95,15 @@ export const SvgScene = () => {
     svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
     viewSizeRef.current = { w, h };
 
+    const { viewport } = ensureContainers();
     if (!bgRef.current) {
-      const bg = document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        "image",
-      );
+      const bg = document.createElementNS("http://www.w3.org/2000/svg", "image");
       bg.setAttribute("x", "0");
       bg.setAttribute("y", "0");
       bg.setAttribute("width", String(w));
       bg.setAttribute("height", String(h));
-      // Modern SVG2: use href directly
       bg.setAttribute("href", href);
-      svg.insertBefore(bg, svg.firstChild);
+      viewport.insertBefore(bg, viewport.firstChild);
       bgRef.current = bg as SVGImageElement;
     } else {
       bgRef.current.setAttribute("width", String(w));
@@ -102,7 +113,7 @@ export const SvgScene = () => {
   };
 
   const dropAsset = async (asset: Asset, x: number, y: number) => {
-    const scene = ensureScene();
+    const { scene } = ensureContainers();
     if (asset.type === "decor") {
       await setDecor(asset.path);
       return;
@@ -120,6 +131,7 @@ export const SvgScene = () => {
       scene.appendChild(anchor);
       const id = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
       setPuppets((prev) => [...prev, { id, src: asset.path, anchor, dropX: x, dropY: y }]);
+      addSceneItem({ id, type: 'puppet', label: asset.name || asset.path.split('/').pop() || 'Puppet', el: anchor });
       return;
     }
 
@@ -140,6 +152,9 @@ export const SvgScene = () => {
     img.setAttribute("data-draggable", "true");
     img.style.cursor = "move";
     scene.appendChild(img);
+    const id = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
+    img.setAttribute('data-id', id);
+    addSceneItem({ id, type: 'image', label: asset.name || asset.path.split('/').pop() || 'Image', el: img });
   };
 
   useEffect(() => {
@@ -309,10 +324,48 @@ export const SvgScene = () => {
     setLimbRotationOnDom(activePuppetRef.current, selectedLimb, angle);
   }, [angle, selectedLimb]);
 
+  // Default decor at startup
+  useEffect(() => {
+    setDecor("/assets/decors/scene.png").catch(() => {});
+    ensureContainers();
+  }, []);
+
+  // Pan/Zoom state and handler
+  const applyViewTransform = () => {
+    if (!viewportRef.current) return;
+    const { scale, tx, ty } = viewStateRef.current;
+    viewportRef.current.setAttribute('transform', `translate(${Math.round(tx)} ${Math.round(ty)}) scale(${scale})`);
+  };
+  const onWheel = (e: React.WheelEvent) => {
+    if (!viewSizeRef.current) return;
+    const { x, y } = toSceneCoords(e.clientX, e.clientY);
+    const vs = viewStateRef.current;
+    if (e.ctrlKey) {
+      // zoom
+      const delta = -e.deltaY;
+      const k = Math.exp(delta * 0.0015);
+      const newScale = Math.min(5, Math.max(0.2, vs.scale * k));
+      // zoom around mouse: adjust translation to keep (x,y) stable
+      const sx = x * (1 - newScale / vs.scale);
+      const sy = y * (1 - newScale / vs.scale);
+      vs.tx += sx;
+      vs.ty += sy;
+      vs.scale = newScale;
+      applyViewTransform();
+      e.preventDefault();
+      return;
+    }
+    // pan
+    vs.tx -= e.deltaX;
+    vs.ty -= e.deltaY;
+    applyViewTransform();
+    e.preventDefault();
+  };
+
 
   return (
     <div className="scene-canvas" style={{ position: "relative" }}>
-      <svg ref={svgRef} width="100%" height="100%" />
+      <svg ref={svgRef} width="100%" height="100%" onWheel={onWheel} />
       {/* React portals of pantins injected into anchors */}
       {puppets.map((p) =>
         createPortal(
