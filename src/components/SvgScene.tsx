@@ -12,12 +12,11 @@ export const SvgScene = memo(() => {
   const bgRef = useRef<SVGImageElement | null>(null);
   const sceneRef = useRef<SVGGElement | null>(null);
   const viewSizeRef = useRef<{ w: number; h: number } | null>(null);
-  const activePuppetRef = useRef<SVGGElement | null>(null);
   const {
+    selectedPuppet,
     selectedLimb,
     angle,
     setSelectedPuppet: setUiSelectedPuppet,
-    setLimbIds: setUiLimbIds,
     setSelectedLimb: setUiSelectedLimb,
     setAngle: setUiAngle,
     addSceneItem,
@@ -99,18 +98,16 @@ export const SvgScene = memo(() => {
         "http://www.w3.org/2000/svg",
         "g",
       );
-      // initial placement at drop point; we'll re-center on load
       anchor.setAttribute("transform", `translate(${Math.round(x)}, ${Math.round(y)})`);
       anchor.setAttribute("data-anchor", "puppet");
       anchor.style.cursor = "move";
       scene.appendChild(anchor);
-      const id = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
+      const id = crypto.randomUUID();
       setPuppets((prev) => [...prev, { id, src: asset.path, anchor, dropX: x, dropY: y }]);
       addSceneItem({ id, type: 'puppet', label: asset.name || asset.path.split('/').pop() || 'Puppet', el: anchor });
       return;
     }
 
-    // Simple image sprite (objet) avec taille réelle
     const preload = new Image();
     const dim = await new Promise<{ w: number; h: number }>((resolve, reject) => {
       preload.onload = () => resolve({ w: preload.naturalWidth, h: preload.naturalHeight });
@@ -127,7 +124,7 @@ export const SvgScene = memo(() => {
     img.setAttribute("data-draggable", "true");
     img.style.cursor = "move";
     scene.appendChild(img);
-    const id = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
+    const id = crypto.randomUUID();
     img.setAttribute('data-id', id);
     addSceneItem({ id, type: 'image', label: asset.name || asset.path.split('/').pop() || 'Image', el: img });
   };
@@ -150,24 +147,22 @@ export const SvgScene = memo(() => {
     };
 
     const onClick = (e: MouseEvent) => {
-      if ((e as MouseEvent).button !== 0) return; // ignore right/middle click
+      if (e.button !== 0) return; // ignore right/middle click
       if (dragMovedRef.current) {
         dragMovedRef.current = false;
         return;
       }
-      const path: EventTarget[] = (e.composedPath && e.composedPath()) || [];
-      for (const n of path) {
-        if (
-          n instanceof SVGGElement &&
-          n.hasAttribute &&
-          n.hasAttribute("data-pivot") &&
-          n.id
-        ) {
-          setUiSelectedLimb(n.id);
-          // Sync angle from DOM
-          const a = getLimbRotationFromDom(n);
+      
+      const limb = (e.target as Element)?.closest('[data-pivot]') as SVGGElement | null;
+      if (limb && limb.id) {
+        const puppetAnchor = limb.closest('[data-anchor="puppet"]');
+        const puppetRoot = puppetAnchor?.firstChild as SVGGElement | null;
+
+        if (puppetRoot) {
+          setUiSelectedPuppet(puppetRoot);
+          setUiSelectedLimb(limb.id);
+          const a = getLimbRotationFromDom(limb);
           setUiAngle(Math.round(a));
-          break;
         }
       }
     };
@@ -179,7 +174,7 @@ export const SvgScene = memo(() => {
       svg.removeEventListener("drop", onDrop);
       svg.removeEventListener("click", onClick);
     };
-  }, [toSceneCoords, setUiSelectedLimb, setUiAngle, dragMovedRef]);
+  }, [toSceneCoords, setUiSelectedLimb, setUiAngle, dragMovedRef, setUiSelectedPuppet]);
 
   // --- Helpers to set/get rotation on a limb group ---
   const setLimbRotationOnDom = (
@@ -191,7 +186,6 @@ export const SvgScene = memo(() => {
       `#${CSS.escape(limbId)}`,
     ) as SVGGElement | null;
     if (!g) return;
-    // Version simple: applique la rotation uniquement via CSS
     g.style.transform = `rotate(${deg}deg)`;
   };
 
@@ -205,9 +199,9 @@ export const SvgScene = memo(() => {
 
   // Apply rotation when angle or selected limb changes
   useEffect(() => {
-    if (!activePuppetRef.current || !selectedLimb) return;
-    setLimbRotationOnDom(activePuppetRef.current, selectedLimb, angle);
-  }, [angle, selectedLimb]);
+    if (!selectedPuppet || !selectedLimb) return;
+    setLimbRotationOnDom(selectedPuppet, selectedLimb, angle);
+  }, [angle, selectedLimb, selectedPuppet]);
 
   // Default decor at startup
   useEffect(() => {
@@ -249,17 +243,8 @@ export const SvgScene = memo(() => {
                 const ty = Math.round(p.dropY - (bbox.y + bbox.height / 2));
                 p.anchor.setAttribute("transform", `translate(${tx}, ${ty})`);
               } catch {}
-              // mark as active and sync UI
-              activePuppetRef.current = g;
-              setUiSelectedPuppet(g);
-              const ids = Array.from(g.querySelectorAll("g[data-pivot][id]"))
-                .map((el) => el.getAttribute("id")!)
-                .filter(Boolean);
-              setUiLimbIds(ids);
-              if (ids.length) {
-                setUiSelectedLimb(ids[0]!);
-                setUiAngle(0);
-              }
+              // DO NOT auto-select puppet on load, this was the source of the bug.
+              // The user will select the puppet by clicking on it.
             }}
           />,
           p.anchor,
