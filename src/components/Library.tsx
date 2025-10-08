@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import { FloatingPanel } from "./FloatingPanel";
 
 export interface Asset {
@@ -6,53 +7,95 @@ export interface Asset {
   path: string;
 }
 
+type ManifestEntry = {
+  name: string;
+  path: string; // relative to /assets/
+  category: "pantins" | "objets" | "decors";
+};
+
+const mapCategoryToType = (c: ManifestEntry["category"]): Asset["type"] =>
+  c === "pantins" ? "pantin" : c === "objets" ? "objet" : "decor";
+
 export const Library = () => {
-  const assets: Asset[] = [
-    {
-      name: "Pantin Manu",
-      type: "pantin",
-      path: "/assets/pantins/manu.svg",
-    },
-    {
-      name: "Lunettes",
-      type: "objet",
-      path: "/assets/objets/lunettes_manu.svg",
-    },
-    { name: "Laurier", type: "objet", path: "/assets/objets/laurier.svg" },
-    { name: "Faucille", type: "objet", path: "/assets/objets/faucille.svg" },
-    { name: "Basse", type: "objet", path: "/assets/objets/basse.svg" },
-    { name: "Marteau", type: "objet", path: "/assets/objets/marteau.svg" },
-    { name: "Bureau", type: "decor", path: "/assets/decors/bureau.png" },
-    // Keep list minimal and valid; remove missing entries
-  ];
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [category, setCategory] = useState<"all" | "pantins" | "objets" | "decors">("all");
+  const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch("/assets/assets-manifest.json");
+        const data: ManifestEntry[] = await res.json();
+        if (cancelled) return;
+        const mapped: Asset[] = data.map((e) => ({
+          name: e.name,
+          type: mapCategoryToType(e.category),
+          path: `/assets/${e.path}`,
+        }));
+        setAssets(mapped);
+      } catch (e) {
+        console.error("Failed to load assets-manifest.json", e);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return assets.filter((a) => {
+      if (category !== "all") {
+        const catType = mapCategoryToType(category as any);
+        if (a.type !== catType) return false;
+      }
+      if (!q) return true;
+      return a.name.toLowerCase().includes(q) || a.path.toLowerCase().includes(q);
+    });
+  }, [assets, category, query]);
 
   const handleDragStart = (e: React.DragEvent, asset: Asset) => {
-    console.log("Drag start:", asset);
     e.dataTransfer.setData("application/json", JSON.stringify(asset));
     e.dataTransfer.effectAllowed = "copy";
   };
+
+  const catBtn = (key: "all" | "pantins" | "objets" | "decors", label: string) => (
+    <button
+      className={`category-btn ${category === key ? "active" : ""}`}
+      onClick={() => setCategory(key)}
+    >
+      {label}
+    </button>
+  );
 
   return (
     <FloatingPanel
       title="Library"
       initialPosition={{ x: 20, y: 100 }}
-      width={280}
-      height={500}
+      width={300}
+      height={400}
     >
       <div className="library-content">
         <div className="library-search">
-          <input type="text" placeholder="Rechercher..." />
+          <input
+            type="text"
+            placeholder="Rechercher..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
         </div>
         <div className="library-categories">
-          <button className="category-btn active">Tous</button>
-          <button className="category-btn">Pantins</button>
-          <button className="category-btn">Objets</button>
-          <button className="category-btn">Décors</button>
+          {catBtn("all", "Tous")}
+          {catBtn("pantins", "Pantins")}
+          {catBtn("objets", "Objets")}
+          {catBtn("decors", "Décors")}
         </div>
         <div className="library-assets">
-          {assets.map((asset, index) => (
+          {filtered.map((asset, index) => (
             <div
-              key={index}
+              key={`${asset.type}-${asset.path}-${index}`}
               className="asset-item"
               draggable
               onDragStart={(e) => handleDragStart(e, asset)}

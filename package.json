@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "pnpm run dev",
     "build": "pnpm tsc && vite build",
-    "dev": "vite"
+    "predev": "node scripts/json_assets_gen.js",
+    "dev": "node scripts/json_assets_gen.js && vite"
   },
   "dependencies": {
     "react": "^19.2.0",
@@ -15,8 +15,10 @@
   "devDependencies": {
     "@eslint/js": "^9.37.0",
     "@tauri-apps/cli": "^2.8.4",
+    "@types/node": "^24.6.2",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.0",
     "typescript": "~5.9.3",
     "vite": "^7.1.9"
   }
