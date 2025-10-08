@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, memo, RefObject } from "react";
 import { createPortal } from "react-dom";
 import { SvgPuppetInlineSimple } from "./SvgPuppet";
-import { Asset } from "./Library";
+import { Asset } from "./AssetItem";
 import { useUi } from "../context/UiContext";
 import { useSceneDrag } from "../hooks/useSceneDrag";
 import { useScenePanZoom } from "../hooks/useScenePanZoom";

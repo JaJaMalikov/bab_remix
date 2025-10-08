@@ -1,12 +1,6 @@
-import { useEffect, useMemo, useState, memo } from "react";
-import { useUi } from "../context/UiContext";
+import { useEffect, useMemo, useState, memo, useCallback } from "react";
 import { FloatingPanel } from "./FloatingPanel";
-
-export interface Asset {
-  name: string;
-  type: "pantin" | "objet" | "decor";
-  path: string;
-}
+import { AssetItem, Asset } from "./AssetItem";
 
 type ManifestEntry = {
   name: string;
@@ -21,7 +15,6 @@ export const Library = memo(() => {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [category, setCategory] = useState<"all" | "pantins" | "objets" | "decors">("all");
   const [query, setQuery] = useState("");
-  const { importAsset } = useUi();
 
   useEffect(() => {
     let cancelled = false;
@@ -46,7 +39,7 @@ export const Library = memo(() => {
     };
   }, []);
 
-  const filtered = useMemo(() => {
+  const filteredAssets = useMemo(() => {
     const q = query.trim().toLowerCase();
     return assets.filter((a) => {
       if (category !== "all") {
@@ -58,19 +51,13 @@ export const Library = memo(() => {
     });
   }, [assets, category, query]);
 
-  const handleDragStart = (e: React.DragEvent, asset: Asset) => {
-    e.dataTransfer.setData("application/json", JSON.stringify(asset));
-    e.dataTransfer.effectAllowed = "copy";
-  };
+  const handleQueryChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setQuery(e.target.value);
+  }, []);
 
-  const catBtn = (key: "all" | "pantins" | "objets" | "decors", label: string) => (
-    <button
-      className={`category-btn ${category === key ? "active" : ""}`}
-      onClick={() => setCategory(key)}
-    >
-      {label}
-    </button>
-  );
+  const handleCategoryChange = useCallback((cat: "all" | "pantins" | "objets" | "decors") => {
+    setCategory(cat);
+  }, []);
 
   return (
     <FloatingPanel
@@ -86,30 +73,18 @@ export const Library = memo(() => {
             type="text"
             placeholder="Rechercher..."
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={handleQueryChange}
           />
         </div>
         <div className="library-categories">
-          {catBtn("all", "Tous")}
-          {catBtn("pantins", "Pantins")}
-          {catBtn("objets", "Objets")}
-          {catBtn("decors", "Décors")}
+          <button className={`category-btn ${category === 'all' ? "active" : ""}`} onClick={() => handleCategoryChange('all')}>Tous</button>
+          <button className={`category-btn ${category === 'pantins' ? "active" : ""}`} onClick={() => handleCategoryChange('pantins')}>Pantins</button>
+          <button className={`category-btn ${category === 'objets' ? "active" : ""}`} onClick={() => handleCategoryChange('objets')}>Objets</button>
+          <button className={`category-btn ${category === 'decors' ? "active" : ""}`} onClick={() => handleCategoryChange('decors')}>Décors</button>
         </div>
         <div className="library-assets">
-          {filtered.map((asset, index) => (
-            <div
-              key={`${asset.type}-${asset.path}-${index}`}
-              className="asset-item"
-              draggable
-              onDragStart={(e) => handleDragStart(e, asset)}
-              onDoubleClick={() => importAsset?.(asset)}
-            >
-              <div className="asset-preview">
-                <img src={asset.path} alt={asset.name} />
-              </div>
-              <div className="asset-name">{asset.name}</div>
-              <div className="asset-type">{asset.type}</div>
-            </div>
+          {filteredAssets.map((asset) => (
+            <AssetItem key={`${asset.path}`} asset={asset} />
           ))}
         </div>
       </div>
