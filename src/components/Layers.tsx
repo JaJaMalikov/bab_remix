@@ -1,7 +1,8 @@
+import { memo } from "react";
 import { FloatingPanel } from "./FloatingPanel";
 import { useUi } from "../context/UiContext";
 
-export const Layers = () => {
+export const Layers = memo(() => {
   const { sceneItems, bringForward, sendBackward, setSelectedPuppet } = useUi();
 
   return (
@@ -21,4 +22,4 @@ export const Layers = () => {
       </div>
     </FloatingPanel>
   );
-};
+});

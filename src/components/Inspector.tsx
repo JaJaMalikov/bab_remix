@@ -2,7 +2,7 @@ import React from "react";
 import { useUi } from "../context/UiContext";
 import { FloatingPanel } from "./FloatingPanel";
 
-export const Inspector: React.FC = () => {
+export const Inspector: React.FC = React.memo(() => {
   const { selectedPuppet, selectedLimb, limbIds, angle, setAngle } = useUi();
 
   const onCopy = () => {
@@ -39,4 +39,4 @@ export const Inspector: React.FC = () => {
       </div>
     </FloatingPanel>
   );
-};
+});

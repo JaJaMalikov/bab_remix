@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import { useDraggable } from "../hooks/useDraggable";
 import { useUi } from "../context/UiContext";
 
-export const Toolbar = () => {
+export const Toolbar = memo(() => {
   const {
     showTimeline,
     setShowTimeline,
@@ -54,4 +54,4 @@ export const Toolbar = () => {
       </div>
     </div>
   );
-};
+});

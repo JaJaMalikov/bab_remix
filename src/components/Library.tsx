@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, memo } from "react";
 import { useUi } from "../context/UiContext";
 import { FloatingPanel } from "./FloatingPanel";
 
@@ -17,7 +17,7 @@ type ManifestEntry = {
 const mapCategoryToType = (c: ManifestEntry["category"]): Asset["type"] =>
   c === "pantins" ? "pantin" : c === "objets" ? "objet" : "decor";
 
-export const Library = () => {
+export const Library = memo(() => {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [category, setCategory] = useState<"all" | "pantins" | "objets" | "decors">("all");
   const [query, setQuery] = useState("");
@@ -115,4 +115,4 @@ export const Library = () => {
       </div>
     </FloatingPanel>
   );
-};
+});

@@ -4,7 +4,9 @@ import { SvgPuppetInlineSimple } from "./SvgPuppet";
 import { Asset } from "./Library";
 import { useUi } from "../context/UiContext";
 
-export const SvgScene = () => {
+import { memo } from "react";
+
+export const SvgScene = memo(() => {
   const svgRef = useRef<SVGSVGElement>(null);
   const viewportRef = useRef<SVGGElement | null>(null);
   const bgRef = useRef<SVGImageElement | null>(null);
@@ -420,4 +422,4 @@ export const SvgScene = () => {
       )}
     </div>
   );
-};
+});

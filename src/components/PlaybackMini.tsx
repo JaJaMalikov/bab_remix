@@ -1,7 +1,8 @@
+import { memo } from "react";
 import { FloatingPanel } from "./FloatingPanel";
 import { useUi } from "../context/UiContext";
 
-export const PlaybackMini = () => {
+export const PlaybackMini = memo(() => {
   const { playing, setPlaying, selectedLimb, setAngle } = useUi();
   return (
     <FloatingPanel title="Playback" initialPosition={{ x: 20, y: window.innerHeight - 160 }} width={200} height={100} storageKey="pos:panel:playback">
@@ -11,4 +12,4 @@ export const PlaybackMini = () => {
       </div>
     </FloatingPanel>
   );
-};
+});

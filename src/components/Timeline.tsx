@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import { useUi } from "../context/UiContext";
 
-export const Timeline: React.FC = () => {
+export const Timeline: React.FC = React.memo(() => {
   const { angle, setAngle, playing, setPlaying, selectedLimb, showTracks, setShowTracks, timelineHeight, setTimelineHeight } = useUi();
   const rafRef = useRef<number | null>(null);
   const resizingRef = useRef<null | { startY: number; startH: number }>(null);
@@ -94,4 +94,4 @@ export const Timeline: React.FC = () => {
       </div>
     </div>
   );
-};
+});
