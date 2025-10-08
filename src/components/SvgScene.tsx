@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, memo, RefObject } from "react";
 import { createPortal } from "react-dom";
 import { SvgPuppetInlineSimple } from "./SvgPuppet";
 import { Asset } from "./Library";
 import { useUi } from "../context/UiContext";
-
-import { memo } from "react";
+import { useSceneDrag } from "../hooks/useSceneDrag";
+import { useScenePanZoom } from "../hooks/useScenePanZoom";
 
 export const SvgScene = memo(() => {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -13,7 +13,6 @@ export const SvgScene = memo(() => {
   const sceneRef = useRef<SVGGElement | null>(null);
   const viewSizeRef = useRef<{ w: number; h: number } | null>(null);
   const activePuppetRef = useRef<SVGGElement | null>(null);
-  const viewStateRef = useRef({ scale: 1, tx: 0, ty: 0 });
   const {
     selectedLimb,
     angle,
@@ -28,44 +27,16 @@ export const SvgScene = memo(() => {
   const [puppets, setPuppets] = useState<
     { id: string; src: string; anchor: SVGGElement; dropX: number; dropY: number }[]
   >([]);
-  const draggingRef = useRef<
-    | null
-    | {
-        type: "puppet";
-        el: SVGGElement;
-        startX: number;
-        startY: number;
-        tx0: number;
-        ty0: number;
-      }
-    | {
-        type: "image";
-        el: SVGImageElement;
-        startX: number;
-        startY: number;
-        x0: number;
-        y0: number;
-      }
-  >(null);
-  const dragMovedRef = useRef(false);
 
-  // Convert client coords to scene coords using viewBox + aspect fit
-  const toSceneCoords = (clientX: number, clientY: number) => {
-    const svg = svgRef.current!;
-    const rect = svg.getBoundingClientRect();
-    const { w, h } = viewSizeRef.current ?? { w: rect.width, h: rect.height };
-    const scale = Math.min(rect.width / w, rect.height / h);
-    const offsetX = (rect.width - w * scale) / 2;
-    const offsetY = (rect.height - h * scale) / 2;
-    // Base scene coords before internal pan/zoom
-    let x = (clientX - rect.left - offsetX) / scale;
-    let y = (clientY - rect.top - offsetY) / scale;
-    // Apply inverse of internal viewport transform
-    const vs = viewStateRef.current;
-    x = (x - vs.tx) / vs.scale;
-    y = (y - vs.ty) / vs.scale;
-    return { x, y };
-  };
+  // All pan, zoom, and coordinate logic is now in the hook
+  const { onWheel, doFitInView, toSceneCoords } = useScenePanZoom({
+    svgRef,
+    viewportRef,
+    viewSizeRef,
+  });
+
+  // Drag logic hook depends on coordinate conversion from the pan/zoom hook
+  const dragMovedRef = useSceneDrag(svgRef as RefObject<SVGSVGElement>, toSceneCoords);
 
   const ensureContainers = () => {
     const svg = svgRef.current!;
@@ -161,6 +132,7 @@ export const SvgScene = memo(() => {
     addSceneItem({ id, type: 'image', label: asset.name || asset.path.split('/').pop() || 'Image', el: img });
   };
 
+  // Effect for drag/drop from library and click-to-select-limb
   useEffect(() => {
     const svg = svgRef.current!;
 
@@ -177,98 +149,8 @@ export const SvgScene = memo(() => {
       await dropAsset(asset, pt.x, pt.y);
     };
 
-    const getTranslate = (el: SVGGElement) => {
-      try {
-        const c = el.transform.baseVal.consolidate();
-        if (c) {
-          const m = c.matrix;
-          return { tx: m.e || 0, ty: m.f || 0 };
-        }
-      } catch {}
-      const t = el.getAttribute("transform") || "";
-      const mm = t.match(/translate\(([^,\s)]+)[ ,]([^\s)]+)\)/);
-      const tx = mm ? parseFloat(mm[1]) : 0;
-      const ty = mm ? parseFloat(mm[2]) : 0;
-      return { tx: isFinite(tx) ? tx : 0, ty: isFinite(ty) ? ty : 0 };
-    };
-
-    const onMouseDown = (e: MouseEvent) => {
-      if (e.button !== 0) return; // drag uniquement au clic gauche
-      const path: EventTarget[] = (e.composedPath && e.composedPath()) || [];
-      let anchor: SVGGElement | null = null;
-      let img: SVGImageElement | null = null;
-      for (const n of path) {
-        if (n instanceof SVGGElement && (n as SVGGElement).hasAttribute("data-anchor")) {
-          anchor = n as SVGGElement;
-          break;
-        }
-        if (n instanceof SVGImageElement && (n as Element).hasAttribute("data-draggable")) {
-          img = n as SVGImageElement;
-          break;
-        }
-      }
-      if (!anchor && !img) return;
-      const pt = toSceneCoords(e.clientX, e.clientY);
-      dragMovedRef.current = false;
-      if (anchor) {
-        const { tx, ty } = getTranslate(anchor);
-        draggingRef.current = {
-          type: "puppet",
-          el: anchor,
-          startX: pt.x,
-          startY: pt.y,
-          tx0: tx,
-          ty0: ty,
-        };
-        e.preventDefault();
-        return;
-      } else if (img) {
-        const x0 = parseFloat(img.getAttribute("x") || "0");
-        const y0 = parseFloat(img.getAttribute("y") || "0");
-        draggingRef.current = {
-          type: "image",
-          el: img,
-          startX: pt.x,
-          startY: pt.y,
-          x0: isFinite(x0) ? x0 : 0,
-          y0: isFinite(y0) ? y0 : 0,
-        };
-        e.preventDefault();
-        return;
-      }
-    };
-
-    const onMouseMove = (e: MouseEvent) => {
-      const drag = draggingRef.current;
-      if (!drag) return;
-      const pt = toSceneCoords(e.clientX, e.clientY);
-      const dx = pt.x - drag.startX;
-      const dy = pt.y - drag.startY;
-      dragMovedRef.current = true;
-      if (drag.type === "puppet") {
-        const tx = Math.round(drag.tx0 + dx);
-        const ty = Math.round(drag.ty0 + dy);
-        drag.el.setAttribute("transform", `translate(${tx}, ${ty})`);
-      } else if (drag.type === "image") {
-        const x = Math.round(drag.x0 + dx);
-        const y = Math.round(drag.y0 + dy);
-        drag.el.setAttribute("x", String(x));
-        drag.el.setAttribute("y", String(y));
-      }
-      e.preventDefault();
-    };
-
-    const onMouseUp = () => {
-      draggingRef.current = null;
-    };
-
-    svg.addEventListener("dragover", onDragOver);
-    svg.addEventListener("drop", onDrop);
-    svg.addEventListener("mousedown", onMouseDown);
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
     const onClick = (e: MouseEvent) => {
-      if ((e as MouseEvent).button !== 0) return; // ignore clic droit/milieu
+      if ((e as MouseEvent).button !== 0) return; // ignore right/middle click
       if (dragMovedRef.current) {
         dragMovedRef.current = false;
         return;
@@ -289,16 +171,15 @@ export const SvgScene = memo(() => {
         }
       }
     };
+    svg.addEventListener("dragover", onDragOver);
+    svg.addEventListener("drop", onDrop);
     svg.addEventListener("click", onClick);
     return () => {
       svg.removeEventListener("dragover", onDragOver);
       svg.removeEventListener("drop", onDrop);
-      svg.removeEventListener("mousedown", onMouseDown);
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
       svg.removeEventListener("click", onClick);
     };
-  }, []);
+  }, [toSceneCoords, setUiSelectedLimb, setUiAngle, dragMovedRef]);
 
   // --- Helpers to set/get rotation on a limb group ---
   const setLimbRotationOnDom = (
@@ -349,42 +230,7 @@ export const SvgScene = memo(() => {
       setFitInView(undefined);
       setImportAsset(undefined);
     };
-  }, []);
-
-  // Pan/Zoom state and handler
-  const applyViewTransform = () => {
-    if (!viewportRef.current) return;
-    const { scale, tx, ty } = viewStateRef.current;
-    viewportRef.current.setAttribute('transform', `translate(${Math.round(tx)} ${Math.round(ty)}) scale(${scale})`);
-  };
-  const doFitInView = () => {
-    viewStateRef.current = { scale: 1, tx: 0, ty: 0 };
-    applyViewTransform();
-  };
-  const onWheel = (e: React.WheelEvent) => {
-    if (!viewSizeRef.current) return;
-    const { x, y } = toSceneCoords(e.clientX, e.clientY);
-    const vs = viewStateRef.current;
-    if (e.ctrlKey) {
-      // zoom
-      const delta = -e.deltaY;
-      const k = Math.exp(delta * 0.0015);
-      const newScale = Math.min(5, Math.max(0.2, vs.scale * k));
-      // zoom around mouse: adjust translation to keep (x,y) stable
-      const sx = x * (1 - newScale / vs.scale);
-      const sy = y * (1 - newScale / vs.scale);
-      vs.tx += sx;
-      vs.ty += sy;
-      vs.scale = newScale;
-      applyViewTransform();
-      return;
-    }
-    // pan
-    vs.tx -= e.deltaX;
-    vs.ty -= e.deltaY;
-    applyViewTransform();
-  };
-
+  }, [doFitInView, toSceneCoords]);
 
   return (
     <div className="scene-canvas" style={{ position: "relative" }}>

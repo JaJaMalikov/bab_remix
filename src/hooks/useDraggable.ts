@@ -9,13 +9,24 @@ type Options = {
   storageKey?: string;
 };
 
+/**
+ * A hook to make a component draggable.
+ * This refactored version ensures that callbacks are stable and not recreated on every drag movement,
+ * improving performance and following best practices.
+ */
 export const useDraggable = (initialPosition: Position, options: Options = {}) => {
   const [position, setPosition] = useState<Position>(initialPosition);
   const [isDragging, setIsDragging] = useState(false);
-  const dragStartPos = useRef<{ x: number; y: number } | null>(null);
-  const storageKey = options.storageKey;
 
-  // Load from storage once
+  // Use a ref to store the latest position. This allows callbacks to access the latest
+  // position without needing `position` in their dependency array, making them stable.
+  const positionRef = useRef(position);
+  positionRef.current = position;
+
+  const dragStartPos = useRef<{ x: number; y: number } | null>(null);
+  const { storageKey } = options;
+
+  // Load position from storage on mount or when storageKey changes.
   useEffect(() => {
     if (!storageKey) return;
     try {
@@ -27,43 +38,40 @@ export const useDraggable = (initialPosition: Position, options: Options = {}) =
         }
       }
     } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [storageKey]);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
+      // Only start dragging if the drag-handle is the target
       if ((e.target as HTMLElement).closest(".drag-handle")) {
         setIsDragging(true);
         dragStartPos.current = {
-          x: e.clientX - position.x,
-          y: e.clientY - position.y,
+          x: e.clientX - positionRef.current.x,
+          y: e.clientY - positionRef.current.y,
         };
       }
     },
-    [position],
+    [] // Now stable, no dependencies
   );
 
-  const handleMouseMove = useCallback(
-    (e: MouseEvent) => {
-      if (isDragging && dragStartPos.current) {
-        setPosition({
-          x: e.clientX - dragStartPos.current.x,
-          y: e.clientY - dragStartPos.current.y,
-        });
-      }
-    },
-    [isDragging],
-  );
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (dragStartPos.current) {
+      setPosition({
+        x: e.clientX - dragStartPos.current.x,
+        y: e.clientY - dragStartPos.current.y,
+      });
+    }
+  }, []); // Now stable, no dependencies
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
     dragStartPos.current = null;
     if (storageKey) {
       try {
-        localStorage.setItem(storageKey, JSON.stringify(position));
+        localStorage.setItem(storageKey, JSON.stringify(positionRef.current));
       } catch {}
     }
-  }, [position, storageKey]);
+  }, [storageKey]); // Now only depends on storageKey
 
   useEffect(() => {
     if (isDragging) {

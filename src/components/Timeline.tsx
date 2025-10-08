@@ -1,12 +1,19 @@
-import React, { useEffect, useRef, useCallback, useState } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import { useUi } from "../context/UiContext";
+import { useVerticalResize } from "../hooks/useVerticalResize";
 
 export const Timeline: React.FC = React.memo(() => {
   const { angle, setAngle, playing, setPlaying, selectedLimb, showTracks, setShowTracks, timelineHeight, setTimelineHeight } = useUi();
   const rafRef = useRef<number | null>(null);
-  const resizingRef = useRef<null | { startY: number; startH: number }>(null);
-  const [isResizing, setIsResizing] = useState(false);
 
+  // Use the custom hook for resizing logic
+  const { onResizeMouseDown } = useVerticalResize({
+    height: timelineHeight,
+    setHeight: setTimelineHeight,
+    maxHeight: Math.round(window.innerHeight * 0.6),
+  });
+
+  // Playback animation loop
   useEffect(() => {
     if (!playing) {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -27,47 +34,30 @@ export const Timeline: React.FC = React.memo(() => {
     };
   }, [playing, setAngle]);
 
-  const onResizeDown = useCallback((e: React.MouseEvent) => {
-    setIsResizing(true);
-    resizingRef.current = { startY: e.clientY, startH: timelineHeight };
-    e.preventDefault();
-    e.stopPropagation();
-  }, [timelineHeight]);
-
-  useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      if (!resizingRef.current) return;
-      const dy = resizingRef.current.startY - e.clientY;
-      const nh = Math.min(Math.max(120, resizingRef.current.startH + dy), Math.round(window.innerHeight * 0.6));
-      setTimelineHeight(nh);
-    };
-    const onUp = () => {
-      resizingRef.current = null;
-      setIsResizing(false);
-    };
-    if (isResizing) {
-      window.addEventListener('mousemove', onMove);
-      window.addEventListener('mouseup', onUp);
-      return () => {
-        window.removeEventListener('mousemove', onMove);
-        window.removeEventListener('mouseup', onUp);
-      };
-    }
-  }, [isResizing, setTimelineHeight]);
+  // Memoized event handlers
+  const handleTogglePlay = useCallback(() => setPlaying(!playing), [playing, setPlaying]);
+  const handleStop = useCallback(() => {
+    setPlaying(false);
+    setAngle(0);
+  }, [setPlaying, setAngle]);
+  const handleToggleTracks = useCallback(() => setShowTracks(!showTracks), [showTracks, setShowTracks]);
+  const handleScrubberChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setAngle(parseFloat(e.target.value));
+  }, [setAngle]);
 
   return (
     <div className="timeline" style={{ position: "relative", height: timelineHeight }}>
-      <div className="timeline-resizer" onMouseDown={onResizeDown} title="Drag to resize" />
+      <div className="timeline-resizer" onMouseDown={onResizeMouseDown} title="Drag to resize" />
       <div className="timeline-header">
         <div className="timeline-controls">
-          <button onClick={() => setPlaying(!playing)} disabled={!selectedLimb}>
+          <button onClick={handleTogglePlay} disabled={!selectedLimb}>
             {playing ? "⏸ Pause" : "▶ Play"}
           </button>
-          <button onClick={() => { setPlaying(false); setAngle(0); }}>
+          <button onClick={handleStop}>
             ⏹ Stop
           </button>
           <span className="frame-counter">Angle: {Math.round(angle)}°</span>
-          <button style={{ marginLeft: 'auto' }} onClick={() => setShowTracks(!showTracks)}>
+          <button style={{ marginLeft: 'auto' }} onClick={handleToggleTracks}>
             {showTracks ? 'Hide Tracks' : 'Show Tracks'}
           </button>
         </div>
@@ -87,7 +77,7 @@ export const Timeline: React.FC = React.memo(() => {
             min={-180}
             max={180}
             value={angle}
-            onChange={(e) => setAngle(parseFloat(e.target.value))}
+            onChange={handleScrubberChange}
             className="scrubber"
           />
         </div>
