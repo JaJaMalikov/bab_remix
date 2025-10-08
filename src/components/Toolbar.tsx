@@ -12,8 +12,9 @@ export const Toolbar = () => {
     setShowInspector,
     showLayers,
     setShowLayers,
+    fitInView,
   } = useUi();
-  const { position, handleMouseDown, isDragging } = useDraggable({ x: window.innerWidth / 2 - 200, y: 20 });
+  const { position, handleMouseDown, isDragging } = useDraggable({ x: window.innerWidth / 2 - 200, y: 20 }, { storageKey: 'pos:toolbar' });
   const [collapsed, setCollapsed] = useState(false as boolean);
 
   return (
@@ -22,6 +23,7 @@ export const Toolbar = () => {
       style={{ position: 'absolute', left: position.x, top: position.y }}
       onMouseDown={handleMouseDown}
     >
+      <span className="toolbar-grip drag-handle" />
       <div className="toolbar-group">
         <button className={`toolbar-btn toggle-all`} onClick={(e) => { e.stopPropagation(); setCollapsed(!collapsed); }}>
           {collapsed ? '➕' : '➖'}
@@ -43,6 +45,10 @@ export const Toolbar = () => {
         <button className={`toolbar-btn ${showLayers ? 'active' : ''}`} onClick={(e) => { e.stopPropagation(); setShowLayers(!showLayers); }}>
           🧅
           <span className="toolbar-label">Layers</span>
+        </button>
+        <button className={`toolbar-btn`} onClick={(e) => { e.stopPropagation(); fitInView?.(); }}>
+          ⤢
+          <span className="toolbar-label">Fit</span>
         </button>
         </>}
       </div>

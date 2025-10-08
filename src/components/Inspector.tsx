@@ -17,7 +17,7 @@ export const Inspector: React.FC = () => {
   })();
 
   return (
-    <FloatingPanel title="Inspector" initialPosition={{ x: window.innerWidth - 320, y: 20 }} width={300} height={240}>
+    <FloatingPanel title="Inspector" initialPosition={{ x: window.innerWidth - 320, y: 20 }} width={300} height={240} storageKey="pos:panel:inspector">
       <div className="inspector-content">
         <div className="property-group">
           <h4>Selection</h4>

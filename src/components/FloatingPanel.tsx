@@ -7,6 +7,7 @@ interface FloatingPanelProps {
   children: ReactNode;
   width?: number;
   height?: number;
+  storageKey?: string;
 }
 
 export const FloatingPanel = ({
@@ -15,9 +16,10 @@ export const FloatingPanel = ({
   children,
   width = 300,
   height = 400,
+  storageKey,
 }: FloatingPanelProps) => {
   const { position, handleMouseDown, isDragging } =
-    useDraggable(initialPosition);
+    useDraggable(initialPosition, { storageKey });
 
   return (
     <div

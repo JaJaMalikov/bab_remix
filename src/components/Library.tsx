@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useUi } from "../context/UiContext";
 import { FloatingPanel } from "./FloatingPanel";
 
 export interface Asset {
@@ -20,6 +21,7 @@ export const Library = () => {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [category, setCategory] = useState<"all" | "pantins" | "objets" | "decors">("all");
   const [query, setQuery] = useState("");
+  const { importAsset } = useUi();
 
   useEffect(() => {
     let cancelled = false;
@@ -76,6 +78,7 @@ export const Library = () => {
       initialPosition={{ x: 20, y: 100 }}
       width={300}
       height={400}
+      storageKey="pos:panel:library"
     >
       <div className="library-content">
         <div className="library-search">
@@ -99,6 +102,7 @@ export const Library = () => {
               className="asset-item"
               draggable
               onDragStart={(e) => handleDragStart(e, asset)}
+              onDoubleClick={() => importAsset?.(asset)}
             >
               <div className="asset-preview">
                 <img src={asset.path} alt={asset.name} />

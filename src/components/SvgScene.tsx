@@ -20,6 +20,8 @@ export const SvgScene = () => {
     setSelectedLimb: setUiSelectedLimb,
     setAngle: setUiAngle,
     addSceneItem,
+    setFitInView,
+    setImportAsset,
   } = useUi();
   const [puppets, setPuppets] = useState<
     { id: string; src: string; anchor: SVGGElement; dropX: number; dropY: number }[]
@@ -330,11 +332,32 @@ export const SvgScene = () => {
     ensureContainers();
   }, []);
 
+  // Expose helpers to UI context (fitInView, importAsset)
+  useEffect(() => {
+    setFitInView(() => doFitInView);
+    setImportAsset(() => (asset: Asset) => {
+      const svg = svgRef.current!;
+      const rect = svg.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const pt = toSceneCoords(cx, cy);
+      dropAsset(asset, pt.x, pt.y);
+    });
+    return () => {
+      setFitInView(undefined);
+      setImportAsset(undefined);
+    };
+  }, []);
+
   // Pan/Zoom state and handler
   const applyViewTransform = () => {
     if (!viewportRef.current) return;
     const { scale, tx, ty } = viewStateRef.current;
     viewportRef.current.setAttribute('transform', `translate(${Math.round(tx)} ${Math.round(ty)}) scale(${scale})`);
+  };
+  const doFitInView = () => {
+    viewStateRef.current = { scale: 1, tx: 0, ty: 0 };
+    applyViewTransform();
   };
   const onWheel = (e: React.WheelEvent) => {
     if (!viewSizeRef.current) return;
@@ -352,14 +375,12 @@ export const SvgScene = () => {
       vs.ty += sy;
       vs.scale = newScale;
       applyViewTransform();
-      e.preventDefault();
       return;
     }
     // pan
     vs.tx -= e.deltaX;
     vs.ty -= e.deltaY;
     applyViewTransform();
-    e.preventDefault();
   };
 
 

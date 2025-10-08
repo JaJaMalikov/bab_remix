@@ -5,10 +5,30 @@ export interface Position {
   y: number;
 }
 
-export const useDraggable = (initialPosition: Position) => {
+type Options = {
+  storageKey?: string;
+};
+
+export const useDraggable = (initialPosition: Position, options: Options = {}) => {
   const [position, setPosition] = useState<Position>(initialPosition);
   const [isDragging, setIsDragging] = useState(false);
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
+  const storageKey = options.storageKey;
+
+  // Load from storage once
+  useEffect(() => {
+    if (!storageKey) return;
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) {
+        const p = JSON.parse(raw) as Position;
+        if (typeof p?.x === 'number' && typeof p?.y === 'number') {
+          setPosition(p);
+        }
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -38,7 +58,12 @@ export const useDraggable = (initialPosition: Position) => {
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
     dragStartPos.current = null;
-  }, []);
+    if (storageKey) {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(position));
+      } catch {}
+    }
+  }, [position, storageKey]);
 
   useEffect(() => {
     if (isDragging) {

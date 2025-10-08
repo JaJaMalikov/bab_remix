@@ -38,6 +38,12 @@ export interface UiState {
   removeSceneItem: (id: string) => void;
   bringForward: (id: string) => void;
   sendBackward: (id: string) => void;
+
+  // Scene helpers injected by SvgScene
+  fitInView?: () => void;
+  setFitInView: (fn: (() => void) | undefined) => void;
+  importAsset?: (asset: { name: string; type: 'pantin' | 'objet' | 'decor'; path: string }) => void;
+  setImportAsset: (fn: ((asset: { name: string; type: 'pantin' | 'objet' | 'decor'; path: string }) => void) | undefined) => void;
 }
 
 const Ctx = createContext<UiState | null>(null);
@@ -58,6 +64,8 @@ export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const [sceneItems, setSceneItems] = useState<
     Array<{ id: string; type: 'puppet' | 'image'; label: string; el: Element }>
   >([]);
+  const [fitInView, _setFitInView] = useState<UiState['fitInView']>(undefined);
+  const [importAsset, _setImportAsset] = useState<UiState['importAsset']>(undefined);
 
   const addSceneItem: UiState['addSceneItem'] = (item) => {
     setSceneItems((prev) => [...prev.filter((i) => i.id !== item.id), item]);
@@ -81,6 +89,37 @@ export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       parent.insertBefore(item.el, item.el.previousSibling);
     }
   };
+
+  // load persisted UI layout
+  React.useEffect(() => {
+    try {
+      const raw = localStorage.getItem('ui:layout');
+      if (raw) {
+        const v = JSON.parse(raw) as any;
+        if (typeof v?.showTimeline === 'boolean') setShowTimeline(v.showTimeline);
+        if (typeof v?.timelineHeight === 'number') setTimelineHeight(v.timelineHeight);
+        if (typeof v?.showLibrary === 'boolean') setShowLibrary(v.showLibrary);
+        if (typeof v?.showInspector === 'boolean') setShowInspector(v.showInspector);
+        if (typeof v?.showLayers === 'boolean') setShowLayers(v.showLayers);
+        if (typeof v?.showToolbar === 'boolean') setShowToolbar(v.showToolbar);
+        if (typeof v?.showTracks === 'boolean') setShowTracks(v.showTracks);
+      }
+    } catch {}
+  }, []);
+  React.useEffect(() => {
+    try {
+      const v = {
+        showTimeline,
+        timelineHeight,
+        showLibrary,
+        showInspector,
+        showLayers,
+        showToolbar,
+        showTracks,
+      };
+      localStorage.setItem('ui:layout', JSON.stringify(v));
+    } catch {}
+  }, [showTimeline, timelineHeight, showLibrary, showInspector, showLayers, showToolbar, showTracks]);
 
   const value = useMemo(
     () => ({
@@ -113,6 +152,10 @@ export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       removeSceneItem,
       bringForward,
       sendBackward,
+      fitInView,
+      setFitInView: _setFitInView,
+      importAsset,
+      setImportAsset: _setImportAsset,
     }),
     [
       selectedPuppet,
@@ -128,6 +171,8 @@ export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       showToolbar,
       showTracks,
       sceneItems,
+      fitInView,
+      importAsset,
     ],
   );
 
