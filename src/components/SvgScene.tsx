@@ -1,0 +1,349 @@
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { SvgPuppetInlineSimple } from "./SvgPuppet";
+import { Asset } from "./Library";
+import { useUi } from "../context/UiContext";
+
+export const SvgScene = () => {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const bgRef = useRef<SVGImageElement | null>(null);
+  const sceneRef = useRef<SVGGElement | null>(null);
+  const viewSizeRef = useRef<{ w: number; h: number } | null>(null);
+  const activePuppetRef = useRef<SVGGElement | null>(null);
+  const {
+    selectedLimb,
+    angle,
+    setSelectedPuppet: setUiSelectedPuppet,
+    setLimbIds: setUiLimbIds,
+    setSelectedLimb: setUiSelectedLimb,
+    setAngle: setUiAngle,
+  } = useUi();
+  const [puppets, setPuppets] = useState<
+    { id: string; src: string; anchor: SVGGElement; dropX: number; dropY: number }[]
+  >([]);
+  const draggingRef = useRef<
+    | null
+    | {
+        type: "puppet";
+        el: SVGGElement;
+        startX: number;
+        startY: number;
+        tx0: number;
+        ty0: number;
+      }
+    | {
+        type: "image";
+        el: SVGImageElement;
+        startX: number;
+        startY: number;
+        x0: number;
+        y0: number;
+      }
+  >(null);
+  const dragMovedRef = useRef(false);
+
+  // Convert client coords to scene coords using viewBox + aspect fit
+  const toSceneCoords = (clientX: number, clientY: number) => {
+    const svg = svgRef.current!;
+    const rect = svg.getBoundingClientRect();
+    const { w, h } = viewSizeRef.current ?? { w: rect.width, h: rect.height };
+    const scale = Math.min(rect.width / w, rect.height / h);
+    const offsetX = (rect.width - w * scale) / 2;
+    const offsetY = (rect.height - h * scale) / 2;
+    const x = (clientX - rect.left - offsetX) / scale;
+    const y = (clientY - rect.top - offsetY) / scale;
+    return { x, y };
+  };
+
+  const ensureScene = () => {
+    const svg = svgRef.current!;
+    if (!sceneRef.current) {
+      const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      g.setAttribute("data-scene", "true");
+      svg.appendChild(g);
+      sceneRef.current = g;
+    }
+    return sceneRef.current;
+  };
+
+  const setDecor = async (href: string) => {
+    const img = new Image();
+    img.decoding = "async";
+    const p = new Promise<{ w: number; h: number }>((resolve, reject) => {
+      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+      img.onerror = reject;
+    });
+    img.src = href;
+    const { w, h } = await p;
+
+    const svg = svgRef.current!;
+    svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+    svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    viewSizeRef.current = { w, h };
+
+    if (!bgRef.current) {
+      const bg = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "image",
+      );
+      bg.setAttribute("x", "0");
+      bg.setAttribute("y", "0");
+      bg.setAttribute("width", String(w));
+      bg.setAttribute("height", String(h));
+      // Modern SVG2: use href directly
+      bg.setAttribute("href", href);
+      svg.insertBefore(bg, svg.firstChild);
+      bgRef.current = bg as SVGImageElement;
+    } else {
+      bgRef.current.setAttribute("width", String(w));
+      bgRef.current.setAttribute("height", String(h));
+      bgRef.current.setAttribute("href", href);
+    }
+  };
+
+  const dropAsset = async (asset: Asset, x: number, y: number) => {
+    const scene = ensureScene();
+    if (asset.type === "decor") {
+      await setDecor(asset.path);
+      return;
+    }
+
+    if (asset.type === "pantin") {
+      const anchor = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "g",
+      );
+      // initial placement at drop point; we'll re-center on load
+      anchor.setAttribute("transform", `translate(${Math.round(x)}, ${Math.round(y)})`);
+      anchor.setAttribute("data-anchor", "puppet");
+      anchor.style.cursor = "move";
+      scene.appendChild(anchor);
+      const id = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
+      setPuppets((prev) => [...prev, { id, src: asset.path, anchor, dropX: x, dropY: y }]);
+      return;
+    }
+
+    // Simple image sprite (objet) avec taille réelle
+    const preload = new Image();
+    const dim = await new Promise<{ w: number; h: number }>((resolve, reject) => {
+      preload.onload = () => resolve({ w: preload.naturalWidth, h: preload.naturalHeight });
+      preload.onerror = reject;
+      preload.src = asset.path;
+    });
+    const img = document.createElementNS("http://www.w3.org/2000/svg", "image");
+    img.setAttribute("href", asset.path);
+    img.setAttribute("width", String(dim.w));
+    img.setAttribute("height", String(dim.h));
+    img.setAttribute("x", String(Math.round(x - dim.w / 2)));
+    img.setAttribute("y", String(Math.round(y - dim.h / 2)));
+    img.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    img.setAttribute("data-draggable", "true");
+    img.style.cursor = "move";
+    scene.appendChild(img);
+  };
+
+  useEffect(() => {
+    const svg = svgRef.current!;
+
+    const onDragOver = (e: DragEvent) => {
+      e.preventDefault();
+      e.dataTransfer!.dropEffect = "copy";
+    };
+    const onDrop = async (e: DragEvent) => {
+      e.preventDefault();
+      const data = e.dataTransfer?.getData("application/json");
+      if (!data) return;
+      const asset: Asset = JSON.parse(data);
+      const pt = toSceneCoords(e.clientX, e.clientY);
+      await dropAsset(asset, pt.x, pt.y);
+    };
+
+    const getTranslate = (el: SVGGElement) => {
+      try {
+        const c = el.transform.baseVal.consolidate();
+        if (c) {
+          const m = c.matrix;
+          return { tx: m.e || 0, ty: m.f || 0 };
+        }
+      } catch {}
+      const t = el.getAttribute("transform") || "";
+      const mm = t.match(/translate\(([^,\s)]+)[ ,]([^\s)]+)\)/);
+      const tx = mm ? parseFloat(mm[1]) : 0;
+      const ty = mm ? parseFloat(mm[2]) : 0;
+      return { tx: isFinite(tx) ? tx : 0, ty: isFinite(ty) ? ty : 0 };
+    };
+
+    const onMouseDown = (e: MouseEvent) => {
+      if (e.button !== 0) return; // drag uniquement au clic gauche
+      const path: EventTarget[] = (e.composedPath && e.composedPath()) || [];
+      let anchor: SVGGElement | null = null;
+      let img: SVGImageElement | null = null;
+      for (const n of path) {
+        if (n instanceof SVGGElement && (n as SVGGElement).hasAttribute("data-anchor")) {
+          anchor = n as SVGGElement;
+          break;
+        }
+        if (n instanceof SVGImageElement && (n as Element).hasAttribute("data-draggable")) {
+          img = n as SVGImageElement;
+          break;
+        }
+      }
+      if (!anchor && !img) return;
+      const pt = toSceneCoords(e.clientX, e.clientY);
+      dragMovedRef.current = false;
+      if (anchor) {
+        const { tx, ty } = getTranslate(anchor);
+        draggingRef.current = {
+          type: "puppet",
+          el: anchor,
+          startX: pt.x,
+          startY: pt.y,
+          tx0: tx,
+          ty0: ty,
+        };
+        e.preventDefault();
+        return;
+      } else if (img) {
+        const x0 = parseFloat(img.getAttribute("x") || "0");
+        const y0 = parseFloat(img.getAttribute("y") || "0");
+        draggingRef.current = {
+          type: "image",
+          el: img,
+          startX: pt.x,
+          startY: pt.y,
+          x0: isFinite(x0) ? x0 : 0,
+          y0: isFinite(y0) ? y0 : 0,
+        };
+        e.preventDefault();
+        return;
+      }
+    };
+
+    const onMouseMove = (e: MouseEvent) => {
+      const drag = draggingRef.current;
+      if (!drag) return;
+      const pt = toSceneCoords(e.clientX, e.clientY);
+      const dx = pt.x - drag.startX;
+      const dy = pt.y - drag.startY;
+      dragMovedRef.current = true;
+      if (drag.type === "puppet") {
+        const tx = Math.round(drag.tx0 + dx);
+        const ty = Math.round(drag.ty0 + dy);
+        drag.el.setAttribute("transform", `translate(${tx}, ${ty})`);
+      } else if (drag.type === "image") {
+        const x = Math.round(drag.x0 + dx);
+        const y = Math.round(drag.y0 + dy);
+        drag.el.setAttribute("x", String(x));
+        drag.el.setAttribute("y", String(y));
+      }
+      e.preventDefault();
+    };
+
+    const onMouseUp = () => {
+      draggingRef.current = null;
+    };
+
+    svg.addEventListener("dragover", onDragOver);
+    svg.addEventListener("drop", onDrop);
+    svg.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    const onClick = (e: MouseEvent) => {
+      if ((e as MouseEvent).button !== 0) return; // ignore clic droit/milieu
+      if (dragMovedRef.current) {
+        dragMovedRef.current = false;
+        return;
+      }
+      const path: EventTarget[] = (e.composedPath && e.composedPath()) || [];
+      for (const n of path) {
+        if (
+          n instanceof SVGGElement &&
+          n.hasAttribute &&
+          n.hasAttribute("data-pivot") &&
+          n.id
+        ) {
+          setUiSelectedLimb(n.id);
+          // Sync angle from DOM
+          const a = getLimbRotationFromDom(n);
+          setUiAngle(Math.round(a));
+          break;
+        }
+      }
+    };
+    svg.addEventListener("click", onClick);
+    return () => {
+      svg.removeEventListener("dragover", onDragOver);
+      svg.removeEventListener("drop", onDrop);
+      svg.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+      svg.removeEventListener("click", onClick);
+    };
+  }, []);
+
+  // --- Helpers to set/get rotation on a limb group ---
+  const setLimbRotationOnDom = (
+    scope: SVGGElement,
+    limbId: string,
+    deg: number,
+  ) => {
+    const g = scope.querySelector(
+      `#${CSS.escape(limbId)}`,
+    ) as SVGGElement | null;
+    if (!g) return;
+    // Version simple: applique la rotation uniquement via CSS
+    g.style.transform = `rotate(${deg}deg)`;
+  };
+
+  const getLimbRotationFromDom = (g: SVGGElement): number => {
+    const t = g.style.transform || "";
+    const rm = t.match(/rotate\(([-+\d.]+)deg\)/);
+    if (!rm) return 0;
+    const v = parseFloat(rm[1] || "0");
+    return isFinite(v) ? v : 0;
+  };
+
+  // Apply rotation when angle or selected limb changes
+  useEffect(() => {
+    if (!activePuppetRef.current || !selectedLimb) return;
+    setLimbRotationOnDom(activePuppetRef.current, selectedLimb, angle);
+  }, [angle, selectedLimb]);
+
+
+  return (
+    <div className="scene-canvas" style={{ position: "relative" }}>
+      <svg ref={svgRef} width="100%" height="100%" />
+      {/* React portals of pantins injected into anchors */}
+      {puppets.map((p) =>
+        createPortal(
+          <SvgPuppetInlineSimple
+            as="g"
+            src={p.src}
+            onReady={(g) => {
+              // center the puppet around the original drop point
+              try {
+                const bbox = g.getBBox();
+                const tx = Math.round(p.dropX - (bbox.x + bbox.width / 2));
+                const ty = Math.round(p.dropY - (bbox.y + bbox.height / 2));
+                p.anchor.setAttribute("transform", `translate(${tx}, ${ty})`);
+              } catch {}
+              // mark as active and sync UI
+              activePuppetRef.current = g;
+              setUiSelectedPuppet(g);
+              const ids = Array.from(g.querySelectorAll("g[data-pivot][id]"))
+                .map((el) => el.getAttribute("id")!)
+                .filter(Boolean);
+              setUiLimbIds(ids);
+              if (ids.length) {
+                setUiSelectedLimb(ids[0]!);
+                setUiAngle(0);
+              }
+            }}
+          />,
+          p.anchor,
+          p.id,
+        ),
+      )}
+    </div>
+  );
+};
