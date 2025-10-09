@@ -27,6 +27,8 @@ const interpolateKeyframes = (frames: LimbKeyframe[], frame: number): number | n
 export interface UiState {
   selectedPuppet: SVGGElement | null;
   setSelectedPuppet: (g: SVGGElement | null) => void;
+  selectedPuppetId: string | null;
+  setSelectedPuppetId: (id: string | null) => void;
 
   limbIds: string[];
   setLimbIds: (ids: string[]) => void;
@@ -64,6 +66,8 @@ export interface UiState {
   ) => void;
   setVariantForSelected: (group: string, variantId: string | null) => void;
   setVariantSetter: (fn: UiState["setVariantForSelected"]) => void;
+  selectPuppet: (id: string | null) => void;
+  setPuppetSelector: (fn: UiState["selectPuppet"]) => void;
 
   // Scene items for Layers panel
   sceneItems: Array<{ id: string; type: 'puppet' | 'image'; label: string; el: Element }>;
@@ -96,6 +100,7 @@ const Ctx = createContext<UiState | null>(null);
 
 export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [selectedPuppet, setSelectedPuppet] = useState<SVGGElement | null>(null);
+  const [selectedPuppetId, setSelectedPuppetId] = useState<string | null>(null);
   const [limbIds, setLimbIds] = useState<string[]>([]);
   const [selectedLimb, setSelectedLimb] = useState<string>("");
   const [angle, setAngle] = useState<number>(0);
@@ -115,6 +120,7 @@ export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const [fitInView, _setFitInView] = useState<UiState['fitInView']>(undefined);
   const [importAsset, _setImportAsset] = useState<UiState['importAsset']>(undefined);
   const [variantSetter, _setVariantSetter] = useState<UiState['setVariantForSelected']>(() => () => {});
+  const [puppetSelector, _setPuppetSelector] = useState<UiState['selectPuppet']>(() => () => {});
   const [keyframes, setKeyframes] = useState<Record<string, LimbKeyframe[]>>({});
   const [currentFrame, setCurrentFrame] = useState<number>(0);
   const [attachHandler, _setAttachHandler] = useState<UiState['attachObjectToSelectedLimb']>(() => () => {});
@@ -128,6 +134,9 @@ export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   }, []);
   const setDetachHandler = React.useCallback<UiState['setDetachHandler']>((fn) => {
     _setDetachHandler(() => fn);
+  }, []);
+  const setPuppetSelector = React.useCallback<UiState['setPuppetSelector']>((fn) => {
+    _setPuppetSelector(() => fn);
   }, []);
 
   const addKeyframe = React.useCallback<UiState['addKeyframe']>((limbId, frame, value) => {
@@ -238,6 +247,8 @@ export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     () => ({
       selectedPuppet,
       setSelectedPuppet,
+      selectedPuppetId,
+      setSelectedPuppetId,
       limbIds,
       setLimbIds,
       selectedLimb,
@@ -266,6 +277,8 @@ export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       setSelectedVariantSelections,
       setVariantForSelected: variantSetter,
       setVariantSetter,
+      selectPuppet: puppetSelector,
+      setPuppetSelector,
       sceneItems,
       addSceneItem,
       removeSceneItem,
@@ -289,6 +302,7 @@ export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     }),
     [
       selectedPuppet,
+      selectedPuppetId,
       limbIds,
       selectedLimb,
       angle,
@@ -308,9 +322,11 @@ export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       fitInView,
       importAsset,
       variantSetter,
+      puppetSelector,
       attachHandler,
       detachHandler,
       setVariantSetter,
+      setPuppetSelector,
       setAttachHandler,
       setDetachHandler,
     ],

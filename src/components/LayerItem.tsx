@@ -12,7 +12,7 @@ interface LayerItemProps {
  * It uses useCallback for its event handlers to prevent unnecessary re-renders.
  */
 export const LayerItem = memo(({ item }: LayerItemProps) => {
-  const { bringForward, sendBackward, setSelectedPuppet } = useUi();
+  const { bringForward, sendBackward, selectPuppet } = useUi();
 
   // Memoize the callbacks to prevent re-creation
   const handleSendBackward = useCallback(() => {
@@ -24,13 +24,8 @@ export const LayerItem = memo(({ item }: LayerItemProps) => {
   }, [bringForward, item.id]);
 
   const handleSelect = useCallback(() => {
-    if (item.el instanceof SVGGElement) {
-      const root = (item.el.firstElementChild instanceof SVGGElement
-        ? item.el.firstElementChild
-        : item.el) as SVGGElement;
-      setSelectedPuppet(root);
-    }
-  }, [setSelectedPuppet, item.el]);
+    selectPuppet(item.id);
+  }, [selectPuppet, item.id]);
 
   return (
     <div className="layer-item" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

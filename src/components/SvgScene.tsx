@@ -44,6 +44,7 @@ export const SvgScene = memo(() => {
     selectedLimb,
     angle,
     setSelectedPuppet: setUiSelectedPuppet,
+    setSelectedPuppetId,
     setSelectedLimb: setUiSelectedLimb,
     setAngle: setUiAngle,
     addSceneItem,
@@ -52,6 +53,7 @@ export const SvgScene = memo(() => {
     setSelectedPuppetMetadata,
     setSelectedVariantSelections,
     setVariantSetter,
+    setPuppetSelector,
     setAttachHandler,
     setDetachHandler,
   } = useUi();
@@ -198,19 +200,30 @@ export const SvgScene = memo(() => {
         dragMovedRef.current = false;
         return;
       }
-      
+
       const limb = (e.target as Element)?.closest('[data-membre]') as SVGGElement | null;
       if (limb && limb.id) {
         const puppetAnchor = limb.closest('[data-anchor="puppet"]');
         const puppetRoot = puppetAnchor?.firstChild as SVGGElement | null;
 
         if (puppetRoot) {
+          const puppetInst = puppetsRef.current.find((inst) => inst.root === puppetRoot);
+          if (puppetInst) {
+            setSelectedPuppetId(puppetInst.id);
+          }
           setUiSelectedPuppet(puppetRoot);
           setUiSelectedLimb(limb.id);
           const a = getLimbRotationFromDom(limb);
           setUiAngle(Math.round(a));
+          return;
         }
       }
+
+      // Clicked outside of a limb: clear selection so UI panels can prompt the user.
+      setSelectedPuppetId(null);
+      setUiSelectedPuppet(null);
+      setUiSelectedLimb("");
+      setUiAngle(0);
     };
     svg.addEventListener("dragover", onDragOver);
     svg.addEventListener("drop", onDrop);
@@ -220,7 +233,14 @@ export const SvgScene = memo(() => {
       svg.removeEventListener("drop", onDrop);
       svg.removeEventListener("click", onClick);
     };
-  }, [toSceneCoords, setUiSelectedLimb, setUiAngle, dragMovedRef, setUiSelectedPuppet]);
+  }, [
+    toSceneCoords,
+    setUiSelectedLimb,
+    setUiAngle,
+    dragMovedRef,
+    setUiSelectedPuppet,
+    setSelectedPuppetId,
+  ]);
 
   // --- Helpers to set/get rotation on a limb group ---
   const setLimbRotationOnDom = (
@@ -310,6 +330,33 @@ export const SvgScene = memo(() => {
     [],
   );
 
+  const selectPuppetById = useCallback(
+    (id: string | null) => {
+      if (!id) {
+        setSelectedPuppetId(null);
+        setUiSelectedPuppet(null);
+        setUiSelectedLimb("");
+        setUiAngle(0);
+        return;
+      }
+      const inst = puppetsRef.current.find((candidate) => candidate.id === id);
+      if (!inst || !inst.root) return;
+      setSelectedPuppetId(inst.id);
+      setUiSelectedPuppet(inst.root);
+      if (inst.metadata?.rootMemberId) {
+        const rootMemberId = inst.metadata.rootMemberId;
+        setUiSelectedLimb(rootMemberId);
+        const limbEl = inst.root.querySelector(`#${CSS.escape(rootMemberId)}`) as SVGGElement | null;
+        const rotation = limbEl ? getLimbRotationFromDom(limbEl) : 0;
+        setUiAngle(Math.round(rotation));
+      } else {
+        setUiSelectedLimb("");
+        setUiAngle(0);
+      }
+    },
+    [setSelectedPuppetId, setUiSelectedPuppet, setUiSelectedLimb, setUiAngle],
+  );
+
   // Apply rotation when angle or selected limb changes
   useEffect(() => {
     if (!selectedPuppet || !selectedLimb) return;
@@ -358,7 +405,20 @@ export const SvgScene = memo(() => {
     return () => {
       setVariantSetter((_group, _variantId) => {});
     };
-  }, [selectedPuppet, puppets, setSelectedPuppetMetadata, setSelectedVariantSelections, setVariantSetter]);
+  }, [
+    selectedPuppet,
+    puppets,
+    setSelectedPuppetMetadata,
+    setSelectedVariantSelections,
+    setVariantSetter,
+  ]);
+
+  useEffect(() => {
+    setPuppetSelector(selectPuppetById);
+    return () => {
+      setPuppetSelector((_id) => {});
+    };
+  }, [selectPuppetById, setPuppetSelector]);
 
   // Default decor at startup
   useEffect(() => {
