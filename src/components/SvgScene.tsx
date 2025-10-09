@@ -102,7 +102,7 @@ export const SvgScene = memo(() => {
       anchor.setAttribute("data-anchor", "puppet");
       anchor.style.cursor = "move";
       scene.appendChild(anchor);
-      const id = crypto.randomUUID();
+      const id = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
       setPuppets((prev) => [...prev, { id, src: asset.path, anchor, dropX: x, dropY: y }]);
       addSceneItem({ id, type: 'puppet', label: asset.name || asset.path.split('/').pop() || 'Puppet', el: anchor });
       return;
@@ -124,7 +124,7 @@ export const SvgScene = memo(() => {
     img.setAttribute("data-draggable", "true");
     img.style.cursor = "move";
     scene.appendChild(img);
-    const id = crypto.randomUUID();
+    const id = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
     img.setAttribute('data-id', id);
     addSceneItem({ id, type: 'image', label: asset.name || asset.path.split('/').pop() || 'Image', el: img });
   };
@@ -153,7 +153,7 @@ export const SvgScene = memo(() => {
         return;
       }
       
-      const limb = (e.target as Element)?.closest('[data-pivot]') as SVGGElement | null;
+      const limb = (e.target as Element)?.closest('[data-membre]') as SVGGElement | null;
       if (limb && limb.id) {
         const puppetAnchor = limb.closest('[data-anchor="puppet"]');
         const puppetRoot = puppetAnchor?.firstChild as SVGGElement | null;
