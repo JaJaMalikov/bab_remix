@@ -125,10 +125,28 @@ body {
   position: relative;
 }
 
+.keyframe-marker {
+  position: absolute;
+  top: 6px;
+  width: 8px;
+  height: 28px;
+  background-color: #5a9fd4;
+  border-radius: 2px;
+  transform: translateX(-50%);
+  cursor: pointer;
+}
+
+.keyframe-marker.active {
+  background-color: #ffd166;
+}
+
 .timeline-scrubber {
   padding: 10px;
   background-color: #252525;
   border-top: 1px solid #3a3a3a;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .scrubber {

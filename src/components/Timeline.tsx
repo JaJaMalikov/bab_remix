@@ -1,9 +1,26 @@
-import React, { useEffect, useRef, useCallback } from "react";
+import React, { useEffect, useRef, useCallback, useMemo } from "react";
 import { useUi } from "../context/UiContext";
 import { useVerticalResize } from "../hooks/useVerticalResize";
 
 export const Timeline: React.FC = React.memo(() => {
-  const { angle, setAngle, playing, setPlaying, selectedLimb, showTracks, setShowTracks, timelineHeight, setTimelineHeight } = useUi();
+  const {
+    angle,
+    setAngle,
+    playing,
+    setPlaying,
+    selectedLimb,
+    showTracks,
+    setShowTracks,
+    timelineHeight,
+    setTimelineHeight,
+    keyframes,
+    addKeyframe,
+    updateKeyframe,
+    removeKeyframe,
+    currentFrame,
+    setCurrentFrame,
+    totalFrames,
+  } = useUi();
   const rafRef = useRef<number | null>(null);
 
   // Use the custom hook for resizing logic
@@ -21,29 +38,67 @@ export const Timeline: React.FC = React.memo(() => {
       return;
     }
     const start = performance.now();
+    const initialFrame = currentFrame;
+    const fps = 24;
+    let lastFrame = initialFrame;
     const loop = (t: number) => {
-      // simple oscillation between -60 and +60 over 2s
       const dt = (t - start) / 1000;
-      const a = Math.sin(dt * Math.PI) * 60;
-      setAngle(a);
+      const advance = Math.floor(dt * fps);
+      const nextFrame = (initialFrame + advance) % totalFrames;
+      if (nextFrame !== lastFrame) {
+        lastFrame = nextFrame;
+        setCurrentFrame(nextFrame);
+      }
       rafRef.current = requestAnimationFrame(loop);
     };
     rafRef.current = requestAnimationFrame(loop);
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [playing, setAngle]);
+  }, [playing, setCurrentFrame, currentFrame, totalFrames]);
 
   // Memoized event handlers
   const handleTogglePlay = useCallback(() => setPlaying(!playing), [playing, setPlaying]);
   const handleStop = useCallback(() => {
     setPlaying(false);
+    setCurrentFrame(0);
     setAngle(0);
-  }, [setPlaying, setAngle]);
+  }, [setPlaying, setCurrentFrame, setAngle]);
   const handleToggleTracks = useCallback(() => setShowTracks(!showTracks), [showTracks, setShowTracks]);
-  const handleScrubberChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setAngle(parseFloat(e.target.value));
-  }, [setAngle]);
+  const handleAngleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = parseFloat(e.target.value);
+      if (!Number.isFinite(value)) return;
+      setAngle(value);
+      if (selectedLimb && keyframes[selectedLimb]?.some((k) => k.frame === currentFrame)) {
+        updateKeyframe(selectedLimb, currentFrame, value);
+      }
+    },
+    [setAngle, selectedLimb, keyframes, currentFrame, updateKeyframe],
+  );
+  const handleFrameChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = Number(e.target.value);
+      if (!Number.isFinite(value)) return;
+      const clamped = Math.max(0, Math.min(totalFrames - 1, Math.round(value)));
+      setCurrentFrame(clamped);
+    },
+    [setCurrentFrame, totalFrames],
+  );
+  const handleAddKeyframe = useCallback(() => {
+    if (!selectedLimb) return;
+    addKeyframe(selectedLimb, currentFrame, angle);
+  }, [selectedLimb, currentFrame, angle, addKeyframe]);
+  const handleRemoveKeyframe = useCallback(() => {
+    if (!selectedLimb) return;
+    removeKeyframe(selectedLimb, currentFrame);
+  }, [selectedLimb, currentFrame, removeKeyframe]);
+
+  const keyframesForSelected = useMemo(() => keyframes[selectedLimb] ?? [], [keyframes, selectedLimb]);
+  const hasKeyframeAtCurrent = useMemo(
+    () => keyframesForSelected.some((kf) => kf.frame === currentFrame),
+    [keyframesForSelected, currentFrame],
+  );
 
   return (
     <div className="timeline" style={{ position: "relative", height: timelineHeight }}>
@@ -56,9 +111,17 @@ export const Timeline: React.FC = React.memo(() => {
           <button onClick={handleStop}>
             ⏹ Stop
           </button>
-          <span className="frame-counter">Angle: {Math.round(angle)}°</span>
+          <span className="frame-counter">
+            Frame: {currentFrame}/{totalFrames - 1} · Angle: {Math.round(angle)}°
+          </span>
           <button style={{ marginLeft: 'auto' }} onClick={handleToggleTracks}>
             {showTracks ? 'Hide Tracks' : 'Show Tracks'}
+          </button>
+          <button onClick={handleAddKeyframe} disabled={!selectedLimb}>
+            ➕ Keyframe
+          </button>
+          <button onClick={handleRemoveKeyframe} disabled={!selectedLimb || !hasKeyframeAtCurrent}>
+            ✖ Keyframe
           </button>
         </div>
       </div>
@@ -67,17 +130,36 @@ export const Timeline: React.FC = React.memo(() => {
           <div className="timeline-tracks">
             <div className="track">
               <div className="track-label">{selectedLimb || "(no limb)"}</div>
-              <div className="track-keyframes" />
+              <div className="track-keyframes">
+                {keyframesForSelected.map((kf) => (
+                  <div
+                    key={kf.frame}
+                    className={`keyframe-marker${kf.frame === currentFrame ? " active" : ""}`}
+                    style={{ left: `${(kf.frame / Math.max(1, totalFrames - 1)) * 100}%` }}
+                    onClick={() => setCurrentFrame(kf.frame)}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         )}
         <div className="timeline-scrubber">
+          <label>Frame</label>
+          <input
+            type="range"
+            min={0}
+            max={totalFrames - 1}
+            value={currentFrame}
+            onChange={handleFrameChange}
+            className="scrubber"
+          />
+          <label>Angle</label>
           <input
             type="range"
             min={-180}
             max={180}
             value={angle}
-            onChange={handleScrubberChange}
+            onChange={handleAngleChange}
             className="scrubber"
           />
         </div>

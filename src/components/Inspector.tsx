@@ -1,9 +1,19 @@
 import React, { useMemo, useCallback } from "react";
 import { useUi } from "../context/UiContext";
 import { FloatingPanel } from "./FloatingPanel";
+import type { PuppetVariantGroupMetadata } from "./SvgPuppet";
 
 export const Inspector: React.FC = React.memo(() => {
-  const { selectedPuppet, selectedLimb, limbIds, angle, setAngle } = useUi();
+  const {
+    selectedPuppet,
+    selectedLimb,
+    limbIds,
+    angle,
+    setAngle,
+    selectedPuppetMetadata,
+    selectedVariantSelections,
+    setVariantForSelected,
+  } = useUi();
 
   const onCopy = useCallback(() => {
     if (selectedLimb) navigator.clipboard?.writeText(selectedLimb).catch(() => {});
@@ -19,6 +29,22 @@ export const Inspector: React.FC = React.memo(() => {
     const p = g?.getAttribute("data-pivot");
     return p ?? "-";
   }, [selectedPuppet, selectedLimb]);
+
+  const variantGroups = useMemo<PuppetVariantGroupMetadata[]>(() => {
+    if (!selectedPuppetMetadata || !selectedLimb) return [];
+    return selectedPuppetMetadata.variantGroups.filter((group) =>
+      group.variants.some(
+        (variant) => variant.targetMemberId === selectedLimb || variant.memberId === selectedLimb,
+      ),
+    );
+  }, [selectedPuppetMetadata, selectedLimb]);
+
+  const handleVariantChange = useCallback(
+    (group: string, value: string) => {
+      setVariantForSelected(group, value || null);
+    },
+    [setVariantForSelected],
+  );
 
   return (
     <FloatingPanel title="Inspector" initialPosition={{ x: window.innerWidth - 320, y: 20 }} width={300} height={240} storageKey="pos:panel:inspector">
@@ -40,6 +66,35 @@ export const Inspector: React.FC = React.memo(() => {
           <h4>Stats</h4>
           <div className="property"><label>Total limbs</label><div>{limbIds.length}</div></div>
         </div>
+        {variantGroups.length > 0 && (
+          <div className="property-group">
+            <h4>Variantes</h4>
+            {variantGroups.map((group) => (
+              <div className="property" key={group.group}>
+                <label>{group.group}</label>
+                <select
+                  value={selectedVariantSelections[group.group] ?? group.defaultVariantId ?? ""}
+                  onChange={(e) => handleVariantChange(group.group, e.target.value)}
+                >
+                  {group.variants.map((variant) => {
+                    const value =
+                      variant.id ??
+                      variant.memberId ??
+                      variant.targetMemberId ??
+                      variant.name ??
+                      "";
+                    const label = variant.name || value || "Défaut";
+                    return (
+                      <option key={`${group.group}:${value}`} value={value}>
+                        {label}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </FloatingPanel>
   );

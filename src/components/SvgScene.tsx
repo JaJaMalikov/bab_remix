@@ -1,10 +1,37 @@
-import { useEffect, useRef, useState, memo, RefObject } from "react";
+import { useEffect, useRef, useState, memo, RefObject, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { SvgPuppetInlineSimple } from "./SvgPuppet";
+import {
+  SvgPuppetInlineSimple,
+  applyPuppetVariants,
+  setPuppetVariantSelection,
+} from "./SvgPuppet";
+import type { PuppetMetadata, PuppetVariantSelections } from "./SvgPuppet";
 import { Asset } from "./AssetItem";
 import { useUi } from "../context/UiContext";
 import { useSceneDrag } from "../hooks/useSceneDrag";
 import { useScenePanZoom } from "../hooks/useScenePanZoom";
+
+const toDomMatrix = (matrix: DOMMatrix | SVGMatrix | null): DOMMatrix | null => {
+  if (!matrix) return null;
+  if (typeof DOMMatrix !== "undefined" && matrix instanceof DOMMatrix) {
+    return matrix;
+  }
+  return new DOMMatrix([matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f]);
+};
+
+const matrixToString = (matrix: DOMMatrix) =>
+  `matrix(${matrix.a} ${matrix.b} ${matrix.c} ${matrix.d} ${matrix.e} ${matrix.f})`;
+
+type PuppetInstance = {
+  id: string;
+  src: string;
+  anchor: SVGGElement;
+  dropX: number;
+  dropY: number;
+  root: SVGGElement | null;
+  metadata: PuppetMetadata | null;
+  variants: PuppetVariantSelections;
+};
 
 export const SvgScene = memo(() => {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -22,10 +49,17 @@ export const SvgScene = memo(() => {
     addSceneItem,
     setFitInView,
     setImportAsset,
+    setSelectedPuppetMetadata,
+    setSelectedVariantSelections,
+    setVariantSetter,
+    setAttachHandler,
+    setDetachHandler,
   } = useUi();
-  const [puppets, setPuppets] = useState<
-    { id: string; src: string; anchor: SVGGElement; dropX: number; dropY: number }[]
-  >([]);
+  const [puppets, setPuppets] = useState<PuppetInstance[]>([]);
+  const puppetsRef = useRef<PuppetInstance[]>([]);
+  useEffect(() => {
+    puppetsRef.current = puppets;
+  }, [puppets]);
 
   // All pan, zoom, and coordinate logic is now in the hook
   const { onWheel, doFitInView, toSceneCoords } = useScenePanZoom({
@@ -103,7 +137,19 @@ export const SvgScene = memo(() => {
       anchor.style.cursor = "move";
       scene.appendChild(anchor);
       const id = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
-      setPuppets((prev) => [...prev, { id, src: asset.path, anchor, dropX: x, dropY: y }]);
+      setPuppets((prev) => [
+        ...prev,
+        {
+          id,
+          src: asset.path,
+          anchor,
+          dropX: x,
+          dropY: y,
+          root: null,
+          metadata: null,
+          variants: {},
+        },
+      ]);
       addSceneItem({ id, type: 'puppet', label: asset.name || asset.path.split('/').pop() || 'Puppet', el: anchor });
       return;
     }
@@ -197,11 +243,122 @@ export const SvgScene = memo(() => {
     return isFinite(v) ? v : 0;
   };
 
+  const attachObjectToSelectedLimb = useCallback(
+    (objectId: string) => {
+      const svg = svgRef.current;
+      const puppetRoot = selectedPuppet;
+      if (!svg || !puppetRoot || !selectedLimb) return;
+      const puppet = puppetsRef.current.find((inst) => inst.root === puppetRoot);
+      if (!puppet || !puppet.root) return;
+      const member = puppet.root.querySelector(`#${CSS.escape(selectedLimb)}`) as SVGGElement | null;
+      if (!member) return;
+      const element = svg.querySelector(
+        `[data-id="${CSS.escape(objectId)}"]`,
+      ) as SVGGraphicsElement | null;
+      if (!element) return;
+      const memberMatrix = toDomMatrix(member.getCTM());
+      const elementMatrix = toDomMatrix(element.getCTM());
+      if (!memberMatrix || !elementMatrix) return;
+      let relative: DOMMatrix;
+      try {
+        relative = memberMatrix.inverse().multiply(elementMatrix);
+      } catch {
+        return;
+      }
+      if (element.parentNode) {
+        element.parentNode.removeChild(element);
+      }
+      if (element instanceof SVGImageElement) {
+        element.setAttribute('x', '0');
+        element.setAttribute('y', '0');
+      }
+      element.removeAttribute('data-draggable');
+      element.setAttribute('transform', matrixToString(relative));
+      element.setAttribute('data-attached-to', member.id || selectedLimb);
+      element.setAttribute('data-attached-puppet', puppet.id);
+      member.appendChild(element);
+    },
+    [selectedPuppet, selectedLimb],
+  );
+
+  const detachObjectFromSelectedLimb = useCallback(
+    (objectId: string) => {
+      const svg = svgRef.current;
+      const scene = sceneRef.current;
+      if (!svg || !scene) return;
+      const element = svg.querySelector(
+        `[data-id="${CSS.escape(objectId)}"]`,
+      ) as SVGGraphicsElement | null;
+      if (!element) return;
+      const worldMatrix = toDomMatrix(element.getCTM());
+      if (!worldMatrix) return;
+      if (element.parentNode) {
+        element.parentNode.removeChild(element);
+      }
+      element.removeAttribute('data-attached-to');
+      element.removeAttribute('data-attached-puppet');
+      element.setAttribute('data-draggable', 'true');
+      if (element instanceof SVGImageElement) {
+        element.removeAttribute('transform');
+        element.setAttribute('x', String(Math.round(worldMatrix.e)));
+        element.setAttribute('y', String(Math.round(worldMatrix.f)));
+      } else {
+        element.setAttribute('transform', matrixToString(worldMatrix));
+      }
+      scene.appendChild(element);
+    },
+    [],
+  );
+
   // Apply rotation when angle or selected limb changes
   useEffect(() => {
     if (!selectedPuppet || !selectedLimb) return;
     setLimbRotationOnDom(selectedPuppet, selectedLimb, angle);
   }, [angle, selectedLimb, selectedPuppet]);
+
+  useEffect(() => {
+    setAttachHandler(attachObjectToSelectedLimb);
+    setDetachHandler(detachObjectFromSelectedLimb);
+    return () => {
+      setAttachHandler((_id) => {});
+      setDetachHandler((_id) => {});
+    };
+  }, [attachObjectToSelectedLimb, detachObjectFromSelectedLimb, setAttachHandler, setDetachHandler]);
+
+  useEffect(() => {
+    if (!selectedPuppet) {
+      setSelectedPuppetMetadata(null);
+      setSelectedVariantSelections({});
+      setVariantSetter((_group, _variantId) => {});
+      return;
+    }
+    const puppet = puppetsRef.current.find((inst) => inst.root === selectedPuppet);
+    if (!puppet) {
+      setSelectedPuppetMetadata(null);
+      setSelectedVariantSelections({});
+      setVariantSetter((_group, _variantId) => {});
+      return;
+    }
+    setSelectedPuppetMetadata(puppet.metadata);
+    setSelectedVariantSelections({ ...puppet.variants });
+    setVariantSetter((group, variantId) => {
+      const current = puppetsRef.current.find((inst) => inst.root === selectedPuppet);
+      if (!current || !current.root) return;
+      const applied = setPuppetVariantSelection(current.root, current.metadata, group, variantId);
+      const appliedId = applied ?? null;
+      setPuppets((prev) =>
+        prev.map((inst) =>
+          inst.id === current.id
+            ? { ...inst, variants: { ...inst.variants, [group]: appliedId } }
+            : inst,
+        ),
+      );
+      setSelectedVariantSelections((prev) => ({ ...prev, [group]: appliedId }));
+    });
+    return () => {
+      setVariantSetter((_group, _variantId) => {});
+    };
+  }, [selectedPuppet, puppets, setSelectedPuppetMetadata, setSelectedVariantSelections, setVariantSetter]);
 
   // Default decor at startup
   useEffect(() => {
@@ -235,7 +392,7 @@ export const SvgScene = memo(() => {
           <SvgPuppetInlineSimple
             as="g"
             src={p.src}
-            onReady={(g) => {
+            onReady={(g, metadata, defaults) => {
               // center the puppet around the original drop point
               try {
                 const bbox = g.getBBox();
@@ -243,6 +400,21 @@ export const SvgScene = memo(() => {
                 const ty = Math.round(p.dropY - (bbox.y + bbox.height / 2));
                 p.anchor.setAttribute("transform", `translate(${tx}, ${ty})`);
               } catch {}
+              const variantState = metadata
+                ? applyPuppetVariants(g, metadata, defaults)
+                : { ...defaults };
+              setPuppets((prev) =>
+                prev.map((inst) =>
+                  inst.id === p.id
+                    ? {
+                        ...inst,
+                        root: g,
+                        metadata: metadata ?? null,
+                        variants: variantState,
+                      }
+                    : inst,
+                ),
+              );
               // DO NOT auto-select puppet on load, this was the source of the bug.
               // The user will select the puppet by clicking on it.
             }}

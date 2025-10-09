@@ -1,12 +1,12 @@
 import { useEffect, useRef } from "react";
 import type { CSSProperties, RefObject } from "react";
 
-type PuppetPivot = {
+export type PuppetPivot = {
   x: number;
   y: number;
 };
 
-type PuppetMemberMetadata = {
+export type PuppetMemberMetadata = {
   id: string;
   name: string;
   parentId: string | null;
@@ -21,7 +21,7 @@ type PuppetMemberMetadata = {
   variantDefault: boolean;
 };
 
-type PuppetVariantMetadata = {
+export type PuppetVariantMetadata = {
   id: string | null;
   targetMemberId: string | null;
   memberId: string | null;
@@ -31,13 +31,13 @@ type PuppetVariantMetadata = {
   side: string | null;
 };
 
-type PuppetVariantGroupMetadata = {
+export type PuppetVariantGroupMetadata = {
   group: string;
   defaultVariantId: string | null;
   variants: PuppetVariantMetadata[];
 };
 
-type PuppetMetadata = {
+export type PuppetMetadata = {
   id: string;
   source: string;
   width: number | null;
@@ -49,8 +49,11 @@ type PuppetMetadata = {
   variantGroups: PuppetVariantGroupMetadata[];
 };
 
+export type PuppetVariantSelections = Record<string, string | null>;
+
 // Module-level caches for processed puppet data and metadata
-const puppetCache = new Map<string, SVGGElement>();
+type CachedPuppet = { element: SVGGElement; defaults: PuppetVariantSelections };
+const puppetCache = new Map<string, CachedPuppet>();
 const metadataCache = new Map<string, PuppetMetadata | null>();
 
 const TRANSFORM_BOX_STYLE_KEY = "transformBox" as const;
@@ -68,8 +71,59 @@ const setPivotOnElement = (element: SVGGElement, pivot: PuppetPivot) => {
   style.transformOrigin = `${pivot.x}px ${pivot.y}px`;
 };
 
-const applyMetadataToGroup = (group: SVGGElement, metadata: PuppetMetadata | null | undefined) => {
-  if (!metadata) return;
+const getVariantElement = (
+  root: SVGGElement,
+  variant: PuppetVariantMetadata,
+): SVGGraphicsElement | null => {
+  const candidateIds = [variant.id, variant.memberId, variant.targetMemberId];
+  for (const id of candidateIds) {
+    if (!id) continue;
+    const el = root.querySelector(`#${cssEscape(id)}`) as SVGGraphicsElement | null;
+    if (el) return el;
+  }
+  return null;
+};
+
+const variantMatchesId = (variant: PuppetVariantMetadata, targetId: string | null) => {
+  if (!targetId) return false;
+  return variant.id === targetId || variant.memberId === targetId || variant.targetMemberId === targetId;
+};
+
+const applyVariantGroupSelection = (
+  root: SVGGElement,
+  group: PuppetVariantGroupMetadata,
+  targetId: string | null,
+): string | null => {
+  const fallback = group.variants.find((v) => v.isDefault) ?? group.variants[0] ?? null;
+  const desiredId = targetId ?? group.defaultVariantId ?? fallback?.id ?? fallback?.memberId ?? null;
+
+  let appliedId: string | null = null;
+  for (const variant of group.variants) {
+    const el = getVariantElement(root, variant);
+    if (!el) continue;
+    const show = desiredId ? variantMatchesId(variant, desiredId) : variant.isDefault;
+    if (show) {
+      appliedId = variant.id ?? variant.memberId ?? variant.targetMemberId ?? appliedId;
+      el.style.display = "";
+      if (variant.isBehindParent) {
+        const parent = el.parentNode;
+        if (parent && parent.firstChild !== el) {
+          parent.insertBefore(el, parent.firstChild);
+        }
+      }
+    } else {
+      el.style.display = "none";
+    }
+  }
+  return appliedId ?? null;
+};
+
+const applyMetadataToGroup = (
+  group: SVGGElement,
+  metadata: PuppetMetadata | null | undefined,
+): PuppetVariantSelections => {
+  const selections: PuppetVariantSelections = {};
+  if (!metadata) return selections;
 
   const behindElements: SVGGElement[] = [];
 
@@ -95,6 +149,12 @@ const applyMetadataToGroup = (group: SVGGElement, metadata: PuppetMetadata | nul
     if (!parent) continue;
     if (parent.firstChild !== el) parent.insertBefore(el, parent.firstChild);
   }
+
+  for (const groupMeta of metadata.variantGroups) {
+    selections[groupMeta.group] = applyVariantGroupSelection(group, groupMeta, groupMeta.defaultVariantId);
+  }
+
+  return selections;
 };
 
 const fallbackProcessLimbs = (group: SVGGElement) => {
@@ -122,13 +182,17 @@ const fallbackReorderBehindElements = (group: SVGGElement) => {
   }
 };
 
+const cloneGroup = (group: SVGGElement) => group.cloneNode(true) as SVGGElement;
+
+type ProcessedPuppet = { element: SVGGElement; defaults: PuppetVariantSelections };
+
 /**
  * Parses SVG text and processes it into a ready-to-use puppet element.
  * @param svgText The raw SVG content.
  * @param metadata Optional pre-parsed metadata describing the puppet.
  * @returns A processed SVGGElement or null if parsing fails.
  */
-function processSvgText(svgText: string, metadata?: PuppetMetadata | null): SVGGElement | null {
+function processSvgText(svgText: string, metadata?: PuppetMetadata | null): ProcessedPuppet | null {
   const parser = new DOMParser();
   const doc = parser.parseFromString(svgText, "image/svg+xml");
   const svgRoot = doc.documentElement as unknown as SVGSVGElement;
@@ -143,13 +207,14 @@ function processSvgText(svgText: string, metadata?: PuppetMetadata | null): SVGG
   if (!torse) return null;
 
   const g = torse.cloneNode(true) as SVGGElement;
+  let defaults: PuppetVariantSelections = {};
   if (metadata) {
-    applyMetadataToGroup(g, metadata);
+    defaults = applyMetadataToGroup(g, metadata);
   } else {
     fallbackProcessLimbs(g);
     fallbackReorderBehindElements(g);
   }
-  return g;
+  return { element: g, defaults };
 }
 
 const toMetadataUrl = (src: string) => {
@@ -184,13 +249,60 @@ const fetchMetadata = async (url: string | null) => {
   }
 };
 
+export const getDefaultVariantSelections = (
+  metadata: PuppetMetadata | null | undefined,
+): PuppetVariantSelections => {
+  const defaults: PuppetVariantSelections = {};
+  if (!metadata) return defaults;
+  for (const group of metadata.variantGroups) {
+    const fallback =
+      group.defaultVariantId ??
+      group.variants.find((v) => v.isDefault)?.id ??
+      group.variants[0]?.id ??
+      group.variants[0]?.memberId ??
+      null;
+    defaults[group.group] = fallback ?? null;
+  }
+  return defaults;
+};
+
+export const applyPuppetVariants = (
+  root: SVGGElement,
+  metadata: PuppetMetadata | null | undefined,
+  selections: PuppetVariantSelections,
+): PuppetVariantSelections => {
+  if (!metadata) return {};
+  const next: PuppetVariantSelections = {};
+  for (const group of metadata.variantGroups) {
+    const desired = selections[group.group] ?? null;
+    next[group.group] = applyVariantGroupSelection(root, group, desired);
+  }
+  return next;
+};
+
+export const setPuppetVariantSelection = (
+  root: SVGGElement,
+  metadata: PuppetMetadata | null | undefined,
+  groupName: string,
+  variantId: string | null,
+): string | null => {
+  if (!metadata) return null;
+  const group = metadata.variantGroups.find((g) => g.group === groupName);
+  if (!group) return null;
+  return applyVariantGroupSelection(root, group, variantId);
+};
+
 type Props = {
   src: string;
   as?: "g" | "svg";
   className?: string;
   transform?: string;
   style?: CSSProperties;
-  onReady?: (rootGroup: SVGGElement) => void;
+  onReady?: (
+    rootGroup: SVGGElement,
+    metadata: PuppetMetadata | null,
+    defaults: PuppetVariantSelections,
+  ) => void;
 };
 
 export function SvgPuppetInlineSimple({
@@ -211,38 +323,35 @@ export function SvgPuppetInlineSimple({
   useEffect(() => {
     let cancelled = false;
 
-    const injectPuppet = (puppetG: SVGGElement) => {
+    const injectPuppet = (cached: CachedPuppet, metadata: PuppetMetadata | null) => {
       const host = ref.current;
       if (!host) return;
 
-      // Clean up previous puppet if any
       if (injectedRef.current && injectedRef.current.parentNode) {
         injectedRef.current.parentNode.removeChild(injectedRef.current);
       }
 
-      // Append the new puppet and notify parent
-      host.appendChild(puppetG);
-      injectedRef.current = puppetG;
-      onReadyRef.current?.(puppetG);
-    }
+      const clone = cloneGroup(cached.element);
+      host.appendChild(clone);
+      injectedRef.current = clone;
+      onReadyRef.current?.(clone, metadata, { ...cached.defaults });
+    };
 
     async function run() {
-      // 1. Check cache first
+      const metadataUrl = toMetadataUrl(src);
+      const metadata = await fetchMetadata(metadataUrl);
+      if (cancelled) return;
+
       if (puppetCache.has(src)) {
-        const cachedG = puppetCache.get(src)!;
+        const cached = puppetCache.get(src)!;
         if (!cancelled) {
-          injectPuppet(cachedG.cloneNode(true) as SVGGElement);
+          injectPuppet(cached, metadata);
         }
         return;
       }
 
-      // 2. If not in cache, fetch and process
       try {
-        const metadataUrl = toMetadataUrl(src);
-        const [metadata, response] = await Promise.all([
-          fetchMetadata(metadataUrl),
-          fetch(src),
-        ]);
+        const response = await fetch(src);
         if (cancelled) return;
 
         if (!response.ok) {
@@ -252,12 +361,11 @@ export function SvgPuppetInlineSimple({
         const txt = await response.text();
         if (cancelled) return;
 
-        const processedG = processSvgText(txt, metadata);
-        if (processedG) {
-          // 3. Store in cache
-          puppetCache.set(src, processedG);
+        const processed = processSvgText(txt, metadata);
+        if (processed) {
+          puppetCache.set(src, processed);
           if (!cancelled) {
-            injectPuppet(processedG.cloneNode(true) as SVGGElement);
+            injectPuppet(processed, metadata);
           }
         }
       } catch (error) {

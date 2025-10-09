@@ -25,7 +25,10 @@ export const LayerItem = memo(({ item }: LayerItemProps) => {
 
   const handleSelect = useCallback(() => {
     if (item.el instanceof SVGGElement) {
-      setSelectedPuppet(item.el);
+      const root = (item.el.firstElementChild instanceof SVGGElement
+        ? item.el.firstElementChild
+        : item.el) as SVGGElement;
+      setSelectedPuppet(root);
     }
   }, [setSelectedPuppet, item.el]);
 
