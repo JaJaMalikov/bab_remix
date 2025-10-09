@@ -1,0 +1,468 @@
+{
+  "id": "manu",
+  "source": "pantins/manu.svg",
+  "width": 572,
+  "height": 561,
+  "viewBox": "0 0 572 561",
+  "rootMemberId": "torse",
+  "members": [
+    {
+      "id": "torse",
+      "name": "torse",
+      "parentId": null,
+      "children": [
+        "tete",
+        "haut_bras_gauche",
+        "haut_bras_droite",
+        "cuisse_droite",
+        "cuisse_gauche"
+      ],
+      "pivot": {
+        "x": 286,
+        "y": 275
+      },
+      "interactive": true,
+      "draggable": true,
+      "isBehindParent": false,
+      "side": null,
+      "variantGroup": null,
+      "variantName": null,
+      "variantDefault": false
+    },
+    {
+      "id": "tete",
+      "name": "tete",
+      "parentId": "torse",
+      "children": [
+        "bouche"
+      ],
+      "pivot": {
+        "x": 286,
+        "y": 143
+      },
+      "interactive": true,
+      "draggable": false,
+      "isBehindParent": false,
+      "side": null,
+      "variantGroup": null,
+      "variantName": null,
+      "variantDefault": false
+    },
+    {
+      "id": "bouche",
+      "name": "bouche",
+      "parentId": "tete",
+      "children": [],
+      "pivot": null,
+      "interactive": false,
+      "draggable": false,
+      "isBehindParent": false,
+      "side": null,
+      "variantGroup": "bouche",
+      "variantName": "bouche",
+      "variantDefault": true
+    },
+    {
+      "id": "haut_bras_gauche",
+      "name": "haut_bras",
+      "parentId": "torse",
+      "children": [
+        "avant_bras_gauche"
+      ],
+      "pivot": {
+        "x": 348,
+        "y": 167.048
+      },
+      "interactive": true,
+      "draggable": false,
+      "isBehindParent": false,
+      "side": "gauche",
+      "variantGroup": null,
+      "variantName": null,
+      "variantDefault": false
+    },
+    {
+      "id": "avant_bras_gauche",
+      "name": "avant_bras",
+      "parentId": "haut_bras_gauche",
+      "children": [
+        "main_gauche"
+      ],
+      "pivot": {
+        "x": 428,
+        "y": 167.048
+      },
+      "interactive": true,
+      "draggable": false,
+      "isBehindParent": false,
+      "side": "gauche",
+      "variantGroup": null,
+      "variantName": null,
+      "variantDefault": false
+    },
+    {
+      "id": "main_gauche",
+      "name": "main",
+      "parentId": "avant_bras_gauche",
+      "children": [],
+      "pivot": {
+        "x": 505,
+        "y": 167.048
+      },
+      "interactive": true,
+      "draggable": false,
+      "isBehindParent": true,
+      "side": "gauche",
+      "variantGroup": "main_gauche",
+      "variantName": "recto",
+      "variantDefault": true
+    },
+    {
+      "id": "haut_bras_droite",
+      "name": "haut_bras",
+      "parentId": "torse",
+      "children": [
+        "avant_bras_droite"
+      ],
+      "pivot": {
+        "x": 224.046,
+        "y": 167.048
+      },
+      "interactive": true,
+      "draggable": false,
+      "isBehindParent": false,
+      "side": "droite",
+      "variantGroup": null,
+      "variantName": null,
+      "variantDefault": false
+    },
+    {
+      "id": "avant_bras_droite",
+      "name": "avant_bras",
+      "parentId": "haut_bras_droite",
+      "children": [
+        "main_droite"
+      ],
+      "pivot": {
+        "x": 144.046,
+        "y": 167.048
+      },
+      "interactive": true,
+      "draggable": false,
+      "isBehindParent": false,
+      "side": "droite",
+      "variantGroup": null,
+      "variantName": null,
+      "variantDefault": false
+    },
+    {
+      "id": "main_droite",
+      "name": "main",
+      "parentId": "avant_bras_droite",
+      "children": [],
+      "pivot": {
+        "x": 67.046,
+        "y": 167.048
+      },
+      "interactive": true,
+      "draggable": false,
+      "isBehindParent": true,
+      "side": "droite",
+      "variantGroup": "main_droite",
+      "variantName": "recto",
+      "variantDefault": true
+    },
+    {
+      "id": "cuisse_droite",
+      "name": "cuisse",
+      "parentId": "torse",
+      "children": [
+        "tibia_droite"
+      ],
+      "pivot": {
+        "x": 257,
+        "y": 313
+      },
+      "interactive": true,
+      "draggable": false,
+      "isBehindParent": true,
+      "side": "droite",
+      "variantGroup": null,
+      "variantName": null,
+      "variantDefault": false
+    },
+    {
+      "id": "tibia_droite",
+      "name": "tibia",
+      "parentId": "cuisse_droite",
+      "children": [
+        "pied_droite"
+      ],
+      "pivot": {
+        "x": 257,
+        "y": 425
+      },
+      "interactive": true,
+      "draggable": false,
+      "isBehindParent": false,
+      "side": "droite",
+      "variantGroup": null,
+      "variantName": null,
+      "variantDefault": false
+    },
+    {
+      "id": "pied_droite",
+      "name": "pied",
+      "parentId": "tibia_droite",
+      "children": [],
+      "pivot": {
+        "x": 257,
+        "y": 531
+      },
+      "interactive": true,
+      "draggable": false,
+      "isBehindParent": false,
+      "side": "droite",
+      "variantGroup": null,
+      "variantName": null,
+      "variantDefault": false
+    },
+    {
+      "id": "cuisse_gauche",
+      "name": "cuisse",
+      "parentId": "torse",
+      "children": [
+        "tibia_gauche"
+      ],
+      "pivot": {
+        "x": 314,
+        "y": 313
+      },
+      "interactive": true,
+      "draggable": false,
+      "isBehindParent": true,
+      "side": "gauche",
+      "variantGroup": null,
+      "variantName": null,
+      "variantDefault": false
+    },
+    {
+      "id": "tibia_gauche",
+      "name": "tibia",
+      "parentId": "cuisse_gauche",
+      "children": [
+        "pied_gauche"
+      ],
+      "pivot": {
+        "x": 314,
+        "y": 425
+      },
+      "interactive": true,
+      "draggable": false,
+      "isBehindParent": false,
+      "side": "gauche",
+      "variantGroup": null,
+      "variantName": null,
+      "variantDefault": false
+    },
+    {
+      "id": "pied_gauche",
+      "name": "pied",
+      "parentId": "tibia_gauche",
+      "children": [],
+      "pivot": {
+        "x": 314,
+        "y": 531
+      },
+      "interactive": true,
+      "draggable": false,
+      "isBehindParent": false,
+      "side": "gauche",
+      "variantGroup": null,
+      "variantName": null,
+      "variantDefault": false
+    }
+  ],
+  "variantGroups": [
+    {
+      "group": "bouche",
+      "defaultVariantId": "bouche",
+      "variants": [
+        {
+          "id": "bouche",
+          "targetMemberId": "bouche",
+          "memberId": "bouche",
+          "name": "bouche",
+          "isDefault": true,
+          "isBehindParent": false,
+          "side": null
+        },
+        {
+          "id": "bouche_a",
+          "targetMemberId": "bouche",
+          "memberId": null,
+          "name": "a",
+          "isDefault": false,
+          "isBehindParent": false,
+          "side": null
+        },
+        {
+          "id": "bouche_f",
+          "targetMemberId": "bouche",
+          "memberId": null,
+          "name": "f",
+          "isDefault": false,
+          "isBehindParent": false,
+          "side": null
+        },
+        {
+          "id": "bouche_o",
+          "targetMemberId": "bouche",
+          "memberId": null,
+          "name": "o",
+          "isDefault": false,
+          "isBehindParent": false,
+          "side": null
+        },
+        {
+          "id": "bouche_ch",
+          "targetMemberId": "bouche",
+          "memberId": null,
+          "name": "ch",
+          "isDefault": false,
+          "isBehindParent": false,
+          "side": null
+        },
+        {
+          "id": "bouche_r",
+          "targetMemberId": "bouche",
+          "memberId": null,
+          "name": "r",
+          "isDefault": false,
+          "isBehindParent": false,
+          "side": null
+        },
+        {
+          "id": "bouche_l",
+          "targetMemberId": "bouche",
+          "memberId": null,
+          "name": "l",
+          "isDefault": false,
+          "isBehindParent": false,
+          "side": null
+        },
+        {
+          "id": "bouche_c",
+          "targetMemberId": "bouche",
+          "memberId": null,
+          "name": "c",
+          "isDefault": false,
+          "isBehindParent": false,
+          "side": null
+        },
+        {
+          "id": "bouche_u",
+          "targetMemberId": "bouche",
+          "memberId": null,
+          "name": "u",
+          "isDefault": false,
+          "isBehindParent": false,
+          "side": null
+        },
+        {
+          "id": "bouche_b",
+          "targetMemberId": "bouche",
+          "memberId": null,
+          "name": "b",
+          "isDefault": false,
+          "isBehindParent": false,
+          "side": null
+        },
+        {
+          "id": "bouche_ou",
+          "targetMemberId": "bouche",
+          "memberId": null,
+          "name": "ou",
+          "isDefault": false,
+          "isBehindParent": false,
+          "side": null
+        },
+        {
+          "id": "bouche_th",
+          "targetMemberId": "bouche",
+          "memberId": null,
+          "name": "th",
+          "isDefault": false,
+          "isBehindParent": false,
+          "side": null
+        }
+      ]
+    },
+    {
+      "group": "main_gauche",
+      "defaultVariantId": "main_gauche",
+      "variants": [
+        {
+          "id": "main_gauche",
+          "targetMemberId": "main_gauche",
+          "memberId": "main_gauche",
+          "name": "recto",
+          "isDefault": true,
+          "isBehindParent": true,
+          "side": "gauche"
+        },
+        {
+          "id": "main_gauche_rev",
+          "targetMemberId": "main_gauche",
+          "memberId": null,
+          "name": "verso",
+          "isDefault": false,
+          "isBehindParent": true,
+          "side": "gauche"
+        },
+        {
+          "id": "main_gauche_f",
+          "targetMemberId": "main_gauche",
+          "memberId": null,
+          "name": "fuck",
+          "isDefault": false,
+          "isBehindParent": false,
+          "side": "gauche"
+        }
+      ]
+    },
+    {
+      "group": "main_droite",
+      "defaultVariantId": "main_droite",
+      "variants": [
+        {
+          "id": "main_droite",
+          "targetMemberId": "main_droite",
+          "memberId": "main_droite",
+          "name": "recto",
+          "isDefault": true,
+          "isBehindParent": true,
+          "side": "droite"
+        },
+        {
+          "id": "main_droite_rev",
+          "targetMemberId": "main_droite",
+          "memberId": null,
+          "name": "verso",
+          "isDefault": false,
+          "isBehindParent": true,
+          "side": "droite"
+        },
+        {
+          "id": "main_droite_f",
+          "targetMemberId": "main_droite",
+          "memberId": null,
+          "name": "fuck",
+          "isDefault": false,
+          "isBehindParent": false,
+          "side": "droite"
+        }
+      ]
+    }
+  ]
+}

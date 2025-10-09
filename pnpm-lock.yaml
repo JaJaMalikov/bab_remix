@@ -33,6 +33,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^5.0.0
         version: 5.0.4(vite@7.1.9(@types/node@24.7.0))
+      '@xmldom/xmldom':
+        specifier: ^0.8.11
+        version: 0.8.11
       typescript:
         specifier: ~5.9.3
         version: 5.9.3
@@ -516,6 +519,10 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     peerDependencies:
       vite: ^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0
+
+  '@xmldom/xmldom@0.8.11':
+    resolution: {integrity: sha512-cQzWCtO6C8TQiYl1ruKNn2U6Ao4o4WBBcbL61yJl84x+j5sOWWFU9X7DpND8XZG3daDppSsigMdfAIl2upQBRw==}
+    engines: {node: '>=10.0.0'}
 
   baseline-browser-mapping@2.8.14:
     resolution: {integrity: sha512-GM9c0cWWR8Ga7//Ves/9KRgTS8nLausCkP3CGiFLrnwA2CDUluXgaQqvrULoR2Ujrd/mz/lkX87F5BHFsNr5sQ==}
@@ -1076,6 +1083,8 @@ snapshots:
       vite: 7.1.9(@types/node@24.7.0)
     transitivePeerDependencies:
       - supports-color
+
+  '@xmldom/xmldom@0.8.11': {}
 
   baseline-browser-mapping@2.8.14: {}
 
