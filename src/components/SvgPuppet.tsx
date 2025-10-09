@@ -1,26 +1,118 @@
 import { useEffect, useRef } from "react";
 import type { CSSProperties, RefObject } from "react";
 
-// Module-level cache for processed puppet data
-const puppetCache = new Map<string, SVGGElement>();
+type PuppetPivot = {
+  x: number;
+  y: number;
+};
 
-function processLimbs(g: SVGGElement) {
-  const limbs = g.querySelectorAll('g[data-pivot]') as NodeListOf<SVGGElement>;
+type PuppetMemberMetadata = {
+  id: string;
+  name: string;
+  parentId: string | null;
+  children: string[];
+  pivot: PuppetPivot | null;
+  interactive: boolean;
+  draggable: boolean;
+  isBehindParent: boolean;
+  side: string | null;
+  variantGroup: string | null;
+  variantName: string | null;
+  variantDefault: boolean;
+};
+
+type PuppetVariantMetadata = {
+  id: string | null;
+  targetMemberId: string | null;
+  memberId: string | null;
+  name: string | null;
+  isDefault: boolean;
+  isBehindParent: boolean;
+  side: string | null;
+};
+
+type PuppetVariantGroupMetadata = {
+  group: string;
+  defaultVariantId: string | null;
+  variants: PuppetVariantMetadata[];
+};
+
+type PuppetMetadata = {
+  id: string;
+  source: string;
+  width: number | null;
+  height: number | null;
+  viewBox: string | null;
+  generatedAt?: string;
+  rootMemberId: string | null;
+  members: PuppetMemberMetadata[];
+  variantGroups: PuppetVariantGroupMetadata[];
+};
+
+// Module-level caches for processed puppet data and metadata
+const puppetCache = new Map<string, SVGGElement>();
+const metadataCache = new Map<string, PuppetMetadata | null>();
+
+const TRANSFORM_BOX_STYLE_KEY = "transformBox" as const;
+
+const cssEscape = (value: string) => {
+  if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+    return CSS.escape(value);
+  }
+  return value.replace(/([.*+?^${}()|[\]\\])/g, "\\$1");
+};
+
+const setPivotOnElement = (element: SVGGElement, pivot: PuppetPivot) => {
+  const style = element.style as CSSStyleDeclaration & { [TRANSFORM_BOX_STYLE_KEY]?: string };
+  style[TRANSFORM_BOX_STYLE_KEY] = "view-box";
+  style.transformOrigin = `${pivot.x}px ${pivot.y}px`;
+};
+
+const applyMetadataToGroup = (group: SVGGElement, metadata: PuppetMetadata | null | undefined) => {
+  if (!metadata) return;
+
+  const behindElements: SVGGElement[] = [];
+
+  for (const member of metadata.members) {
+    const isRoot = metadata.rootMemberId === member.id;
+    const target = isRoot
+      ? group
+      : (group.querySelector(`#${cssEscape(member.id)}`) as SVGGElement | null);
+    if (!target) continue;
+
+    if (member.pivot) {
+      setPivotOnElement(target, member.pivot);
+    }
+
+    if (member.isBehindParent) {
+      behindElements.push(target);
+    }
+  }
+
+  for (let i = behindElements.length - 1; i >= 0; i--) {
+    const el = behindElements[i]!;
+    const parent = el.parentNode;
+    if (!parent) continue;
+    if (parent.firstChild !== el) parent.insertBefore(el, parent.firstChild);
+  }
+};
+
+const fallbackProcessLimbs = (group: SVGGElement) => {
+  const limbs = group.querySelectorAll('g[data-pivot]') as NodeListOf<SVGGElement>;
   limbs.forEach((el) => {
     const attr = el.getAttribute("data-pivot");
     if (!attr) return;
     const [sxStr, syStr] = attr.split(",");
     const sx = parseFloat((sxStr || "").trim());
     const sy = parseFloat((syStr || "").trim());
-    if (!isFinite(sx) || !isFinite(sy)) return;
-    (el.style as any).transformBox = "view-box";
-    el.style.transformOrigin = `${sx}px ${sy}px`;
+    if (!Number.isFinite(sx) || !Number.isFinite(sy)) return;
+    setPivotOnElement(el, { x: sx, y: sy });
   });
-}
+};
 
-function reorderBehindElements(g: SVGGElement) {
+const fallbackReorderBehindElements = (group: SVGGElement) => {
   const behind = Array.from(
-    g.querySelectorAll('[data-isbehindparent="true"]') as NodeListOf<SVGGElement>,
+    group.querySelectorAll('[data-isbehindparent="true"]') as NodeListOf<SVGGElement>,
   );
   for (let i = behind.length - 1; i >= 0; i--) {
     const el = behind[i]!;
@@ -28,29 +120,69 @@ function reorderBehindElements(g: SVGGElement) {
     if (!parent) continue;
     if (parent.firstChild !== el) parent.insertBefore(el, parent.firstChild);
   }
-}
+};
 
 /**
  * Parses SVG text and processes it into a ready-to-use puppet element.
  * @param svgText The raw SVG content.
+ * @param metadata Optional pre-parsed metadata describing the puppet.
  * @returns A processed SVGGElement or null if parsing fails.
  */
-function processSvgText(svgText: string): SVGGElement | null {
+function processSvgText(svgText: string, metadata?: PuppetMetadata | null): SVGGElement | null {
   const parser = new DOMParser();
   const doc = parser.parseFromString(svgText, "image/svg+xml");
   const svgRoot = doc.documentElement as unknown as SVGSVGElement;
 
-  const torse = svgRoot.querySelector(
-    '[data-membre="torse"]',
-  ) as SVGGElement | null;
+  let torse: SVGGElement | null = null;
+  if (metadata?.rootMemberId) {
+    torse = svgRoot.querySelector(`#${cssEscape(metadata.rootMemberId)}`) as SVGGElement | null;
+  }
+  if (!torse) {
+    torse = svgRoot.querySelector('[data-membre="torse"]') as SVGGElement | null;
+  }
   if (!torse) return null;
 
   const g = torse.cloneNode(true) as SVGGElement;
-  processLimbs(g);
-  reorderBehindElements(g);
+  if (metadata) {
+    applyMetadataToGroup(g, metadata);
+  } else {
+    fallbackProcessLimbs(g);
+    fallbackReorderBehindElements(g);
+  }
   return g;
 }
 
+const toMetadataUrl = (src: string) => {
+  if (!src.toLowerCase().endsWith(".svg")) return null;
+  const queryIndex = src.indexOf("?");
+  if (queryIndex === -1) {
+    return src.replace(/\.svg$/i, ".json");
+  }
+  const base = src.slice(0, queryIndex);
+  const query = src.slice(queryIndex);
+  return `${base.replace(/\.svg$/i, ".json")}${query}`;
+};
+
+const fetchMetadata = async (url: string | null) => {
+  if (!url) return null;
+  if (metadataCache.has(url)) {
+    return metadataCache.get(url) ?? null;
+  }
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      metadataCache.set(url, null);
+      return null;
+    }
+    const data = (await res.json()) as PuppetMetadata;
+    metadataCache.set(url, data);
+    return data;
+  } catch (error) {
+    console.error(`Failed to load puppet metadata from ${url}`, error);
+    metadataCache.set(url, null);
+    return null;
+  }
+};
 
 type Props = {
   src: string;
@@ -106,11 +238,21 @@ export function SvgPuppetInlineSimple({
 
       // 2. If not in cache, fetch and process
       try {
-        const res = await fetch(src);
-        const txt = await res.text();
+        const metadataUrl = toMetadataUrl(src);
+        const [metadata, response] = await Promise.all([
+          fetchMetadata(metadataUrl),
+          fetch(src),
+        ]);
         if (cancelled) return;
 
-        const processedG = processSvgText(txt);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status} ${response.statusText}`);
+        }
+
+        const txt = await response.text();
+        if (cancelled) return;
+
+        const processedG = processSvgText(txt, metadata);
         if (processedG) {
           // 3. Store in cache
           puppetCache.set(src, processedG);
