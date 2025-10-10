@@ -106,6 +106,7 @@ export const SvgScene = memo(() => {
       );
       anchor.setAttribute("transform", `translate(${Math.round(x)}, ${Math.round(y)})`);
       anchor.setAttribute("data-anchor", "puppet");
+      anchor.setAttribute("data-source", asset.path); // Store source for serialization
       anchor.style.cursor = "move";
       scene.appendChild(anchor);
       const id = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
@@ -159,22 +160,27 @@ export const SvgScene = memo(() => {
         return;
       }
 
-      // Check if clicked on a limb (member of puppet)
-      const limb = (e.target as Element)?.closest('[data-membre]') as SVGGElement | null;
-      if (limb && limb.id) {
-        const puppetAnchor = limb.closest('[data-anchor="puppet"]');
-        const puppetRoot = puppetAnchor?.firstChild as SVGGElement | null;
+      // Check if clicked on a puppet (anchor or its content)
+      const puppetAnchor = (e.target as Element)?.closest('[data-anchor="puppet"]') as SVGGElement | null;
+      if (puppetAnchor) {
+        const puppetItem = sceneItems.find(item => item.el === puppetAnchor);
+        if (puppetItem) {
+          setSelectedItemId(puppetItem.id);
+        }
 
-        if (puppetRoot && puppetAnchor) {
-          // Find the puppet item ID
-          const puppetItem = sceneItems.find(item => item.el === puppetAnchor);
-          if (puppetItem) {
-            setSelectedItemId(puppetItem.id);
+        // Only select a member if specifically clicking on one (not the background)
+        const limb = (e.target as Element)?.closest('[data-membre]') as SVGGElement | null;
+        if (limb && limb.id) {
+          const puppetRoot = puppetAnchor.firstChild as SVGGElement | null;
+          if (puppetRoot) {
+            setUiSelectedPuppet(puppetRoot);
+            setUiSelectedLimb(limb.id);
+            const a = getLimbRotationFromDom(limb);
+            setUiAngle(Math.round(a));
           }
-          setUiSelectedPuppet(puppetRoot);
-          setUiSelectedLimb(limb.id);
-          const a = getLimbRotationFromDom(limb);
-          setUiAngle(Math.round(a));
+        } else {
+          // Clicked on puppet but not on a member - deselect member
+          setUiSelectedLimb("");
         }
         return;
       }
@@ -237,6 +243,108 @@ export const SvgScene = memo(() => {
     ensureContainers();
   }, []);
 
+  // Listen for project load events
+  useEffect(() => {
+    const handleProjectLoad = async (e: Event) => {
+      const projectData = (e as CustomEvent).detail;
+
+      // Clear current scene
+      sceneItems.forEach((item) => {
+        if (item.el.parentNode) {
+          item.el.parentNode.removeChild(item.el);
+        }
+      });
+      setPuppets([]);
+
+      // Load background
+      if (projectData.scene.background) {
+        await setDecor(projectData.scene.background);
+      }
+
+      const { scene } = ensureContainers();
+
+      // Recreate items
+      for (const itemData of projectData.scene.items) {
+        if (itemData.type === "puppet") {
+          // Create puppet anchor
+          const anchor = document.createElementNS("http://www.w3.org/2000/svg", "g");
+          anchor.setAttribute("transform", `translate(${itemData.transform.x}, ${itemData.transform.y})`);
+          anchor.setAttribute("data-anchor", "puppet");
+          anchor.setAttribute("data-source", itemData.source);
+          anchor.style.cursor = "move";
+          scene.appendChild(anchor);
+
+          // Add to puppets state to trigger React portal
+          setPuppets((prev) => [
+            ...prev,
+            { id: itemData.id, src: itemData.source, anchor, dropX: itemData.transform.x, dropY: itemData.transform.y },
+          ]);
+
+          // Add to scene items
+          addSceneItem({ id: itemData.id, type: "puppet", label: itemData.label, el: anchor });
+
+          // Wait for puppet to load, then apply member transforms
+          setTimeout(() => {
+            if (itemData.memberTransforms) {
+              const puppetRoot = anchor.firstChild as SVGGElement | null;
+              if (puppetRoot) {
+                Object.entries(itemData.memberTransforms).forEach(([memberId, transform]) => {
+                  const memberEl = puppetRoot.querySelector(`#${CSS.escape(memberId)}`) as SVGGElement | null;
+                  if (memberEl && transform && typeof transform === 'object' && 'rotation' in transform) {
+                    memberEl.style.transform = `rotate(${transform.rotation}deg)`;
+                  }
+                });
+              }
+            }
+
+            // Force position update by triggering animation playback
+            window.dispatchEvent(new CustomEvent("animation:refresh"));
+          }, 150);
+        } else {
+          // Create image
+          const img = document.createElementNS("http://www.w3.org/2000/svg", "image");
+          img.setAttribute("href", itemData.source);
+
+          // Load image to get dimensions
+          const preload = new Image();
+          await new Promise((resolve) => {
+            preload.onload = resolve;
+            preload.onerror = resolve;
+            preload.src = itemData.source;
+          });
+
+          const w = preload.naturalWidth || 100;
+          const h = preload.naturalHeight || 100;
+
+          img.setAttribute("width", String(w));
+          img.setAttribute("height", String(h));
+          img.setAttribute("x", String(itemData.transform.x));
+          img.setAttribute("y", String(itemData.transform.y));
+          img.setAttribute("preserveAspectRatio", "xMidYMid meet");
+          img.setAttribute("data-draggable", "true");
+          img.setAttribute("data-id", itemData.id);
+          img.style.cursor = "move";
+
+          const cx = itemData.transform.x + w / 2;
+          const cy = itemData.transform.y + h / 2;
+          const rotation = itemData.transform.rotation || 0;
+          const scaleX = itemData.transform.scaleX || 1;
+          const scaleY = itemData.transform.scaleY || 1;
+
+          img.setAttribute("transform", `rotate(${rotation} ${cx} ${cy}) scale(${scaleX} ${scaleY})`);
+
+          scene.appendChild(img);
+          addSceneItem({ id: itemData.id, type: "image", label: itemData.label, el: img });
+        }
+      }
+
+      // Note: Animation tracks will be loaded separately by AnimationContext listener
+    };
+
+    window.addEventListener("project:load", handleProjectLoad);
+    return () => window.removeEventListener("project:load", handleProjectLoad);
+  }, [sceneItems, addSceneItem]);
+
   // Expose helpers to UI context (fitInView, importAsset)
   useEffect(() => {
     setFitInView(() => doFitInView);
@@ -256,7 +364,7 @@ export const SvgScene = memo(() => {
 
   return (
     <div className="scene-canvas" style={{ position: "relative" }}>
-      <svg ref={svgRef} width="100%" height="100%" onWheel={onWheel} />
+      <svg ref={svgRef} width="100%" height="100%" onWheel={onWheel} data-scene="true" />
       {/* React portals of pantins injected into anchors */}
       {puppets.map((p) =>
         createPortal(

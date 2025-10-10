@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useState, useCallback } from "react";
+import React, { createContext, useContext, useMemo, useState, useCallback, useEffect, useRef } from "react";
 
 export type AnimationProperty = 'rotation' | 'x' | 'y' | 'scaleX' | 'scaleY';
 
@@ -19,6 +19,8 @@ export interface AnimationState {
   duration: number;
   currentFrame: number;
   tracks: AnimationTrack[];
+  playing: boolean;
+  setPlaying: (playing: boolean) => void;
 
   setDuration: (frames: number) => void;
   setCurrentFrame: (frame: number) => void;
@@ -36,6 +38,9 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [duration, setDuration] = useState(300); // 300 frames = 10s at 30fps
   const [currentFrame, setCurrentFrame] = useState(0);
   const [tracks, setTracks] = useState<AnimationTrack[]>([]);
+  const [playing, setPlaying] = useState(false);
+  const rafRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number>(0);
 
   const addKeyframe = useCallback(
     (targetId: string, targetMemberId: string | null, property: AnimationProperty, frame: number, value: number) => {
@@ -117,11 +122,68 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setTracks((prev) => prev.filter((t) => t.targetId !== targetId));
   }, []);
 
+  // Playback animation loop
+  useEffect(() => {
+    if (!playing) {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+      return;
+    }
+
+    // Capture current frame at play start
+    const startFrame = currentFrame;
+    startTimeRef.current = performance.now() - (startFrame * 1000) / 30; // 30 fps
+
+    const loop = (now: number) => {
+      const elapsed = now - startTimeRef.current;
+      const frame = Math.floor((elapsed / 1000) * 30); // 30 fps
+
+      if (frame >= duration) {
+        setCurrentFrame(0);
+        setPlaying(false);
+        return;
+      }
+
+      setCurrentFrame(frame);
+      rafRef.current = requestAnimationFrame(loop);
+    };
+
+    rafRef.current = requestAnimationFrame(loop);
+
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing, duration]); // currentFrame removed from deps to avoid recalculation
+
+  // Listen for project load events
+  useEffect(() => {
+    const handleProjectLoad = (e: Event) => {
+      const projectData = (e as CustomEvent).detail;
+
+      // Clear current animation
+      setTracks([]);
+      setCurrentFrame(0);
+
+      // Load animation data
+      if (projectData.animation) {
+        setDuration(projectData.animation.duration);
+        setTracks(projectData.animation.tracks);
+      }
+      setPlaying(false); // Stop playback on load
+    };
+
+    window.addEventListener("project:load", handleProjectLoad);
+    return () => window.removeEventListener("project:load", handleProjectLoad);
+  }, []);
+
   const value = useMemo(
     () => ({
       duration,
       currentFrame,
       tracks,
+      playing,
+      setPlaying,
       setDuration,
       setCurrentFrame,
       addKeyframe,
@@ -130,7 +192,7 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       getValueAtFrame,
       removeAllTracksForTarget,
     }),
-    [duration, currentFrame, tracks, addKeyframe, removeKeyframe, getTrack, getValueAtFrame, removeAllTracksForTarget]
+    [duration, currentFrame, tracks, playing, addKeyframe, removeKeyframe, getTrack, getValueAtFrame, removeAllTracksForTarget]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

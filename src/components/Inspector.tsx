@@ -28,8 +28,16 @@ export const Inspector: React.FC = React.memo(() => {
 
   // Live transform state
   const [transform, setTransform] = useState({ x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 });
+  const [transformRefresh, setTransformRefresh] = useState(0);
 
-  // Read transform from DOM whenever selectedItem changes
+  // Listen for drag/transform updates
+  useEffect(() => {
+    const handleTransformUpdate = () => setTransformRefresh(prev => prev + 1);
+    window.addEventListener("item:transformed", handleTransformUpdate);
+    return () => window.removeEventListener("item:transformed", handleTransformUpdate);
+  }, []);
+
+  // Read transform from DOM whenever selectedItem, currentFrame, or drag updates
   useEffect(() => {
     if (!selectedItem) return;
     const el = selectedItem.el;
@@ -55,7 +63,7 @@ export const Inspector: React.FC = React.memo(() => {
 
       setTransform({ x, y, rotation, scaleX, scaleY });
     }
-  }, [selectedItem]);
+  }, [selectedItem, currentFrame, transformRefresh]);
 
   // Get limb list for selected puppet
   const limbList = useMemo(() => {

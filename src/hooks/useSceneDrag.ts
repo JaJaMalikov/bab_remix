@@ -120,9 +120,16 @@ export const useSceneDrag = (
         drag.el.setAttribute('x', String(x));
         drag.el.setAttribute('y', String(y));
       }
+
+      // Notify Inspector of transform change
+      window.dispatchEvent(new CustomEvent('item:transformed'));
     };
 
     const onMouseUp = () => {
+      if (draggingRef.current) {
+        // Final notification when drag completes
+        window.dispatchEvent(new CustomEvent('item:transformed'));
+      }
       draggingRef.current = null;
     };
 

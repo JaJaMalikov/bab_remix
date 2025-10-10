@@ -1,13 +1,11 @@
-import React, { useEffect, useRef, useCallback, useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { useUi } from "../context/UiContext";
 import { useAnimation } from "../context/AnimationContext";
 import { useVerticalResize } from "../hooks/useVerticalResize";
 
 export const Timeline: React.FC = React.memo(() => {
-  const { playing, setPlaying, showTracks, setShowTracks, timelineHeight, setTimelineHeight, sceneItems } = useUi();
-  const { duration, currentFrame, setCurrentFrame, tracks, removeKeyframe } = useAnimation();
-  const rafRef = useRef<number | null>(null);
-  const startTimeRef = useRef<number>(0);
+  const { showTracks, setShowTracks, timelineHeight, setTimelineHeight, sceneItems } = useUi();
+  const { duration, currentFrame, setCurrentFrame, tracks, removeKeyframe, playing, setPlaying } = useAnimation();
 
   // Use the custom hook for resizing logic
   const { onResizeMouseDown } = useVerticalResize({
@@ -47,40 +45,6 @@ export const Timeline: React.FC = React.memo(() => {
     },
     [sceneItems]
   );
-
-  // Playback animation loop
-  useEffect(() => {
-    if (!playing) {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-      return;
-    }
-
-    // Capture current frame at play start
-    const startFrame = currentFrame;
-    startTimeRef.current = performance.now() - (startFrame * 1000) / 30; // 30 fps
-
-    const loop = (now: number) => {
-      const elapsed = now - startTimeRef.current;
-      const frame = Math.floor((elapsed / 1000) * 30); // 30 fps
-
-      if (frame >= duration) {
-        setCurrentFrame(0);
-        setPlaying(false);
-        return;
-      }
-
-      setCurrentFrame(frame);
-      rafRef.current = requestAnimationFrame(loop);
-    };
-
-    rafRef.current = requestAnimationFrame(loop);
-
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playing, duration, setCurrentFrame, setPlaying]); // currentFrame removed from deps
 
   // Memoized event handlers
   const handleTogglePlay = useCallback(() => {
