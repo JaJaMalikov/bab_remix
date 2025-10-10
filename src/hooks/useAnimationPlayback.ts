@@ -36,7 +36,11 @@ export const useAnimationPlayback = () => {
       }
 
       const transforms = targetMap.get(track.targetId)!;
-      transforms[track.property] = value;
+      // Ensure we assign a number to the transforms record (parse string values to numbers)
+      const numericValue = typeof value === 'string' ? parseFloat(value) : value;
+      if (typeof numericValue === 'number' && !isNaN(numericValue)) {
+        transforms[track.property] = numericValue;
+      }
     });
 
     // Apply grouped transforms

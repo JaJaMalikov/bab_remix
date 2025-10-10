@@ -1,10 +1,18 @@
 import React, { createContext, useContext, useMemo, useState, useCallback, useEffect, useRef } from "react";
+import { SceneItem } from "./UiContext";
 
-export type AnimationProperty = 'rotation' | 'x' | 'y' | 'scaleX' | 'scaleY';
+export type AnimationProperty = 'rotation' | 'x' | 'y' | 'scaleX' | 'scaleY' | 'activeVariant' | 'attachment';
+
+export interface AttachedObject {
+  type: 'image' | 'text' | 'audio';
+  id: string;
+}
 
 export interface Keyframe {
   frame: number;
-  value: number;
+  value: number | string;
+  variant?: string;
+  attachedObject?: AttachedObject;
 }
 
 export interface AnimationTrack {
@@ -25,11 +33,12 @@ export interface AnimationState {
   setDuration: (frames: number) => void;
   setCurrentFrame: (frame: number) => void;
 
-  addKeyframe: (targetId: string, targetMemberId: string | null, property: AnimationProperty, frame: number, value: number) => void;
+  addKeyframe: (targetId: string, targetMemberId: string | null, property: AnimationProperty, frame: number, value: number | string, variant?: string, attachedObject?: AttachedObject) => void;
   removeKeyframe: (trackId: string, frame: number) => void;
   getTrack: (targetId: string, targetMemberId: string | null, property: AnimationProperty) => AnimationTrack | undefined;
-  getValueAtFrame: (targetId: string, targetMemberId: string | null, property: AnimationProperty, frame: number) => number | null;
+  getValueAtFrame: (targetId: string, targetMemberId: string | null, property: AnimationProperty, frame: number) => number | string | null;
   removeAllTracksForTarget: (targetId: string) => void;
+  snapshotKeyframes: (items: SceneItem[]) => void;
 }
 
 const Ctx = createContext<AnimationState | null>(null);
@@ -43,7 +52,7 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const startTimeRef = useRef<number>(0);
 
   const addKeyframe = useCallback(
-    (targetId: string, targetMemberId: string | null, property: AnimationProperty, frame: number, value: number) => {
+    (targetId: string, targetMemberId: string | null, property: AnimationProperty, frame: number, value: number | string, variant?: string, attachedObject?: AttachedObject) => {
       setTracks((prev) => {
         // Find or create track
         const trackKey = `${targetId}:${targetMemberId || 'null'}:${property}`;
@@ -62,12 +71,14 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           prev = [...prev, track];
         }
 
+        const newKeyframe = { frame, value, variant, attachedObject };
+
         // Add or update keyframe
         const existingIndex = track.keyframes.findIndex((kf) => kf.frame === frame);
         if (existingIndex >= 0) {
-          track.keyframes[existingIndex] = { frame, value };
+          track.keyframes[existingIndex] = { ...track.keyframes[existingIndex], ...newKeyframe };
         } else {
-          track.keyframes.push({ frame, value });
+          track.keyframes.push(newKeyframe);
           track.keyframes.sort((a, b) => a.frame - b.frame);
         }
 
@@ -100,7 +111,7 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   );
 
   const getValueAtFrame = useCallback(
-    (targetId: string, targetMemberId: string | null, property: AnimationProperty, frame: number): number | null => {
+    (targetId: string, targetMemberId: string | null, property: AnimationProperty, frame: number): number | string | null => {
       const track = getTrack(targetId, targetMemberId, property);
       if (!track || track.keyframes.length === 0) return null;
 
@@ -108,11 +119,25 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const before = track.keyframes.filter((kf) => kf.frame <= frame).sort((a, b) => b.frame - a.frame)[0];
       const after = track.keyframes.filter((kf) => kf.frame > frame).sort((a, b) => a.frame - b.frame)[0];
 
-      if (!before) return after.value; // Before first keyframe
-      if (!after) return before.value; // After last keyframe
+      if (!before) return after.value;
+      if (!after) return before.value;
 
-      // Linear interpolation
+      // For variants and attachments, use step interpolation
+      if (property === 'activeVariant' || property === 'attachment') {
+        return before.value;
+      }
+
+      // Type guard for interpolation
+      if (typeof before.value !== 'number' || typeof after.value !== 'number') {
+        // Should not happen for interpolatable properties, but as a safeguard:
+        return before.value;
+      }
+
+      // Linear interpolation for numeric properties
       const t = (frame - before.frame) / (after.frame - before.frame);
+      if (isNaN(t) || !isFinite(t)) {
+        return before.value;
+      }
       return before.value + t * (after.value - before.value);
     },
     [getTrack]
@@ -121,6 +146,100 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const removeAllTracksForTarget = useCallback((targetId: string) => {
     setTracks((prev) => prev.filter((t) => t.targetId !== targetId));
   }, []);
+
+  const snapshotKeyframes = useCallback(
+    (items: SceneItem[]) => {
+      items.forEach(item => {
+        const el = item.el;
+        const targetId = item.id;
+
+        // 1. Snapshot main item transform
+        let currentTransform: { x: number; y: number; rotation: number; scaleX: number; scaleY: number };
+        if (item.type === "puppet") {
+          const transformAttr = el.getAttribute("transform") || "";
+          const match = transformAttr.match(/translate\(([-\d.]+)[,\s]+([-\d.]+)\)/);
+          currentTransform = match
+            ? { x: parseFloat(match[1] || "0"), y: parseFloat(match[2] || "0"), rotation: 0, scaleX: 1, scaleY: 1 }
+            : { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 };
+        } else { // image
+          const x = parseFloat(el.getAttribute("x") || "0");
+          const y = parseFloat(el.getAttribute("y") || "0");
+          const transformAttr = el.getAttribute("transform") || "";
+          const rotMatch = transformAttr.match(/rotate\(([-\d.]+)/);
+          const scaleMatch = transformAttr.match(/scale\(([-\d.]+)(?:[,\s]+([-\d.]+))?\)/);
+          const rotation = rotMatch ? parseFloat(rotMatch[1] || "0") : 0;
+          const scaleX = scaleMatch ? parseFloat(scaleMatch[1] || "1") : 1;
+          const scaleY = scaleMatch && scaleMatch[2] ? parseFloat(scaleMatch[2]) : scaleX;
+          currentTransform = { x, y, rotation, scaleX, scaleY };
+        }
+
+        const properties = ['x', 'y', 'rotation', 'scaleX', 'scaleY'] as const;
+        properties.forEach(prop => {
+          if (item.type === 'puppet' && prop !== 'x' && prop !== 'y') return;
+
+          const currentValue = currentTransform[prop];
+          const previousValue = getValueAtFrame(targetId, null, prop, currentFrame - 1);
+
+          if (currentFrame === 0 || previousValue === null || Math.abs((currentValue as number) - (previousValue as number)) > 1e-4) {
+            addKeyframe(targetId, null, prop, currentFrame, currentValue);
+          }
+        });
+
+        // 2. Snapshot puppet members rotation
+        if (item.type === "puppet") {
+          const puppetRoot = item.el.firstChild as SVGGElement | null;
+          if (!puppetRoot) return;
+
+          const members = puppetRoot.querySelectorAll("[data-membre]") as NodeListOf<SVGGElement>;
+          members.forEach(memberEl => {
+            const memberId = memberEl.id;
+            const transformStyle = memberEl.style.transform || "";
+            const match = transformStyle.match(/rotate\(([-\d.]+)deg\)/);
+            const currentValue = match ? parseFloat(match[1] || "0") : 0;
+            const previousValue = getValueAtFrame(targetId, memberId, 'rotation', currentFrame - 1);
+
+            if (currentFrame === 0 || previousValue === null || Math.abs(currentValue - (previousValue as number)) > 1e-4) {
+              addKeyframe(targetId, memberId, 'rotation', currentFrame, currentValue);
+            }
+          });
+
+          // 3. Snapshot puppet variants
+          item.metadata?.variantGroups.forEach(group => {
+            let activeVariantId: string | null = null;
+            for (const variant of group.variants) {
+              const variantEl = puppetRoot.querySelector(`#${CSS.escape(variant.id)}`) as SVGElement | null;
+              if (variantEl && variantEl.style.display !== 'none' && variantEl.getAttribute('display') !== 'none') {
+                activeVariantId = variant.id;
+                break;
+              }
+            }
+
+            if (activeVariantId) {
+              const previousValue = getValueAtFrame(targetId, group.group, 'activeVariant', currentFrame - 1);
+              if (currentFrame === 0 || previousValue !== activeVariantId) {
+                addKeyframe(targetId, group.group, 'activeVariant', currentFrame, activeVariantId);
+              }
+            }
+          });
+        }
+
+        // 4. Snapshot attachments for images
+        if (item.type === 'image') {
+          const imageEl = item.el as SVGImageElement;
+          const attachedPuppetId = imageEl.getAttribute('data-attached-to-puppet');
+          const attachedMemberId = imageEl.getAttribute('data-attached-to-member');
+
+          const currentValue = attachedPuppetId ? `${attachedPuppetId}:${attachedMemberId}` : null;
+          const previousValue = getValueAtFrame(targetId, null, 'attachment', currentFrame - 1);
+
+          if (currentFrame === 0 || previousValue !== currentValue) {
+            addKeyframe(targetId, null, 'attachment', currentFrame, currentValue || '');
+          }
+        }
+      });
+    },
+    [addKeyframe, currentFrame, getValueAtFrame]
+  );
 
   // Playback animation loop
   useEffect(() => {
@@ -191,8 +310,9 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       getTrack,
       getValueAtFrame,
       removeAllTracksForTarget,
+      snapshotKeyframes,
     }),
-    [duration, currentFrame, tracks, playing, addKeyframe, removeKeyframe, getTrack, getValueAtFrame, removeAllTracksForTarget]
+    [duration, currentFrame, tracks, playing, addKeyframe, removeKeyframe, getTrack, getValueAtFrame, removeAllTracksForTarget, snapshotKeyframes]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

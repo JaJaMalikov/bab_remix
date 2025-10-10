@@ -5,7 +5,7 @@ import { useVerticalResize } from "../hooks/useVerticalResize";
 
 export const Timeline: React.FC = React.memo(() => {
   const { showTracks, setShowTracks, timelineHeight, setTimelineHeight, sceneItems } = useUi();
-  const { duration, currentFrame, setCurrentFrame, tracks, removeKeyframe, playing, setPlaying } = useAnimation();
+  const { duration, currentFrame, setCurrentFrame, tracks, removeKeyframe, playing, setPlaying, snapshotKeyframes } = useAnimation();
 
   // Use the custom hook for resizing logic
   const { onResizeMouseDown } = useVerticalResize({
@@ -85,6 +85,23 @@ export const Timeline: React.FC = React.memo(() => {
         <div className="timeline-controls">
           <button onClick={handleTogglePlay}>{playing ? "⏸ Pause" : "▶ Play"}</button>
           <button onClick={handleStop}>⏹ Stop</button>
+          <button
+            onClick={() => snapshotKeyframes(sceneItems)}
+            title="Snapshot all items in the scene to the current frame"
+            style={{
+              padding: "4px 8px",
+              background: "#ff9800",
+              border: "none",
+              borderRadius: 4,
+              color: "#fff",
+              cursor: "pointer",
+              fontSize: 12,
+              fontWeight: 600,
+              marginLeft: 8,
+            }}
+          >
+            Snapshot All
+          </button>
           <span className="frame-counter">
             Frame: {currentFrame} / {duration}
           </span>
@@ -111,6 +128,14 @@ export const Timeline: React.FC = React.memo(() => {
                       <div className="track-keyframes" style={{ position: "relative" }}>
                         {track.keyframes.map((kf) => {
                           const left = (kf.frame / duration) * 100;
+                          const valueStr = typeof kf.value === "number" ? kf.value.toFixed(2) : String(kf.value);
+                          const title = [
+                            `Frame: ${kf.frame}`,
+                            `Value: ${valueStr}`,
+                            kf.variant && `Variant: ${kf.variant}`,
+                            kf.attachedObject && `Attached: ${kf.attachedObject.type} (${kf.attachedObject.id})`,
+                          ].filter(Boolean).join("\n");
+
                           return (
                             <div
                               key={kf.frame}
@@ -122,12 +147,12 @@ export const Timeline: React.FC = React.memo(() => {
                                 transform: "translate(-50%, -50%)",
                                 width: 8,
                                 height: 8,
-                                background: "#5a9fd4",
+                                background: kf.variant ? "#ff9800" : "#5a9fd4", // Orange for variant
                                 borderRadius: "50%",
                                 cursor: "pointer",
-                                border: "1px solid #fff",
+                                border: kf.attachedObject ? "2px solid #f44336" : "1px solid #fff", // Red border for attached object
                               }}
-                              title={`Frame ${kf.frame}: ${kf.value.toFixed(2)}`}
+                              title={title}
                             />
                           );
                         })}
