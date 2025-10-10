@@ -1,5 +1,6 @@
 import React, { useMemo, useCallback, useState, useEffect } from "react";
 import { useUi } from "../context/UiContext";
+import { useAnimation, AnimationProperty } from "../context/AnimationContext";
 import { FloatingPanel } from "./FloatingPanel";
 
 export const Inspector: React.FC = React.memo(() => {
@@ -14,6 +15,8 @@ export const Inspector: React.FC = React.memo(() => {
     removeSceneItem,
     updateSceneItemLabel,
   } = useUi();
+
+  const { currentFrame, addKeyframe, getTrack, removeAllTracksForTarget } = useAnimation();
 
   const selectedItem = useMemo(
     () => sceneItems.find((item) => item.id === selectedItemId),
@@ -89,9 +92,10 @@ export const Inspector: React.FC = React.memo(() => {
       item.el.parentNode.removeChild(item.el);
     }
     removeSceneItem(selectedItemId);
+    removeAllTracksForTarget(selectedItemId); // Remove animation tracks
     setSelectedItemId(null);
     setSelectedLimb("");
-  }, [selectedItemId, sceneItems, removeSceneItem, setSelectedItemId, setSelectedLimb]);
+  }, [selectedItemId, sceneItems, removeSceneItem, removeAllTracksForTarget, setSelectedItemId, setSelectedLimb]);
 
   const handleStartEditLabel = useCallback(() => {
     if (selectedItem) {
@@ -146,6 +150,27 @@ export const Inspector: React.FC = React.memo(() => {
       }
     },
     [setAngle, selectedLimb, selectedItem]
+  );
+
+  // Add keyframe handler
+  const handleAddKeyframe = useCallback(
+    (property: AnimationProperty, value: number) => {
+      if (!selectedItemId) return;
+      const targetMemberId = selectedLimb || null;
+      addKeyframe(selectedItemId, targetMemberId, property, currentFrame, value);
+    },
+    [selectedItemId, selectedLimb, currentFrame, addKeyframe]
+  );
+
+  // Check if property has keyframe at current frame
+  const hasKeyframe = useCallback(
+    (property: AnimationProperty): boolean => {
+      if (!selectedItemId) return false;
+      const targetMemberId = selectedLimb || null;
+      const track = getTrack(selectedItemId, targetMemberId, property);
+      return track?.keyframes.some((kf) => kf.frame === currentFrame) || false;
+    },
+    [selectedItemId, selectedLimb, currentFrame, getTrack]
   );
 
   // Handle position change
@@ -305,21 +330,55 @@ export const Inspector: React.FC = React.memo(() => {
               <h4>Transform</h4>
               <div className="property">
                 <label>Position X</label>
-                <input
-                  type="number"
-                  value={Math.round(transform.x)}
-                  onChange={(e) => handlePositionChange('x', parseFloat(e.target.value) || 0)}
-                  style={{ width: 80 }}
-                />
+                <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                  <input
+                    type="number"
+                    value={Math.round(transform.x)}
+                    onChange={(e) => handlePositionChange('x', parseFloat(e.target.value) || 0)}
+                    style={{ width: 80 }}
+                  />
+                  <button
+                    onClick={() => handleAddKeyframe('x', transform.x)}
+                    title="Add keyframe"
+                    style={{
+                      padding: "4px 8px",
+                      background: hasKeyframe('x') ? "#5a9fd4" : "#3a3a3a",
+                      border: "none",
+                      borderRadius: 4,
+                      color: "#fff",
+                      cursor: "pointer",
+                      fontSize: 12,
+                    }}
+                  >
+                    ◆
+                  </button>
+                </div>
               </div>
               <div className="property">
                 <label>Position Y</label>
-                <input
-                  type="number"
-                  value={Math.round(transform.y)}
-                  onChange={(e) => handlePositionChange('y', parseFloat(e.target.value) || 0)}
-                  style={{ width: 80 }}
-                />
+                <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                  <input
+                    type="number"
+                    value={Math.round(transform.y)}
+                    onChange={(e) => handlePositionChange('y', parseFloat(e.target.value) || 0)}
+                    style={{ width: 80 }}
+                  />
+                  <button
+                    onClick={() => handleAddKeyframe('y', transform.y)}
+                    title="Add keyframe"
+                    style={{
+                      padding: "4px 8px",
+                      background: hasKeyframe('y') ? "#5a9fd4" : "#3a3a3a",
+                      border: "none",
+                      borderRadius: 4,
+                      color: "#fff",
+                      cursor: "pointer",
+                      fontSize: 12,
+                    }}
+                  >
+                    ◆
+                  </button>
+                </div>
               </div>
 
               {/* Rotation and Scale for Images only */}
@@ -327,12 +386,29 @@ export const Inspector: React.FC = React.memo(() => {
                 <>
                   <div className="property">
                     <label>Rotation</label>
-                    <input
-                      type="number"
-                      value={Math.round(transform.rotation)}
-                      onChange={(e) => handleRotationChange(parseFloat(e.target.value) || 0)}
-                      style={{ width: 80 }}
-                    />
+                    <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                      <input
+                        type="number"
+                        value={Math.round(transform.rotation)}
+                        onChange={(e) => handleRotationChange(parseFloat(e.target.value) || 0)}
+                        style={{ width: 80 }}
+                      />
+                      <button
+                        onClick={() => handleAddKeyframe('rotation', transform.rotation)}
+                        title="Add keyframe"
+                        style={{
+                          padding: "4px 8px",
+                          background: hasKeyframe('rotation') ? "#5a9fd4" : "#3a3a3a",
+                          border: "none",
+                          borderRadius: 4,
+                          color: "#fff",
+                          cursor: "pointer",
+                          fontSize: 12,
+                        }}
+                      >
+                        ◆
+                      </button>
+                    </div>
                   </div>
                   <div className="property">
                     <input
@@ -346,23 +422,57 @@ export const Inspector: React.FC = React.memo(() => {
                   </div>
                   <div className="property">
                     <label>Scale X</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={transform.scaleX.toFixed(2)}
-                      onChange={(e) => handleScaleChange('scaleX', parseFloat(e.target.value) || 1)}
-                      style={{ width: 80 }}
-                    />
+                    <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={transform.scaleX.toFixed(2)}
+                        onChange={(e) => handleScaleChange('scaleX', parseFloat(e.target.value) || 1)}
+                        style={{ width: 80 }}
+                      />
+                      <button
+                        onClick={() => handleAddKeyframe('scaleX', transform.scaleX)}
+                        title="Add keyframe"
+                        style={{
+                          padding: "4px 8px",
+                          background: hasKeyframe('scaleX') ? "#5a9fd4" : "#3a3a3a",
+                          border: "none",
+                          borderRadius: 4,
+                          color: "#fff",
+                          cursor: "pointer",
+                          fontSize: 12,
+                        }}
+                      >
+                        ◆
+                      </button>
+                    </div>
                   </div>
                   <div className="property">
                     <label>Scale Y</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={transform.scaleY.toFixed(2)}
-                      onChange={(e) => handleScaleChange('scaleY', parseFloat(e.target.value) || 1)}
-                      style={{ width: 80 }}
-                    />
+                    <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={transform.scaleY.toFixed(2)}
+                        onChange={(e) => handleScaleChange('scaleY', parseFloat(e.target.value) || 1)}
+                        style={{ width: 80 }}
+                      />
+                      <button
+                        onClick={() => handleAddKeyframe('scaleY', transform.scaleY)}
+                        title="Add keyframe"
+                        style={{
+                          padding: "4px 8px",
+                          background: hasKeyframe('scaleY') ? "#5a9fd4" : "#3a3a3a",
+                          border: "none",
+                          borderRadius: 4,
+                          color: "#fff",
+                          cursor: "pointer",
+                          fontSize: 12,
+                        }}
+                      >
+                        ◆
+                      </button>
+                    </div>
                   </div>
                 </>
               )}
@@ -423,12 +533,29 @@ export const Inspector: React.FC = React.memo(() => {
                 <h4>Member Transform</h4>
                 <div className="property">
                   <label>Rotation</label>
-                  <input
-                    type="number"
-                    value={Math.round(angle)}
-                    onChange={(e) => handleAngleChange(parseFloat(e.target.value) || 0)}
-                    style={{ width: 80 }}
-                  />
+                  <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                    <input
+                      type="number"
+                      value={Math.round(angle)}
+                      onChange={(e) => handleAngleChange(parseFloat(e.target.value) || 0)}
+                      style={{ width: 80 }}
+                    />
+                    <button
+                      onClick={() => handleAddKeyframe('rotation', angle)}
+                      title="Add keyframe"
+                      style={{
+                        padding: "4px 8px",
+                        background: hasKeyframe('rotation') ? "#5a9fd4" : "#3a3a3a",
+                        border: "none",
+                        borderRadius: 4,
+                        color: "#fff",
+                        cursor: "pointer",
+                        fontSize: 12,
+                      }}
+                    >
+                      ◆
+                    </button>
+                  </div>
                 </div>
                 <div className="property">
                   <input

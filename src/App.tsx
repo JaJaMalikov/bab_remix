@@ -3,6 +3,7 @@ import { Library } from "./components/Library";
 import { Inspector } from "./components/Inspector";
 import { Timeline } from "./components/Timeline";
 import { UiProvider, useUi } from "./context/UiContext";
+import { AnimationProvider } from "./context/AnimationContext";
 import { Toolbar } from "./components/Toolbar";
 import { Layers } from "./components/Layers";
 import { PlaybackMini } from "./components/PlaybackMini";
@@ -10,7 +11,9 @@ import { PlaybackMini } from "./components/PlaybackMini";
 export default function App() {
   return (
     <UiProvider>
-      <AppLayout />
+      <AnimationProvider>
+        <AppLayout />
+      </AnimationProvider>
     </UiProvider>
   );
 }

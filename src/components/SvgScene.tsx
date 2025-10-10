@@ -5,6 +5,7 @@ import { Asset } from "./AssetItem";
 import { useUi } from "../context/UiContext";
 import { useSceneDrag } from "../hooks/useSceneDrag";
 import { useScenePanZoom } from "../hooks/useScenePanZoom";
+import { useAnimationPlayback } from "../hooks/useAnimationPlayback";
 
 export const SvgScene = memo(() => {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -12,6 +13,9 @@ export const SvgScene = memo(() => {
   const bgRef = useRef<SVGImageElement | null>(null);
   const sceneRef = useRef<SVGGElement | null>(null);
   const viewSizeRef = useRef<{ w: number; h: number } | null>(null);
+
+  // Apply animation values during playback
+  useAnimationPlayback();
   const {
     selectedPuppet,
     selectedLimb,
