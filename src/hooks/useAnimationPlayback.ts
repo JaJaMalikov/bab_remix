@@ -18,7 +18,79 @@ export const useAnimationPlayback = () => {
   }, []);
 
   useEffect(() => {
-    // Group tracks by target to apply all transforms at once
+    // First, apply non-numeric properties like variants before transforms
+    tracks.forEach((track) => {
+      if (track.property !== 'activeVariant') return;
+      const value = getValueAtFrame(track.targetId, track.targetMemberId, track.property, currentFrame);
+      if (!value || typeof value !== 'string') return;
+
+      const item = sceneItems.find((i) => i.id === track.targetId);
+      if (!item || item.type !== 'puppet') return;
+
+      const anchor = item.el;
+      const puppetRoot = anchor.firstChild as SVGGElement | null;
+      if (!puppetRoot) return;
+
+      const groupName = track.targetMemberId; // we store group name in targetMemberId for variants
+      const group = item.metadata?.variantGroups.find((g) => g.group === groupName);
+      // Fallback: if no metadata group, operate on DOM by attribute
+      if (!group) {
+        if (!groupName) return;
+        const variants = Array.from(
+          puppetRoot.querySelectorAll(`[data-variant-groupe="${CSS.escape(groupName)}"]`)
+        ) as SVGElement[];
+        variants.forEach((el) => {
+          if (el.id === value) {
+            el.style.display = '';
+            el.removeAttribute('display');
+          } else {
+            el.style.display = 'none';
+          }
+        });
+        return;
+      }
+
+      // We keep DOM natural order for normal cases.
+      // When a variant declares isBehindParent=true, we move it to the beginning of the target member's parent.
+
+      // Resolve target member once from the active variant (if any)
+      const activeInfo = group.variants.find((vv: any) => vv.id === value);
+      const targetMember = activeInfo?.targetMemberId
+        ? (puppetRoot.querySelector(`#${CSS.escape(activeInfo.targetMemberId)}`) as SVGElement | null)
+        : null;
+
+      group.variants.forEach((v: any) => {
+        const el = puppetRoot.querySelector(`#${CSS.escape(v.id)}`) as SVGElement | null;
+        if (!el) return;
+
+        if (v.id === value) {
+          el.style.display = '';
+          el.removeAttribute('display');
+
+          // If requested, push behind by placing as first child of the target member's parent
+          if ((v as any).isBehindParent && targetMember) {
+            const parentLive = (targetMember.parentNode as (Node & { insertBefore: Function; firstChild: ChildNode | null }) | null) ?? null;
+            if (parentLive) {
+              parentLive.insertBefore(el, parentLive.firstChild);
+            }
+          }
+        } else {
+          el.style.display = 'none';
+        }
+
+        // Ensure parent containers are visible if they carried display="none"
+        let parent = el.parentElement as unknown as SVGElement | null;
+        while (parent && parent !== puppetRoot) {
+          if (parent.hasAttribute('display')) {
+            parent.removeAttribute('display');
+            (parent as SVGElement).style.display = '';
+          }
+          parent = parent.parentElement as unknown as SVGElement | null;
+        }
+      });
+    });
+
+    // Group tracks by target to apply numeric transforms at once
     const targetTransforms = new Map<string, Map<string, Record<string, number>>>();
 
     tracks.forEach((track) => {
@@ -36,10 +108,18 @@ export const useAnimationPlayback = () => {
       }
 
       const transforms = targetMap.get(track.targetId)!;
-      // Ensure we assign a number to the transforms record (parse string values to numbers)
-      const numericValue = typeof value === 'string' ? parseFloat(value) : value;
-      if (typeof numericValue === 'number' && !isNaN(numericValue)) {
-        transforms[track.property] = numericValue;
+      // Only apply numeric properties here
+      if (
+        track.property === 'x' ||
+        track.property === 'y' ||
+        track.property === 'rotation' ||
+        track.property === 'scaleX' ||
+        track.property === 'scaleY'
+      ) {
+        const numericValue = typeof value === 'string' ? parseFloat(value) : value;
+        if (typeof numericValue === 'number' && !isNaN(numericValue)) {
+          transforms[track.property] = numericValue as number;
+        }
       }
     });
 

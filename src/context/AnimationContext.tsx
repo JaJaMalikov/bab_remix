@@ -50,6 +50,7 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [playing, setPlaying] = useState(false);
   const rafRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
+  const lastFrameRef = useRef<number>(-1);
 
   const addKeyframe = useCallback(
     (targetId: string, targetMemberId: string | null, property: AnimationProperty, frame: number, value: number | string, variant?: string, attachedObject?: AttachedObject) => {
@@ -252,6 +253,7 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // Capture current frame at play start
     const startFrame = currentFrame;
     startTimeRef.current = performance.now() - (startFrame * 1000) / 30; // 30 fps
+    lastFrameRef.current = startFrame;
 
     const loop = (now: number) => {
       const elapsed = now - startTimeRef.current;
@@ -263,7 +265,10 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         return;
       }
 
-      setCurrentFrame(frame);
+      if (frame !== lastFrameRef.current) {
+        lastFrameRef.current = frame;
+        setCurrentFrame(frame);
+      }
       rafRef.current = requestAnimationFrame(loop);
     };
 

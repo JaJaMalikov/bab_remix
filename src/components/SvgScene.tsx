@@ -388,6 +388,9 @@ export const SvgScene = memo(() => {
                       memberId: v.memberId ?? null,
                       name: v.name ?? null,
                       isDefault: !!v.isDefault,
+                      // preserve extra fields used for layout/z-order
+                      isBehindParent: !!v.isBehindParent,
+                      side: v.side ?? null,
                     })),
                   })),
                 };

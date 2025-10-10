@@ -16,7 +16,7 @@ function InspectorComponent() {
     updateSceneItemLabel,
   } = useUi();
 
-  const { currentFrame, addKeyframe, getTrack, removeAllTracksForTarget } = useAnimation();
+  const { currentFrame, addKeyframe, getTrack, removeAllTracksForTarget, getValueAtFrame, snapshotKeyframes } = useAnimation();
 
   const selectedItem = useMemo(
     () => sceneItems.find((item) => item.id === selectedItemId),
@@ -25,6 +25,14 @@ function InspectorComponent() {
 
   const [editingLabel, setEditingLabel] = useState(false);
   const [labelInput, setLabelInput] = useState("");
+  const didInitialSnapshotRef = React.useRef(false);
+
+  const ensureInitialSnapshot = useCallback(() => {
+    if (currentFrame === 0 && !didInitialSnapshotRef.current) {
+      snapshotKeyframes(sceneItems);
+      didInitialSnapshotRef.current = true;
+    }
+  }, [currentFrame, sceneItems, snapshotKeyframes]);
 
   // Live transform state
   const [transform, setTransform] = useState({ x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 });
@@ -72,6 +80,15 @@ function InspectorComponent() {
                     (parent as SVGElement).style.display = '';
                   }
                   parent = parent.parentElement as unknown as SVGElement | null;
+                }
+                // If the default variant must be behind, re-parent to the beginning of target member's parent
+                const vinfo = group.variants.find(v => v.id === defaultId) as any;
+                if (vinfo?.isBehindParent && vinfo?.targetMemberId) {
+                  const targetMember = puppetRoot.querySelector(`#${CSS.escape(vinfo.targetMemberId)}`) as SVGElement | null;
+                  const parentLive = (targetMember?.parentNode as (Node & { insertBefore: Function; firstChild: ChildNode | null }) | null) ?? null;
+                  if (parentLive) {
+                    parentLive.insertBefore(el, parentLive.firstChild);
+                  }
                 }
               } else {
                 el.style.display = 'none';
@@ -199,11 +216,14 @@ function InspectorComponent() {
           const limbEl = puppetRoot.querySelector(`#${CSS.escape(selectedLimb)}`) as SVGGElement | null;
           if (limbEl) {
             limbEl.style.transform = `rotate(${newAngle}deg)`;
+            // Auto keyframe for limb rotation
+            ensureInitialSnapshot();
+            addKeyframe(selectedItem.id, selectedLimb, 'rotation', currentFrame, newAngle);
           }
         }
       }
     },
-    [setAngle, selectedLimb, selectedItem]
+    [setAngle, selectedLimb, selectedItem, addKeyframe, currentFrame, ensureInitialSnapshot]
   );
 
   // Add keyframe handler
@@ -240,8 +260,12 @@ function InspectorComponent() {
       } else {
         el.setAttribute(axis, String(value));
       }
+
+      // Auto keyframe for position
+      ensureInitialSnapshot();
+      addKeyframe(selectedItem.id, null, axis, currentFrame, value);
     },
-    [selectedItem, transform]
+    [selectedItem, transform, addKeyframe, currentFrame, ensureInitialSnapshot]
   );
 
   // Handle rotation change for images
@@ -263,8 +287,12 @@ function InspectorComponent() {
         "transform",
         `rotate(${value} ${cx} ${cy}) scale(${newTransform.scaleX} ${newTransform.scaleY})`
       );
+
+      // Auto keyframe for image rotation
+      ensureInitialSnapshot();
+      addKeyframe(selectedItem.id, null, 'rotation', currentFrame, value);
     },
-    [selectedItem, transform]
+    [selectedItem, transform, addKeyframe, currentFrame, ensureInitialSnapshot]
   );
 
   // Handle scale change for images
@@ -286,18 +314,26 @@ function InspectorComponent() {
         "transform",
         `rotate(${newTransform.rotation} ${cx} ${cy}) scale(${newTransform.scaleX} ${newTransform.scaleY})`
       );
+
+      // Auto keyframe for image scale
+      ensureInitialSnapshot();
+      addKeyframe(selectedItem.id, null, axis, currentFrame, value);
     },
-    [selectedItem, transform]
+    [selectedItem, transform, addKeyframe, currentFrame, ensureInitialSnapshot]
   );
 
   // Get current variant for a group
   const getCurrentVariant = useCallback(
     (groupName: string): string | null => {
       if (!selectedItem) return null;
+      // Prefer value from animation at current frame
+      const animated = getValueAtFrame(selectedItem.id, groupName, 'activeVariant', currentFrame);
+      if (typeof animated === 'string' && animated) return animated;
+      // Fallback to locally stored active variants
       const key = `${selectedItem.id}:${groupName}`;
       return activeVariants[key] || null;
     },
-    [selectedItem, activeVariants]
+    [selectedItem, activeVariants, getValueAtFrame, currentFrame]
   );
 
   // Handle variant change
@@ -317,12 +353,11 @@ function InspectorComponent() {
       const puppetRoot = anchor.firstChild as SVGGElement | null;
       if (!puppetRoot) return;
 
-      // Find the target member to get its parent for z-ordering
+      // Compute target member only to support isBehindParent placement
       const variantInfo = group.variants.find(v => v.id === variantId);
       const targetMember = variantInfo?.targetMemberId
-        ? puppetRoot.querySelector(`#${CSS.escape(variantInfo.targetMemberId)}`) as SVGElement | null
+        ? (puppetRoot.querySelector(`#${CSS.escape(variantInfo.targetMemberId)}`) as SVGElement | null)
         : null;
-      const targetParent = targetMember?.parentNode;
 
       // Search in the entire puppet root (variants may be in separate groups)
       group.variants.forEach(variant => {
@@ -333,20 +368,13 @@ function InspectorComponent() {
             el.style.display = '';
             el.removeAttribute('display');
 
-            // Handle isBehindParent - reorder relative to target member's siblings
-            if (targetParent && targetMember) {
-              // Remove from current location
-              if (el.parentNode) {
-                el.parentNode.removeChild(el);
-              }
-
-              // Insert in target member's parent at the right position
-              const isBehind = (variant as any).isBehindParent as boolean | undefined;
-              if (isBehind) {
-                targetParent.insertBefore(el, targetParent.firstChild);
-              } else {
-                // Insert at same position as target member
-                targetParent.insertBefore(el, targetMember);
+          // Respect DOM natural order for normal cases.
+          // Only re-parent when isBehindParent=true, to the beginning of the target member's parent.
+            const isBehind = (variant as any).isBehindParent as boolean | undefined;
+            if (isBehind && targetMember) {
+              const parentLive = (targetMember.parentNode as (Node & { insertBefore: Function; firstChild: ChildNode | null }) | null) ?? null;
+              if (parentLive) {
+                parentLive.insertBefore(el, parentLive.firstChild);
               }
             }
           } else {
@@ -364,8 +392,12 @@ function InspectorComponent() {
           }
         }
       });
+
+      // Auto keyframe for active variant
+      ensureInitialSnapshot();
+      addKeyframe(selectedItem.id, groupName, 'activeVariant', currentFrame, variantId);
     },
-    [selectedItem]
+    [selectedItem, addKeyframe, currentFrame, ensureInitialSnapshot]
   );
 
   // Handle detaching image from puppet member
@@ -452,6 +484,10 @@ function InspectorComponent() {
 
       // Add back to scene
       scene.appendChild(imageEl);
+
+      // Auto keyframe for detachment
+      ensureInitialSnapshot();
+      addKeyframe(selectedItem.id, null, 'attachment', currentFrame, '');
     } catch (error) {
       alert('Failed to detach image. Please try again.');
     }
@@ -541,15 +577,19 @@ function InspectorComponent() {
         imageEl.removeAttribute('transform');
         imageEl.removeAttribute('data-draggable');
 
-        member.appendChild(imageEl);
+      member.appendChild(imageEl);
 
-        imageEl.setAttribute('data-attached-to-puppet', puppetId);
-        imageEl.setAttribute('data-attached-to-member', memberId);
-      } catch (error) {
-        alert('Failed to attach image. Please try again.');
-      }
-    },
-    [selectedItem, sceneItems]
+      imageEl.setAttribute('data-attached-to-puppet', puppetId);
+      imageEl.setAttribute('data-attached-to-member', memberId);
+
+      // Auto keyframe for attachment
+      ensureInitialSnapshot();
+      addKeyframe(selectedItem.id, null, 'attachment', currentFrame, `${puppetId}:${memberId}`);
+    } catch (error) {
+      alert('Failed to attach image. Please try again.');
+    }
+  },
+    [selectedItem, sceneItems, addKeyframe, currentFrame, ensureInitialSnapshot]
   );
 
   return (

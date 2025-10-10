@@ -1,0 +1,326 @@
+{
+  "version": "0.1.0",
+  "scene": {
+    "background": "/assets/decors/bureau.png",
+    "items": [
+      {
+        "id": "1760115486655-112327",
+        "type": "puppet",
+        "label": "Manu",
+        "source": "/assets/pantins/manu.svg",
+        "transform": {
+          "x": 340,
+          "y": 459
+        },
+        "memberTransforms": {
+          "torse": {
+            "rotation": 0
+          },
+          "cuisse_droite": {
+            "rotation": 0
+          },
+          "tibia_droite": {
+            "rotation": 0
+          },
+          "pied_droite": {
+            "rotation": 0
+          },
+          "cuisse_gauche": {
+            "rotation": 0
+          },
+          "tibia_gauche": {
+            "rotation": 0
+          },
+          "pied_gauche": {
+            "rotation": 0
+          },
+          "tete": {
+            "rotation": 0
+          },
+          "bouche": {
+            "rotation": 0
+          },
+          "haut_bras_gauche": {
+            "rotation": 0
+          },
+          "avant_bras_gauche": {
+            "rotation": 0
+          },
+          "main_gauche": {
+            "rotation": 0
+          },
+          "haut_bras_droite": {
+            "rotation": 0
+          },
+          "avant_bras_droite": {
+            "rotation": 0
+          },
+          "main_droite": {
+            "rotation": 0
+          }
+        }
+      }
+    ]
+  },
+  "animation": {
+    "duration": 300,
+    "tracks": [
+      {
+        "id": "1760115486655-112327:null:x",
+        "targetId": "1760115486655-112327",
+        "targetMemberId": null,
+        "property": "x",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 340
+          }
+        ]
+      },
+      {
+        "id": "1760115486655-112327:null:y",
+        "targetId": "1760115486655-112327",
+        "targetMemberId": null,
+        "property": "y",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 459
+          }
+        ]
+      },
+      {
+        "id": "1760115486655-112327:torse:rotation",
+        "targetId": "1760115486655-112327",
+        "targetMemberId": "torse",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760115486655-112327:cuisse_droite:rotation",
+        "targetId": "1760115486655-112327",
+        "targetMemberId": "cuisse_droite",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760115486655-112327:tibia_droite:rotation",
+        "targetId": "1760115486655-112327",
+        "targetMemberId": "tibia_droite",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760115486655-112327:pied_droite:rotation",
+        "targetId": "1760115486655-112327",
+        "targetMemberId": "pied_droite",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760115486655-112327:cuisse_gauche:rotation",
+        "targetId": "1760115486655-112327",
+        "targetMemberId": "cuisse_gauche",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760115486655-112327:tibia_gauche:rotation",
+        "targetId": "1760115486655-112327",
+        "targetMemberId": "tibia_gauche",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760115486655-112327:pied_gauche:rotation",
+        "targetId": "1760115486655-112327",
+        "targetMemberId": "pied_gauche",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760115486655-112327:tete:rotation",
+        "targetId": "1760115486655-112327",
+        "targetMemberId": "tete",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760115486655-112327:bouche:rotation",
+        "targetId": "1760115486655-112327",
+        "targetMemberId": "bouche",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760115486655-112327:haut_bras_gauche:rotation",
+        "targetId": "1760115486655-112327",
+        "targetMemberId": "haut_bras_gauche",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760115486655-112327:avant_bras_gauche:rotation",
+        "targetId": "1760115486655-112327",
+        "targetMemberId": "avant_bras_gauche",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760115486655-112327:main_gauche:rotation",
+        "targetId": "1760115486655-112327",
+        "targetMemberId": "main_gauche",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760115486655-112327:haut_bras_droite:rotation",
+        "targetId": "1760115486655-112327",
+        "targetMemberId": "haut_bras_droite",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760115486655-112327:avant_bras_droite:rotation",
+        "targetId": "1760115486655-112327",
+        "targetMemberId": "avant_bras_droite",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760115486655-112327:main_droite:rotation",
+        "targetId": "1760115486655-112327",
+        "targetMemberId": "main_droite",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760115486655-112327:bouche:activeVariant",
+        "targetId": "1760115486655-112327",
+        "targetMemberId": "bouche",
+        "property": "activeVariant",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": "bouche"
+          }
+        ]
+      },
+      {
+        "id": "1760115486655-112327:main_gauche:activeVariant",
+        "targetId": "1760115486655-112327",
+        "targetMemberId": "main_gauche",
+        "property": "activeVariant",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": "main_gauche_f"
+          },
+          {
+            "frame": 24,
+            "value": "main_gauche"
+          },
+          {
+            "frame": 39,
+            "value": "main_gauche_f"
+          }
+        ]
+      },
+      {
+        "id": "1760115486655-112327:main_droite:activeVariant",
+        "targetId": "1760115486655-112327",
+        "targetMemberId": "main_droite",
+        "property": "activeVariant",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": "main_droite_f"
+          },
+          {
+            "frame": 24,
+            "value": "main_droite"
+          },
+          {
+            "frame": 39,
+            "value": "main_droite_f"
+          }
+        ]
+      }
+    ]
+  }
+}

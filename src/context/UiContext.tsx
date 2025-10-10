@@ -12,6 +12,8 @@ export interface PuppetMetadata {
       memberId: string | null;
       name: string | null;
       isDefault: boolean;
+      isBehindParent?: boolean;
+      side?: string | null;
     }>;
   }>;
 }
