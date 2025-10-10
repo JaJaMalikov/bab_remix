@@ -183,7 +183,12 @@ export const SvgScene = memo(() => {
           setSelectedItemId(imgId);
           setUiSelectedLimb("");
         }
+        return;
       }
+
+      // Clicked on empty space - deselect all
+      setSelectedItemId(null);
+      setUiSelectedLimb("");
     };
     svg.addEventListener("dragover", onDragOver);
     svg.addEventListener("drop", onDrop);

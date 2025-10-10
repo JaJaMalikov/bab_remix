@@ -40,6 +40,7 @@ export interface UiState {
   sceneItems: Array<{ id: string; type: 'puppet' | 'image'; label: string; el: Element }>;
   addSceneItem: (item: { id: string; type: 'puppet' | 'image'; label: string; el: Element }) => void;
   removeSceneItem: (id: string) => void;
+  updateSceneItemLabel: (id: string, label: string) => void;
   bringForward: (id: string) => void;
   sendBackward: (id: string) => void;
 
@@ -73,10 +74,21 @@ export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const [importAsset, _setImportAsset] = useState<UiState['importAsset']>(undefined);
 
   const addSceneItem: UiState['addSceneItem'] = (item) => {
-    setSceneItems((prev) => [...prev.filter((i) => i.id !== item.id), item]);
+    setSceneItems((prev) => {
+      // Generate unique label if duplicate
+      const existing = prev.filter((i) => i.id !== item.id);
+      const sameName = existing.filter((i) => i.label.startsWith(item.label.replace(/ \(\d+\)$/, '')));
+      if (sameName.length > 0) {
+        item.label = `${item.label} (${sameName.length + 1})`;
+      }
+      return [...existing, item];
+    });
   };
   const removeSceneItem: UiState['removeSceneItem'] = (id) => {
     setSceneItems((prev) => prev.filter((i) => i.id !== id));
+  };
+  const updateSceneItemLabel: UiState['updateSceneItemLabel'] = (id, label) => {
+    setSceneItems((prev) => prev.map((i) => i.id === id ? { ...i, label } : i));
   };
   const bringForward: UiState['bringForward'] = (id) => {
     const item = sceneItems.find((i) => i.id === id);
@@ -157,6 +169,7 @@ export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       sceneItems,
       addSceneItem,
       removeSceneItem,
+      updateSceneItemLabel,
       bringForward,
       sendBackward,
       fitInView,

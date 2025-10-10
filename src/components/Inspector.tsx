@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback, useState, useEffect } from "react";
 import { useUi } from "../context/UiContext";
 import { FloatingPanel } from "./FloatingPanel";
 
@@ -12,6 +12,7 @@ export const Inspector: React.FC = React.memo(() => {
     angle,
     setAngle,
     removeSceneItem,
+    updateSceneItemLabel,
   } = useUi();
 
   const selectedItem = useMemo(
@@ -19,25 +20,38 @@ export const Inspector: React.FC = React.memo(() => {
     [sceneItems, selectedItemId]
   );
 
-  // Get position from element
-  const position = useMemo(() => {
-    if (!selectedItem) return { x: 0, y: 0 };
+  const [editingLabel, setEditingLabel] = useState(false);
+  const [labelInput, setLabelInput] = useState("");
+
+  // Live transform state
+  const [transform, setTransform] = useState({ x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 });
+
+  // Read transform from DOM whenever selectedItem changes
+  useEffect(() => {
+    if (!selectedItem) return;
     const el = selectedItem.el;
 
     if (selectedItem.type === "puppet") {
-      // Puppet anchor has transform="translate(x, y)"
-      const transform = el.getAttribute("transform") || "";
-      const match = transform.match(/translate\(([-\d.]+)[,\s]+([-\d.]+)\)/);
+      const transformAttr = el.getAttribute("transform") || "";
+      const match = transformAttr.match(/translate\(([-\d.]+)[,\s]+([-\d.]+)\)/);
       if (match) {
-        return { x: parseFloat(match[1] || "0"), y: parseFloat(match[2] || "0") };
+        setTransform({ x: parseFloat(match[1] || "0"), y: parseFloat(match[2] || "0"), rotation: 0, scaleX: 1, scaleY: 1 });
       }
     } else {
-      // Image has x and y attributes
       const x = parseFloat(el.getAttribute("x") || "0");
       const y = parseFloat(el.getAttribute("y") || "0");
-      return { x, y };
+      const transformAttr = el.getAttribute("transform") || "";
+
+      // Parse rotation and scale from transform
+      const rotMatch = transformAttr.match(/rotate\(([-\d.]+)/);
+      const scaleMatch = transformAttr.match(/scale\(([-\d.]+)(?:[,\s]+([-\d.]+))?\)/);
+
+      const rotation = rotMatch ? parseFloat(rotMatch[1] || "0") : 0;
+      const scaleX = scaleMatch ? parseFloat(scaleMatch[1] || "1") : 1;
+      const scaleY = scaleMatch && scaleMatch[2] ? parseFloat(scaleMatch[2]) : scaleX;
+
+      setTransform({ x, y, rotation, scaleX, scaleY });
     }
-    return { x: 0, y: 0 };
   }, [selectedItem]);
 
   // Get limb list for selected puppet
@@ -51,16 +65,22 @@ export const Inspector: React.FC = React.memo(() => {
     return Array.from(limbs).map((limb) => ({
       id: limb.id,
       name: limb.getAttribute("data-membre") || limb.id,
+      side: limb.getAttribute("data-side") || null,
     }));
   }, [selectedItem]);
 
   const handleSelectItem = useCallback(
     (id: string) => {
       setSelectedItemId(id);
-      setSelectedLimb(""); // Clear limb selection when changing item
+      setSelectedLimb("");
     },
     [setSelectedItemId, setSelectedLimb]
   );
+
+  const handleDeselectAll = useCallback(() => {
+    setSelectedItemId(null);
+    setSelectedLimb("");
+  }, [setSelectedItemId, setSelectedLimb]);
 
   const handleDeleteItem = useCallback(() => {
     if (!selectedItemId) return;
@@ -73,6 +93,20 @@ export const Inspector: React.FC = React.memo(() => {
     setSelectedLimb("");
   }, [selectedItemId, sceneItems, removeSceneItem, setSelectedItemId, setSelectedLimb]);
 
+  const handleStartEditLabel = useCallback(() => {
+    if (selectedItem) {
+      setLabelInput(selectedItem.label);
+      setEditingLabel(true);
+    }
+  }, [selectedItem]);
+
+  const handleSaveLabel = useCallback(() => {
+    if (selectedItemId && labelInput.trim()) {
+      updateSceneItemLabel(selectedItemId, labelInput.trim());
+    }
+    setEditingLabel(false);
+  }, [selectedItemId, labelInput, updateSceneItemLabel]);
+
   const handleSelectLimb = useCallback(
     (limbId: string) => {
       setSelectedLimb(limbId);
@@ -83,8 +117,8 @@ export const Inspector: React.FC = React.memo(() => {
         if (puppetRoot) {
           const limbEl = puppetRoot.querySelector(`#${CSS.escape(limbId)}`) as SVGGElement | null;
           if (limbEl) {
-            const transform = limbEl.style.transform || "";
-            const match = transform.match(/rotate\(([-\d.]+)deg\)/);
+            const transformStyle = limbEl.style.transform || "";
+            const match = transformStyle.match(/rotate\(([-\d.]+)deg\)/);
             if (match) {
               setAngle(parseFloat(match[1] || "0"));
             } else {
@@ -100,7 +134,6 @@ export const Inspector: React.FC = React.memo(() => {
   const handleAngleChange = useCallback(
     (newAngle: number) => {
       setAngle(newAngle);
-      // Apply rotation to limb
       if (selectedLimb && selectedItem?.type === "puppet") {
         const anchor = selectedItem.el;
         const puppetRoot = anchor.firstChild as SVGGElement | null;
@@ -115,18 +148,99 @@ export const Inspector: React.FC = React.memo(() => {
     [setAngle, selectedLimb, selectedItem]
   );
 
+  // Handle position change
+  const handlePositionChange = useCallback(
+    (axis: 'x' | 'y', value: number) => {
+      if (!selectedItem) return;
+      const newTransform = { ...transform, [axis]: value };
+      setTransform(newTransform);
+
+      const el = selectedItem.el;
+      if (selectedItem.type === "puppet") {
+        el.setAttribute("transform", `translate(${newTransform.x}, ${newTransform.y})`);
+      } else {
+        el.setAttribute(axis, String(value));
+      }
+    },
+    [selectedItem, transform]
+  );
+
+  // Handle rotation change for images
+  const handleRotationChange = useCallback(
+    (value: number) => {
+      if (!selectedItem || selectedItem.type !== "image") return;
+      const newTransform = { ...transform, rotation: value };
+      setTransform(newTransform);
+
+      const el = selectedItem.el;
+      const x = parseFloat(el.getAttribute("x") || "0");
+      const y = parseFloat(el.getAttribute("y") || "0");
+      const w = parseFloat(el.getAttribute("width") || "0");
+      const h = parseFloat(el.getAttribute("height") || "0");
+      const cx = x + w / 2;
+      const cy = y + h / 2;
+
+      el.setAttribute(
+        "transform",
+        `rotate(${value} ${cx} ${cy}) scale(${newTransform.scaleX} ${newTransform.scaleY})`
+      );
+    },
+    [selectedItem, transform]
+  );
+
+  // Handle scale change for images
+  const handleScaleChange = useCallback(
+    (axis: 'scaleX' | 'scaleY', value: number) => {
+      if (!selectedItem || selectedItem.type !== "image") return;
+      const newTransform = { ...transform, [axis]: value };
+      setTransform(newTransform);
+
+      const el = selectedItem.el;
+      const x = parseFloat(el.getAttribute("x") || "0");
+      const y = parseFloat(el.getAttribute("y") || "0");
+      const w = parseFloat(el.getAttribute("width") || "0");
+      const h = parseFloat(el.getAttribute("height") || "0");
+      const cx = x + w / 2;
+      const cy = y + h / 2;
+
+      el.setAttribute(
+        "transform",
+        `rotate(${newTransform.rotation} ${cx} ${cy}) scale(${newTransform.scaleX} ${newTransform.scaleY})`
+      );
+    },
+    [selectedItem, transform]
+  );
+
   return (
     <FloatingPanel
       title="Inspector"
       initialPosition={{ x: window.innerWidth - 320, y: 20 }}
       width={300}
-      height={500}
+      height={600}
       storageKey="pos:panel:inspector"
     >
       <div className="inspector-content">
         {/* Scene Items List */}
         <div className="property-group">
-          <h4>Scene Items ({sceneItems.length})</h4>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <h4 style={{ margin: 0 }}>Scene Items ({sceneItems.length})</h4>
+            {selectedItemId && (
+              <button
+                onClick={handleDeselectAll}
+                style={{
+                  padding: "4px 8px",
+                  background: "#3a3a3a",
+                  border: "1px solid #5a5a5a",
+                  borderRadius: 4,
+                  color: "#e0e0e0",
+                  cursor: "pointer",
+                  fontSize: 10,
+                }}
+              >
+                Deselect
+              </button>
+            )}
+          </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 120, overflowY: "auto" }}>
             {sceneItems.map((item) => (
               <button
@@ -162,22 +276,115 @@ export const Inspector: React.FC = React.memo(() => {
                 <div>{selectedItem.type === "puppet" ? "Puppet" : "Image"}</div>
               </div>
               <div className="property">
-                <label>Label</label>
-                <div>{selectedItem.label}</div>
+                <label>Name</label>
+                {editingLabel ? (
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <input
+                      type="text"
+                      value={labelInput}
+                      onChange={(e) => setLabelInput(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleSaveLabel()}
+                      autoFocus
+                      style={{ flex: 1, padding: "4px 6px", fontSize: 11 }}
+                    />
+                    <button onClick={handleSaveLabel} style={{ padding: "4px 8px", fontSize: 10 }}>✓</button>
+                  </div>
+                ) : (
+                  <div
+                    onClick={handleStartEditLabel}
+                    style={{ cursor: "pointer", textDecoration: "underline dotted" }}
+                  >
+                    {selectedItem.label}
+                  </div>
+                )}
               </div>
+            </div>
+
+            {/* Transform */}
+            <div className="property-group">
+              <h4>Transform</h4>
               <div className="property">
                 <label>Position X</label>
-                <div>{Math.round(position.x)}</div>
+                <input
+                  type="number"
+                  value={Math.round(transform.x)}
+                  onChange={(e) => handlePositionChange('x', parseFloat(e.target.value) || 0)}
+                  style={{ width: 80 }}
+                />
               </div>
               <div className="property">
                 <label>Position Y</label>
-                <div>{Math.round(position.y)}</div>
+                <input
+                  type="number"
+                  value={Math.round(transform.y)}
+                  onChange={(e) => handlePositionChange('y', parseFloat(e.target.value) || 0)}
+                  style={{ width: 80 }}
+                />
               </div>
-              <div className="property">
-                <button onClick={handleDeleteItem} style={{ width: "100%", padding: 8, background: "#ff6b6b", border: "none", borderRadius: 4, color: "#fff", cursor: "pointer" }}>
-                  Delete Item
-                </button>
-              </div>
+
+              {/* Rotation and Scale for Images only */}
+              {selectedItem.type === "image" && (
+                <>
+                  <div className="property">
+                    <label>Rotation</label>
+                    <input
+                      type="number"
+                      value={Math.round(transform.rotation)}
+                      onChange={(e) => handleRotationChange(parseFloat(e.target.value) || 0)}
+                      style={{ width: 80 }}
+                    />
+                  </div>
+                  <div className="property">
+                    <input
+                      type="range"
+                      min="-180"
+                      max="180"
+                      value={transform.rotation}
+                      onChange={(e) => handleRotationChange(parseFloat(e.target.value))}
+                      style={{ width: "100%" }}
+                    />
+                  </div>
+                  <div className="property">
+                    <label>Scale X</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={transform.scaleX.toFixed(2)}
+                      onChange={(e) => handleScaleChange('scaleX', parseFloat(e.target.value) || 1)}
+                      style={{ width: 80 }}
+                    />
+                  </div>
+                  <div className="property">
+                    <label>Scale Y</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={transform.scaleY.toFixed(2)}
+                      onChange={(e) => handleScaleChange('scaleY', parseFloat(e.target.value) || 1)}
+                      style={{ width: 80 }}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Delete Button */}
+            <div className="property-group">
+              <button
+                onClick={handleDeleteItem}
+                style={{
+                  width: "100%",
+                  padding: 8,
+                  background: "#ff6b6b",
+                  border: "none",
+                  borderRadius: 4,
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                }}
+              >
+                Delete Item
+              </button>
             </div>
 
             {/* Puppet Members */}
@@ -198,9 +405,12 @@ export const Inspector: React.FC = React.memo(() => {
                         cursor: "pointer",
                         textAlign: "left",
                         fontSize: 11,
+                        display: "flex",
+                        justifyContent: "space-between",
                       }}
                     >
-                      {limb.name}
+                      <span>{limb.name}</span>
+                      {limb.side && <span style={{ opacity: 0.6, fontSize: 10 }}>({limb.side})</span>}
                     </button>
                   ))}
                 </div>
