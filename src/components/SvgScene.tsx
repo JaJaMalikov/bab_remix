@@ -1,14 +1,15 @@
-import { useEffect, useRef, useState, memo, RefObject } from "react";
+import { useEffect, useRef, useState, memo } from "react";
 import { createPortal } from "react-dom";
 import { SvgPuppetInlineSimple } from "./SvgPuppet";
 import { Asset } from "./AssetItem";
 import { useUi } from "../context/UiContext";
+import type { PuppetMetadata as UiPuppetMetadata } from "../context/UiContext";
 import { useSceneDrag } from "../hooks/useSceneDrag";
 import { useScenePanZoom } from "../hooks/useScenePanZoom";
 import { useAnimationPlayback } from "../hooks/useAnimationPlayback";
 
 export const SvgScene = memo(() => {
-  const svgRef = useRef<SVGSVGElement>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
   const viewportRef = useRef<SVGGElement | null>(null);
   const bgRef = useRef<SVGImageElement | null>(null);
   const sceneRef = useRef<SVGGElement | null>(null);
@@ -41,7 +42,7 @@ export const SvgScene = memo(() => {
   });
 
   // Drag logic hook depends on coordinate conversion from the pan/zoom hook
-  const dragMovedRef = useSceneDrag(svgRef as RefObject<SVGSVGElement>, toSceneCoords);
+  const dragMovedRef = useSceneDrag(svgRef, toSceneCoords);
 
   const ensureContainers = () => {
     const svg = svgRef.current!;
@@ -373,11 +374,26 @@ export const SvgScene = memo(() => {
             as="g"
             src={p.src}
             onReady={(g, metadata) => {
-              // Store metadata
+              // Store sanitized metadata compatible with UiContext.PuppetMetadata
               if (metadata) {
+                const safeMeta: UiPuppetMetadata = {
+                  id: metadata.id,
+                  source: metadata.source,
+                  variantGroups: (metadata.variantGroups || []).map((group: any) => ({
+                    group: group.group,
+                    defaultVariantId: group.defaultVariantId ?? null,
+                    variants: (group.variants || []).map((v: any) => ({
+                      id: v.id ?? (v.memberId ?? ""),
+                      targetMemberId: v.targetMemberId ?? null,
+                      memberId: v.memberId ?? null,
+                      name: v.name ?? null,
+                      isDefault: !!v.isDefault,
+                    })),
+                  })),
+                };
                 const item = sceneItems.find(item => item.el === p.anchor);
                 if (item) {
-                  item.metadata = metadata;
+                  item.metadata = safeMeta;
                 }
               }
               // center the puppet around the original drop point

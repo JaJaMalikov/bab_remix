@@ -3,7 +3,7 @@ import { useUi } from "../context/UiContext";
 import { useAnimation, AnimationProperty } from "../context/AnimationContext";
 import { FloatingPanel } from "./FloatingPanel";
 
-export const Inspector: React.FC = React.memo(() => {
+function InspectorComponent() {
   const {
     sceneItems,
     selectedItemId,
@@ -65,13 +65,13 @@ export const Inspector: React.FC = React.memo(() => {
                 el.style.display = '';
                 el.removeAttribute('display');
                 // Show parent containers
-                let parent = el.parentElement;
+                let parent = el.parentElement as unknown as SVGElement | null;
                 while (parent && parent !== puppetRoot) {
                   if (parent.hasAttribute('display')) {
                     parent.removeAttribute('display');
-                    parent.style.display = '';
+                    (parent as SVGElement).style.display = '';
                   }
-                  parent = parent.parentElement as SVGElement | null;
+                  parent = parent.parentElement as unknown as SVGElement | null;
                 }
               } else {
                 el.style.display = 'none';
@@ -341,7 +341,8 @@ export const Inspector: React.FC = React.memo(() => {
               }
 
               // Insert in target member's parent at the right position
-              if (variant.isBehindParent) {
+              const isBehind = (variant as any).isBehindParent as boolean | undefined;
+              if (isBehind) {
                 targetParent.insertBefore(el, targetParent.firstChild);
               } else {
                 // Insert at same position as target member
@@ -353,13 +354,13 @@ export const Inspector: React.FC = React.memo(() => {
           }
 
           // Also handle parent container (var_XXX groups have display="none" attribute)
-          let parent = el.parentElement;
+          let parent = el.parentElement as unknown as SVGElement | null;
           while (parent && parent !== puppetRoot) {
             if (parent.hasAttribute('display')) {
               parent.removeAttribute('display');
-              parent.style.display = '';
+              (parent as SVGElement).style.display = '';
             }
-            parent = parent.parentElement as SVGElement | null;
+            parent = parent.parentElement as unknown as SVGElement | null;
           }
         }
       });
@@ -409,7 +410,8 @@ export const Inspector: React.FC = React.memo(() => {
       const sceneY = sceneCenter.y - imgH / 2;
 
       // Get inherited rotation from parent member
-      const parentCTM = imageEl.parentElement?.getCTM();
+      const parentGraphics = imageEl.parentNode as (SVGGraphicsElement | null);
+      const parentCTM = parentGraphics?.getCTM();
       const viewportCTM = viewport.getCTM();
       let inheritedRotation = 0;
 
@@ -507,12 +509,6 @@ export const Inspector: React.FC = React.memo(() => {
         const imgY = parseFloat(imageEl.getAttribute('y') || '0');
         const imgCenterX = imgX + imgW / 2;
         const imgCenterY = imgY + imgH / 2;
-
-        // Get puppet anchor transform
-        const puppetTransform = puppetAnchor.getAttribute('transform') || '';
-        const puppetMatch = puppetTransform.match(/translate\(([-\d.]+)[,\s]+([-\d.]+)\)/);
-        const puppetTx = puppetMatch ? parseFloat(puppetMatch[1] || '0') : 0;
-        const puppetTy = puppetMatch ? parseFloat(puppetMatch[2] || '0') : 0;
 
         // Get member's transformation matrix relative to viewport (not screen!)
         const memberMatrix = member.getScreenCTM();
@@ -1002,4 +998,6 @@ export const Inspector: React.FC = React.memo(() => {
       </div>
     </FloatingPanel>
   );
-});
+}
+
+export const Inspector = React.memo(InspectorComponent);

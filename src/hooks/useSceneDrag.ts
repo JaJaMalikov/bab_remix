@@ -29,7 +29,7 @@ type Coords = { x: number; y: number };
  * @returns A ref indicating if a drag operation moved, to differentiate from a click.
  */
 export const useSceneDrag = (
-  svgRef: React.RefObject<SVGSVGElement>,
+  svgRef: React.RefObject<SVGSVGElement | null>,
   toSceneCoords: (clientX: number, clientY: number) => Coords
 ) => {
   const draggingRef = useRef<DraggingRef>(null);
