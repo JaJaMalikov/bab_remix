@@ -19,6 +19,8 @@ export const SvgScene = memo(() => {
     setSelectedPuppet: setUiSelectedPuppet,
     setSelectedLimb: setUiSelectedLimb,
     setAngle: setUiAngle,
+    setSelectedItemId,
+    sceneItems,
     addSceneItem,
     setFitInView,
     setImportAsset,
@@ -152,17 +154,34 @@ export const SvgScene = memo(() => {
         dragMovedRef.current = false;
         return;
       }
-      
+
+      // Check if clicked on a limb (member of puppet)
       const limb = (e.target as Element)?.closest('[data-membre]') as SVGGElement | null;
       if (limb && limb.id) {
         const puppetAnchor = limb.closest('[data-anchor="puppet"]');
         const puppetRoot = puppetAnchor?.firstChild as SVGGElement | null;
 
-        if (puppetRoot) {
+        if (puppetRoot && puppetAnchor) {
+          // Find the puppet item ID
+          const puppetItem = sceneItems.find(item => item.el === puppetAnchor);
+          if (puppetItem) {
+            setSelectedItemId(puppetItem.id);
+          }
           setUiSelectedPuppet(puppetRoot);
           setUiSelectedLimb(limb.id);
           const a = getLimbRotationFromDom(limb);
           setUiAngle(Math.round(a));
+        }
+        return;
+      }
+
+      // Check if clicked on an image
+      const img = (e.target as Element)?.closest('[data-draggable="true"]') as SVGImageElement | null;
+      if (img) {
+        const imgId = img.getAttribute('data-id');
+        if (imgId) {
+          setSelectedItemId(imgId);
+          setUiSelectedLimb("");
         }
       }
     };
@@ -174,7 +193,7 @@ export const SvgScene = memo(() => {
       svg.removeEventListener("drop", onDrop);
       svg.removeEventListener("click", onClick);
     };
-  }, [toSceneCoords, setUiSelectedLimb, setUiAngle, dragMovedRef, setUiSelectedPuppet]);
+  }, [toSceneCoords, setUiSelectedLimb, setUiAngle, dragMovedRef, setUiSelectedPuppet, setSelectedItemId, sceneItems]);
 
   // --- Helpers to set/get rotation on a limb group ---
   const setLimbRotationOnDom = (

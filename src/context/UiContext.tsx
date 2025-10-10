@@ -13,6 +13,10 @@ export interface UiState {
   angle: number;
   setAngle: (deg: number) => void;
 
+  // Selected scene item (for Inspector)
+  selectedItemId: string | null;
+  setSelectedItemId: (id: string | null) => void;
+
   playing: boolean;
   setPlaying: (v: boolean) => void;
 
@@ -54,6 +58,7 @@ export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const [selectedLimb, setSelectedLimb] = useState<string>("");
   const [angle, setAngle] = useState<number>(0);
   const [playing, setPlaying] = useState<boolean>(false);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [showTimeline, setShowTimeline] = useState<boolean>(true);
   const [timelineHeight, setTimelineHeight] = useState<number>(200);
   const [showLibrary, setShowLibrary] = useState<boolean>(true);
@@ -133,6 +138,8 @@ export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       setAngle,
       playing,
       setPlaying,
+      selectedItemId,
+      setSelectedItemId,
       showTimeline,
       setShowTimeline,
       timelineHeight,
@@ -163,6 +170,7 @@ export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       selectedLimb,
       angle,
       playing,
+      selectedItemId,
       showTimeline,
       timelineHeight,
       showLibrary,
