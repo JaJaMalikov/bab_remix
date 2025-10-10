@@ -142,14 +142,29 @@ function processSvgText(svgText: string, metadata?: PuppetMetadata | null): SVGG
   }
   if (!torse) return null;
 
-  const g = torse.cloneNode(true) as SVGGElement;
-  if (metadata) {
-    applyMetadataToGroup(g, metadata);
-  } else {
-    fallbackProcessLimbs(g);
-    fallbackReorderBehindElements(g);
+  // Create container group
+  const container = document.createElementNS("http://www.w3.org/2000/svg", "g");
+
+  // Clone the main puppet (torse)
+  const mainPuppet = torse.cloneNode(true) as SVGGElement;
+  container.appendChild(mainPuppet);
+
+  // Clone all variant groups (siblings of torse)
+  const children = Array.from(svgRoot.children);
+  for (const child of children) {
+    if (child !== torse && child.nodeType === 1) {
+      const cloned = child.cloneNode(true) as SVGElement;
+      container.appendChild(cloned);
+    }
   }
-  return g;
+
+  if (metadata) {
+    applyMetadataToGroup(container, metadata);
+  } else {
+    fallbackProcessLimbs(container);
+    fallbackReorderBehindElements(container);
+  }
+  return container;
 }
 
 const toMetadataUrl = (src: string) => {
@@ -190,7 +205,7 @@ type Props = {
   className?: string;
   transform?: string;
   style?: CSSProperties;
-  onReady?: (rootGroup: SVGGElement) => void;
+  onReady?: (rootGroup: SVGGElement, metadata?: PuppetMetadata | null) => void;
 };
 
 export function SvgPuppetInlineSimple({
@@ -211,7 +226,7 @@ export function SvgPuppetInlineSimple({
   useEffect(() => {
     let cancelled = false;
 
-    const injectPuppet = (puppetG: SVGGElement) => {
+    const injectPuppet = (puppetG: SVGGElement, metadata?: PuppetMetadata | null) => {
       const host = ref.current;
       if (!host) return;
 
@@ -223,22 +238,24 @@ export function SvgPuppetInlineSimple({
       // Append the new puppet and notify parent
       host.appendChild(puppetG);
       injectedRef.current = puppetG;
-      onReadyRef.current?.(puppetG);
+      onReadyRef.current?.(puppetG, metadata);
     }
 
     async function run() {
+      const metadataUrl = toMetadataUrl(src);
+
       // 1. Check cache first
       if (puppetCache.has(src)) {
         const cachedG = puppetCache.get(src)!;
+        const metadata = metadataUrl ? metadataCache.get(metadataUrl) ?? null : null;
         if (!cancelled) {
-          injectPuppet(cachedG.cloneNode(true) as SVGGElement);
+          injectPuppet(cachedG.cloneNode(true) as SVGGElement, metadata);
         }
         return;
       }
 
       // 2. If not in cache, fetch and process
       try {
-        const metadataUrl = toMetadataUrl(src);
         const [metadata, response] = await Promise.all([
           fetchMetadata(metadataUrl),
           fetch(src),
@@ -257,7 +274,7 @@ export function SvgPuppetInlineSimple({
           // 3. Store in cache
           puppetCache.set(src, processedG);
           if (!cancelled) {
-            injectPuppet(processedG.cloneNode(true) as SVGGElement);
+            injectPuppet(processedG.cloneNode(true) as SVGGElement, metadata);
           }
         }
       } catch (error) {

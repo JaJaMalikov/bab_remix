@@ -30,7 +30,7 @@ export const SvgScene = memo(() => {
     setImportAsset,
   } = useUi();
   const [puppets, setPuppets] = useState<
-    { id: string; src: string; anchor: SVGGElement; dropX: number; dropY: number }[]
+    { id: string; src: string; anchor: SVGGElement; dropX: number; dropY: number; metadata?: any }[]
   >([]);
 
   // All pan, zoom, and coordinate logic is now in the hook
@@ -110,6 +110,7 @@ export const SvgScene = memo(() => {
       anchor.style.cursor = "move";
       scene.appendChild(anchor);
       const id = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
+      // Metadata will be added in onReady callback
       setPuppets((prev) => [...prev, { id, src: asset.path, anchor, dropX: x, dropY: y }]);
       addSceneItem({ id, type: 'puppet', label: asset.name || asset.path.split('/').pop() || 'Puppet', el: anchor });
       return;
@@ -371,7 +372,14 @@ export const SvgScene = memo(() => {
           <SvgPuppetInlineSimple
             as="g"
             src={p.src}
-            onReady={(g) => {
+            onReady={(g, metadata) => {
+              // Store metadata
+              if (metadata) {
+                const item = sceneItems.find(item => item.el === p.anchor);
+                if (item) {
+                  item.metadata = metadata;
+                }
+              }
               // center the puppet around the original drop point
               try {
                 const bbox = g.getBBox();

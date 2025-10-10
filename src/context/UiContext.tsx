@@ -1,5 +1,29 @@
 import React, { createContext, useContext, useMemo, useState } from "react";
 
+export interface PuppetMetadata {
+  id: string;
+  source: string;
+  variantGroups: Array<{
+    group: string;
+    defaultVariantId: string | null;
+    variants: Array<{
+      id: string;
+      targetMemberId: string | null;
+      memberId: string | null;
+      name: string | null;
+      isDefault: boolean;
+    }>;
+  }>;
+}
+
+export interface SceneItem {
+  id: string;
+  type: 'puppet' | 'image';
+  label: string;
+  el: Element;
+  metadata?: PuppetMetadata;
+}
+
 export interface UiState {
   selectedPuppet: SVGGElement | null;
   setSelectedPuppet: (g: SVGGElement | null) => void;
@@ -34,8 +58,8 @@ export interface UiState {
   setShowTracks: (v: boolean) => void;
 
   // Scene items for Layers panel
-  sceneItems: Array<{ id: string; type: 'puppet' | 'image'; label: string; el: Element }>;
-  addSceneItem: (item: { id: string; type: 'puppet' | 'image'; label: string; el: Element }) => void;
+  sceneItems: SceneItem[];
+  addSceneItem: (item: SceneItem) => void;
   removeSceneItem: (id: string) => void;
   updateSceneItemLabel: (id: string, label: string) => void;
   bringForward: (id: string) => void;
@@ -63,9 +87,7 @@ export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const [showLayers, setShowLayers] = useState<boolean>(false);
   const [showToolbar, setShowToolbar] = useState<boolean>(true);
   const [showTracks, setShowTracks] = useState<boolean>(true);
-  const [sceneItems, setSceneItems] = useState<
-    Array<{ id: string; type: 'puppet' | 'image'; label: string; el: Element }>
-  >([]);
+  const [sceneItems, setSceneItems] = useState<SceneItem[]>([]);
   const [fitInView, _setFitInView] = useState<UiState['fitInView']>(undefined);
   const [importAsset, _setImportAsset] = useState<UiState['importAsset']>(undefined);
 
