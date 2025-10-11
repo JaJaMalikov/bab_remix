@@ -1,0 +1,423 @@
+{
+  "version": "0.1.0",
+  "scene": {
+    "background": "/assets/decors/bureau.png",
+    "items": [
+      {
+        "id": "1760122074085-54543",
+        "type": "puppet",
+        "label": "Manu",
+        "source": "/assets/pantins/manu.svg",
+        "transform": {
+          "x": 112,
+          "y": 463
+        },
+        "memberTransforms": {
+          "torse": {
+            "rotation": 0
+          },
+          "cuisse_droite": {
+            "rotation": 0
+          },
+          "tibia_droite": {
+            "rotation": 0
+          },
+          "pied_droite": {
+            "rotation": 0
+          },
+          "cuisse_gauche": {
+            "rotation": 0
+          },
+          "tibia_gauche": {
+            "rotation": 0
+          },
+          "pied_gauche": {
+            "rotation": 0
+          },
+          "tete": {
+            "rotation": 0
+          },
+          "bouche": {
+            "rotation": 0
+          },
+          "haut_bras_gauche": {
+            "rotation": -46
+          },
+          "avant_bras_gauche": {
+            "rotation": 0
+          },
+          "main_gauche": {
+            "rotation": 0
+          },
+          "haut_bras_droite": {
+            "rotation": 46
+          },
+          "avant_bras_droite": {
+            "rotation": 0
+          },
+          "main_droite": {
+            "rotation": 0
+          }
+        }
+      },
+      {
+        "id": "1760122083360-797394",
+        "type": "image",
+        "label": "Lunettes manu",
+        "source": "/assets/objets/lunettes_manu.svg",
+        "transform": {
+          "x": 234,
+          "y": 61,
+          "rotation": 0,
+          "scaleX": 1,
+          "scaleY": 1
+        }
+      }
+    ]
+  },
+  "animation": {
+    "duration": 300,
+    "tracks": [
+      {
+        "id": "1760122074085-54543:null:x",
+        "targetId": "1760122074085-54543",
+        "targetMemberId": null,
+        "property": "x",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 112
+          },
+          {
+            "frame": 48,
+            "value": 741
+          }
+        ]
+      },
+      {
+        "id": "1760122074085-54543:null:y",
+        "targetId": "1760122074085-54543",
+        "targetMemberId": null,
+        "property": "y",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 463
+          },
+          {
+            "frame": 48,
+            "value": 414
+          }
+        ]
+      },
+      {
+        "id": "1760122074085-54543:torse:rotation",
+        "targetId": "1760122074085-54543",
+        "targetMemberId": "torse",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760122074085-54543:cuisse_droite:rotation",
+        "targetId": "1760122074085-54543",
+        "targetMemberId": "cuisse_droite",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760122074085-54543:tibia_droite:rotation",
+        "targetId": "1760122074085-54543",
+        "targetMemberId": "tibia_droite",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760122074085-54543:pied_droite:rotation",
+        "targetId": "1760122074085-54543",
+        "targetMemberId": "pied_droite",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760122074085-54543:cuisse_gauche:rotation",
+        "targetId": "1760122074085-54543",
+        "targetMemberId": "cuisse_gauche",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760122074085-54543:tibia_gauche:rotation",
+        "targetId": "1760122074085-54543",
+        "targetMemberId": "tibia_gauche",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760122074085-54543:pied_gauche:rotation",
+        "targetId": "1760122074085-54543",
+        "targetMemberId": "pied_gauche",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760122074085-54543:tete:rotation",
+        "targetId": "1760122074085-54543",
+        "targetMemberId": "tete",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760122074085-54543:bouche:rotation",
+        "targetId": "1760122074085-54543",
+        "targetMemberId": "bouche",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760122074085-54543:haut_bras_gauche:rotation",
+        "targetId": "1760122074085-54543",
+        "targetMemberId": "haut_bras_gauche",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": -46
+          },
+          {
+            "frame": 20,
+            "value": 69
+          }
+        ]
+      },
+      {
+        "id": "1760122074085-54543:avant_bras_gauche:rotation",
+        "targetId": "1760122074085-54543",
+        "targetMemberId": "avant_bras_gauche",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760122074085-54543:main_gauche:rotation",
+        "targetId": "1760122074085-54543",
+        "targetMemberId": "main_gauche",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760122074085-54543:haut_bras_droite:rotation",
+        "targetId": "1760122074085-54543",
+        "targetMemberId": "haut_bras_droite",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 46
+          },
+          {
+            "frame": 20,
+            "value": -69
+          }
+        ]
+      },
+      {
+        "id": "1760122074085-54543:avant_bras_droite:rotation",
+        "targetId": "1760122074085-54543",
+        "targetMemberId": "avant_bras_droite",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760122074085-54543:main_droite:rotation",
+        "targetId": "1760122074085-54543",
+        "targetMemberId": "main_droite",
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760122074085-54543:bouche:activeVariant",
+        "targetId": "1760122074085-54543",
+        "targetMemberId": "bouche",
+        "property": "activeVariant",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": "bouche"
+          }
+        ]
+      },
+      {
+        "id": "1760122074085-54543:main_gauche:activeVariant",
+        "targetId": "1760122074085-54543",
+        "targetMemberId": "main_gauche",
+        "property": "activeVariant",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": "main_gauche"
+          },
+          {
+            "frame": 20,
+            "value": "main_gauche_rev"
+          }
+        ]
+      },
+      {
+        "id": "1760122074085-54543:main_droite:activeVariant",
+        "targetId": "1760122074085-54543",
+        "targetMemberId": "main_droite",
+        "property": "activeVariant",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": "main_droite"
+          },
+          {
+            "frame": 20,
+            "value": "main_droite_rev"
+          }
+        ]
+      },
+      {
+        "id": "1760122083360-797394:null:x",
+        "targetId": "1760122083360-797394",
+        "targetMemberId": null,
+        "property": "x",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 234
+          }
+        ]
+      },
+      {
+        "id": "1760122083360-797394:null:y",
+        "targetId": "1760122083360-797394",
+        "targetMemberId": null,
+        "property": "y",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 61
+          }
+        ]
+      },
+      {
+        "id": "1760122083360-797394:null:rotation",
+        "targetId": "1760122083360-797394",
+        "targetMemberId": null,
+        "property": "rotation",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "id": "1760122083360-797394:null:scaleX",
+        "targetId": "1760122083360-797394",
+        "targetMemberId": null,
+        "property": "scaleX",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 1
+          }
+        ]
+      },
+      {
+        "id": "1760122083360-797394:null:scaleY",
+        "targetId": "1760122083360-797394",
+        "targetMemberId": null,
+        "property": "scaleY",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 1
+          }
+        ]
+      },
+      {
+        "id": "1760122083360-797394:null:attachment",
+        "targetId": "1760122083360-797394",
+        "targetMemberId": null,
+        "property": "attachment",
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": "1760122074085-54543:tete"
+          },
+          {
+            "frame": 48,
+            "value": ""
+          }
+        ]
+      }
+    ]
+  }
+}

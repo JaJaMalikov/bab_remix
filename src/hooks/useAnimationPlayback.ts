@@ -194,5 +194,72 @@ export const useAnimationPlayback = () => {
         }
       });
     });
+
+    // Finally, update positions of images attached to puppet members (follow mode)
+    sceneItems.forEach((item) => {
+      if (item.type !== 'image') return;
+      const el = item.el as SVGImageElement;
+      const puppetId = el.getAttribute('data-attached-to-puppet');
+      const memberId = el.getAttribute('data-attached-to-member');
+      const offCx = el.getAttribute('data-attachment-offset-cx');
+      const offCy = el.getAttribute('data-attachment-offset-cy');
+      if (!puppetId || !memberId || offCx === null || offCy === null) return;
+
+      const puppet = sceneItems.find((i) => i.id === puppetId);
+      if (!puppet || puppet.type !== 'puppet') return;
+
+      const puppetAnchor = puppet.el as SVGGElement;
+      const puppetRoot = puppetAnchor.firstChild as SVGGElement | null;
+      if (!puppetRoot) return;
+
+      let member = puppetRoot.querySelector(`#${CSS.escape(memberId)}`) as SVGGElement | null;
+      if (!member) return;
+
+      // If base member is hidden due to variants, find the visible variant targeting this group
+      if (member.style.display === 'none' || member.getAttribute('display') === 'none') {
+        const visibleVariant = Array.from(puppetRoot.querySelectorAll(`[data-variant-groupe]`))
+          .find((node) => {
+            const targetId = (node as Element).getAttribute('data-variant-target') || (node as Element).id;
+            return (
+              targetId === memberId &&
+              (node as Element).getAttribute('display') !== 'none' &&
+              (node as HTMLElement).style.display !== 'none'
+            );
+          }) as SVGGElement | null;
+        if (visibleVariant) member = visibleVariant;
+      }
+
+      const svg = el.ownerSVGElement;
+      if (!svg) return;
+      const viewport = svg.querySelector('[data-viewport]') as SVGGElement | null;
+      if (!viewport) return;
+
+      const memberMatrix = member.getScreenCTM();
+      const viewportMatrix = viewport.getScreenCTM();
+      if (!memberMatrix || !viewportMatrix) return;
+
+      // member local to viewport matrix
+      const viewportInverse = viewportMatrix.inverse();
+      const memberLocalToViewport = viewportInverse.multiply(memberMatrix);
+
+      const localPoint = svg.createSVGPoint();
+      localPoint.x = parseFloat(offCx);
+      localPoint.y = parseFloat(offCy);
+      const scenePoint = localPoint.matrixTransform(memberLocalToViewport);
+
+      const imgW = parseFloat(el.getAttribute('width') || '0');
+      const imgH = parseFloat(el.getAttribute('height') || '0');
+      const sceneX = scenePoint.x - imgW / 2;
+      const sceneY = scenePoint.y - imgH / 2;
+
+      el.setAttribute('x', String(Math.round(sceneX)));
+      el.setAttribute('y', String(Math.round(sceneY)));
+
+      // Apply member rotation to image
+      const angle = Math.atan2(memberLocalToViewport.b, memberLocalToViewport.a) * (180 / Math.PI);
+      const cx = sceneX + imgW / 2;
+      const cy = sceneY + imgH / 2;
+      el.setAttribute('transform', `rotate(${angle} ${cx} ${cy})`);
+    });
   }, [currentFrame, tracks, sceneItems, getValueAtFrame, refreshTrigger]);
 };

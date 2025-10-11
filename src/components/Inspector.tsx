@@ -431,15 +431,10 @@ function InspectorComponent() {
       const centerPoint = svg.createSVGPoint();
       centerPoint.x = imgX + imgW / 2;
       centerPoint.y = imgY + imgH / 2;
-      const screenCenter = centerPoint.matrixTransform(imageScreenCTM);
 
       // Convert to viewport (scene) coordinates
-      const viewportInverse = viewportScreenCTM.inverse();
-      const sceneCenter = screenCenter.matrixTransform(viewportInverse);
 
       // Calculate top-left from center
-      const sceneX = sceneCenter.x - imgW / 2;
-      const sceneY = sceneCenter.y - imgH / 2;
 
       // Get inherited rotation from parent member
       const parentGraphics = imageEl.parentNode as (SVGGraphicsElement | null);
@@ -453,41 +448,18 @@ function InspectorComponent() {
         inheritedRotation = angle;
       }
 
-      // Get the scene group
-      const scene = svg.querySelector('[data-scene="true"]') as SVGGElement | null;
-      if (!scene) return;
-
-      // Remove from current parent (member)
-      if (imageEl.parentNode) {
-        imageEl.parentNode.removeChild(imageEl);
-      }
-
-      // Set position in scene coordinates
-      imageEl.setAttribute('x', String(Math.round(sceneX)));
-      imageEl.setAttribute('y', String(Math.round(sceneY)));
-
-      // Apply inherited rotation as transform
-      if (Math.abs(inheritedRotation) > 0.1) {
-        const cx = sceneX + imgW / 2;
-        const cy = sceneY + imgH / 2;
-        imageEl.setAttribute('transform', `rotate(${inheritedRotation} ${cx} ${cy})`);
-      } else {
-        imageEl.removeAttribute('transform');
-      }
-
-      // Restore draggable
+      // Just clear attachment markers; no DOM reparent
       imageEl.setAttribute('data-draggable', 'true');
-
-      // Remove attachment markers
       imageEl.removeAttribute('data-attached-to-puppet');
       imageEl.removeAttribute('data-attached-to-member');
-
-      // Add back to scene
-      scene.appendChild(imageEl);
+      imageEl.removeAttribute('data-attachment-offset-cx');
+      imageEl.removeAttribute('data-attachment-offset-cy');
 
       // Auto keyframe for detachment
       ensureInitialSnapshot();
       addKeyframe(selectedItem.id, null, 'attachment', currentFrame, '');
+      // Request immediate visual refresh
+      window.dispatchEvent(new Event('animation:refresh'));
     } catch (error) {
       alert('Failed to detach image. Please try again.');
     }
@@ -562,29 +534,19 @@ function InspectorComponent() {
         localPoint.y = imgCenterY;
         const localTransformed = localPoint.matrixTransform(memberInverse);
 
-        // Calculate top-left from center
-        const localX = localTransformed.x - imgW / 2;
-        const localY = localTransformed.y - imgH / 2;
-
-        // Remove from scene
-        if (imageEl.parentNode) {
-          imageEl.parentNode.removeChild(imageEl);
-        }
-
-        // Set position and attach
-        imageEl.setAttribute('x', String(Math.round(localX)));
-        imageEl.setAttribute('y', String(Math.round(localY)));
-        imageEl.removeAttribute('transform');
-        imageEl.removeAttribute('data-draggable');
-
-      member.appendChild(imageEl);
-
+      // Store attachment offsets (center in member local coords); do not reparent
       imageEl.setAttribute('data-attached-to-puppet', puppetId);
       imageEl.setAttribute('data-attached-to-member', memberId);
+      imageEl.setAttribute('data-attachment-offset-cx', String(localTransformed.x));
+      imageEl.setAttribute('data-attachment-offset-cy', String(localTransformed.y));
+      imageEl.removeAttribute('transform');
+      imageEl.removeAttribute('data-draggable');
 
       // Auto keyframe for attachment
       ensureInitialSnapshot();
       addKeyframe(selectedItem.id, null, 'attachment', currentFrame, `${puppetId}:${memberId}`);
+      // Request immediate visual refresh
+      window.dispatchEvent(new Event('animation:refresh'));
     } catch (error) {
       alert('Failed to attach image. Please try again.');
     }
