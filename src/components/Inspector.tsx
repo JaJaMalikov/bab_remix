@@ -226,15 +226,8 @@ function InspectorComponent() {
     [setAngle, selectedLimb, selectedItem, addKeyframe, currentFrame, ensureInitialSnapshot]
   );
 
-  // Add keyframe handler
-  const handleAddKeyframe = useCallback(
-    (property: AnimationProperty, value: number) => {
-      if (!selectedItemId) return;
-      const targetMemberId = selectedLimb || null;
-      addKeyframe(selectedItemId, targetMemberId, property, currentFrame, value);
-    },
-    [selectedItemId, selectedLimb, currentFrame, addKeyframe]
-  );
+  // Note: Auto-keyframing is handled within change handlers (handlePositionChange, handleRotationChange, etc.)
+  // No separate manual keyframe button needed with the new design
 
   // Check if property has keyframe at current frame
   const hasKeyframe = useCallback(
@@ -436,17 +429,7 @@ function InspectorComponent() {
 
       // Calculate top-left from center
 
-      // Get inherited rotation from parent member
-      const parentGraphics = imageEl.parentNode as (SVGGraphicsElement | null);
-      const parentCTM = parentGraphics?.getCTM();
-      const viewportCTM = viewport.getCTM();
-      let inheritedRotation = 0;
-
-      if (parentCTM && viewportCTM) {
-        // Extract rotation from matrix
-        const angle = Math.atan2(parentCTM.b, parentCTM.a) * (180 / Math.PI);
-        inheritedRotation = angle;
-      }
+      // Note: Inherited rotation calculation was here but not currently used
 
       // Just clear attachment markers; no DOM reparent
       imageEl.setAttribute('data-draggable', 'true');
@@ -646,150 +629,141 @@ function InspectorComponent() {
             {/* Transform */}
             <div className="property-group">
               <h4>Transform</h4>
-              <div className="property">
-                <label>Position X</label>
-                <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                  <input
-                    type="number"
-                    value={Math.round(transform.x)}
-                    onChange={(e) => handlePositionChange('x', parseFloat(e.target.value) || 0)}
-                    style={{ width: 80 }}
-                  />
-                  <button
-                    onClick={() => handleAddKeyframe('x', transform.x)}
-                    title="Add keyframe"
-                    style={{
-                      padding: "4px 8px",
-                      background: hasKeyframe('x') ? "#5a9fd4" : "#3a3a3a",
-                      border: "none",
-                      borderRadius: 4,
-                      color: "#fff",
-                      cursor: "pointer",
-                      fontSize: 12,
-                    }}
-                  >
-                    ◆
-                  </button>
+
+              {/* Position Group */}
+              <div className="property-subgroup">
+                <div className="property-subgroup-header">
+                  <span>Position</span>
+                  {(hasKeyframe('x') || hasKeyframe('y')) && (
+                    <span className="keyframe-indicator" title="Has keyframes">◆</span>
+                  )}
                 </div>
-              </div>
-              <div className="property">
-                <label>Position Y</label>
-                <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                  <input
-                    type="number"
-                    value={Math.round(transform.y)}
-                    onChange={(e) => handlePositionChange('y', parseFloat(e.target.value) || 0)}
-                    style={{ width: 80 }}
-                  />
-                  <button
-                    onClick={() => handleAddKeyframe('y', transform.y)}
-                    title="Add keyframe"
-                    style={{
-                      padding: "4px 8px",
-                      background: hasKeyframe('y') ? "#5a9fd4" : "#3a3a3a",
-                      border: "none",
-                      borderRadius: 4,
-                      color: "#fff",
-                      cursor: "pointer",
-                      fontSize: 12,
-                    }}
-                  >
-                    ◆
-                  </button>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <div>
+                    <label style={{ fontSize: 10, color: "#808080", display: "block", marginBottom: 4 }}>X</label>
+                    <input
+                      type="number"
+                      value={Math.round(transform.x)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '' || val === '-') {
+                          handlePositionChange('x', 0);
+                        } else {
+                          const num = parseFloat(val);
+                          if (!isNaN(num)) handlePositionChange('x', num);
+                        }
+                      }}
+                      onBlur={(e) => {
+                        const val = parseFloat(e.target.value);
+                        if (isNaN(val)) handlePositionChange('x', 0);
+                      }}
+                      style={{ width: "100%" }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 10, color: "#808080", display: "block", marginBottom: 4 }}>Y</label>
+                    <input
+                      type="number"
+                      value={Math.round(transform.y)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '' || val === '-') {
+                          handlePositionChange('y', 0);
+                        } else {
+                          const num = parseFloat(val);
+                          if (!isNaN(num)) handlePositionChange('y', num);
+                        }
+                      }}
+                      onBlur={(e) => {
+                        const val = parseFloat(e.target.value);
+                        if (isNaN(val)) handlePositionChange('y', 0);
+                      }}
+                      style={{ width: "100%" }}
+                    />
+                  </div>
                 </div>
               </div>
 
               {/* Rotation and Scale for Images only */}
               {selectedItem.type === "image" && (
                 <>
-                  <div className="property">
-                    <label>Rotation</label>
-                    <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                  {/* Rotation Group */}
+                  <div className="property-subgroup">
+                    <div className="property-subgroup-header">
+                      <span>Rotation</span>
+                      {hasKeyframe('rotation') && (
+                        <span className="keyframe-indicator" title="Has keyframe">◆</span>
+                      )}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <input
                         type="number"
+                        min="-180"
+                        max="180"
                         value={Math.round(transform.rotation)}
-                        onChange={(e) => handleRotationChange(parseFloat(e.target.value) || 0)}
-                        style={{ width: 80 }}
-                      />
-                      <button
-                        onClick={() => handleAddKeyframe('rotation', transform.rotation)}
-                        title="Add keyframe"
-                        style={{
-                          padding: "4px 8px",
-                          background: hasKeyframe('rotation') ? "#5a9fd4" : "#3a3a3a",
-                          border: "none",
-                          borderRadius: 4,
-                          color: "#fff",
-                          cursor: "pointer",
-                          fontSize: 12,
+                        onChange={(e) => {
+                          let val = parseFloat(e.target.value);
+                          if (isNaN(val)) val = 0;
+                          val = Math.max(-180, Math.min(180, val));
+                          handleRotationChange(val);
                         }}
-                      >
-                        ◆
-                      </button>
+                        style={{ width: 70, flexShrink: 0 }}
+                      />
+                      <span style={{ fontSize: 11, color: "#808080", flexShrink: 0 }}>°</span>
+                      <input
+                        type="range"
+                        min="-180"
+                        max="180"
+                        value={transform.rotation}
+                        onChange={(e) => handleRotationChange(parseFloat(e.target.value))}
+                        style={{ flex: 1 }}
+                      />
                     </div>
                   </div>
-                  <div className="property">
-                    <input
-                      type="range"
-                      min="-180"
-                      max="180"
-                      value={transform.rotation}
-                      onChange={(e) => handleRotationChange(parseFloat(e.target.value))}
-                      style={{ width: "100%" }}
-                    />
-                  </div>
-                  <div className="property">
-                    <label>Scale X</label>
-                    <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={transform.scaleX.toFixed(2)}
-                        onChange={(e) => handleScaleChange('scaleX', parseFloat(e.target.value) || 1)}
-                        style={{ width: 80 }}
-                      />
-                      <button
-                        onClick={() => handleAddKeyframe('scaleX', transform.scaleX)}
-                        title="Add keyframe"
-                        style={{
-                          padding: "4px 8px",
-                          background: hasKeyframe('scaleX') ? "#5a9fd4" : "#3a3a3a",
-                          border: "none",
-                          borderRadius: 4,
-                          color: "#fff",
-                          cursor: "pointer",
-                          fontSize: 12,
-                        }}
-                      >
-                        ◆
-                      </button>
+
+                  {/* Scale Group */}
+                  <div className="property-subgroup">
+                    <div className="property-subgroup-header">
+                      <span>Scale</span>
+                      {(hasKeyframe('scaleX') || hasKeyframe('scaleY')) && (
+                        <span className="keyframe-indicator" title="Has keyframes">◆</span>
+                      )}
                     </div>
-                  </div>
-                  <div className="property">
-                    <label>Scale Y</label>
-                    <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={transform.scaleY.toFixed(2)}
-                        onChange={(e) => handleScaleChange('scaleY', parseFloat(e.target.value) || 1)}
-                        style={{ width: 80 }}
-                      />
-                      <button
-                        onClick={() => handleAddKeyframe('scaleY', transform.scaleY)}
-                        title="Add keyframe"
-                        style={{
-                          padding: "4px 8px",
-                          background: hasKeyframe('scaleY') ? "#5a9fd4" : "#3a3a3a",
-                          border: "none",
-                          borderRadius: 4,
-                          color: "#fff",
-                          cursor: "pointer",
-                          fontSize: 12,
-                        }}
-                      >
-                        ◆
-                      </button>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      <div>
+                        <label style={{ fontSize: 10, color: "#808080", display: "block", marginBottom: 4 }}>X</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0.1"
+                          max="10"
+                          value={transform.scaleX.toFixed(2)}
+                          onChange={(e) => {
+                            let val = parseFloat(e.target.value);
+                            if (isNaN(val)) val = 1;
+                            val = Math.max(0.1, Math.min(10, val));
+                            handleScaleChange('scaleX', val);
+                          }}
+                          style={{ width: "100%" }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 10, color: "#808080", display: "block", marginBottom: 4 }}>Y</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0.1"
+                          max="10"
+                          value={transform.scaleY.toFixed(2)}
+                          onChange={(e) => {
+                            let val = parseFloat(e.target.value);
+                            if (isNaN(val)) val = 1;
+                            val = Math.max(0.1, Math.min(10, val));
+                            handleScaleChange('scaleY', val);
+                          }}
+                          style={{ width: "100%" }}
+                        />
+                      </div>
                     </div>
                   </div>
                 </>
@@ -951,41 +925,37 @@ function InspectorComponent() {
             {selectedLimb && selectedItem.type === "puppet" && (
               <div className="property-group">
                 <h4>Member Transform</h4>
-                <div className="property">
-                  <label>Rotation</label>
-                  <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                <div className="property-subgroup">
+                  <div className="property-subgroup-header">
+                    <span>Rotation</span>
+                    {hasKeyframe('rotation') && (
+                      <span className="keyframe-indicator" title="Has keyframe">◆</span>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <input
                       type="number"
+                      min="-180"
+                      max="180"
                       value={Math.round(angle)}
-                      onChange={(e) => handleAngleChange(parseFloat(e.target.value) || 0)}
-                      style={{ width: 80 }}
-                    />
-                    <button
-                      onClick={() => handleAddKeyframe('rotation', angle)}
-                      title="Add keyframe"
-                      style={{
-                        padding: "4px 8px",
-                        background: hasKeyframe('rotation') ? "#5a9fd4" : "#3a3a3a",
-                        border: "none",
-                        borderRadius: 4,
-                        color: "#fff",
-                        cursor: "pointer",
-                        fontSize: 12,
+                      onChange={(e) => {
+                        let val = parseFloat(e.target.value);
+                        if (isNaN(val)) val = 0;
+                        val = Math.max(-180, Math.min(180, val));
+                        handleAngleChange(val);
                       }}
-                    >
-                      ◆
-                    </button>
+                      style={{ width: 70, flexShrink: 0 }}
+                    />
+                    <span style={{ fontSize: 11, color: "#808080", flexShrink: 0 }}>°</span>
+                    <input
+                      type="range"
+                      min="-180"
+                      max="180"
+                      value={angle}
+                      onChange={(e) => handleAngleChange(parseFloat(e.target.value))}
+                      style={{ flex: 1 }}
+                    />
                   </div>
-                </div>
-                <div className="property">
-                  <input
-                    type="range"
-                    min="-180"
-                    max="180"
-                    value={angle}
-                    onChange={(e) => handleAngleChange(parseFloat(e.target.value))}
-                    style={{ width: "100%" }}
-                  />
                 </div>
               </div>
             )}
@@ -993,8 +963,24 @@ function InspectorComponent() {
         )}
 
         {!selectedItem && (
-          <div style={{ color: "#808080", fontSize: 12, padding: 16, textAlign: "center" }}>
-            Select an item from the list above
+          <div className="empty-state">
+            <div className="empty-state-icon">🎯</div>
+            <div className="empty-state-title">No Selection</div>
+            <div className="empty-state-text">
+              {sceneItems.length === 0
+                ? "Drag items from the Library to get started"
+                : "Select an item above to view its properties"}
+            </div>
+            {sceneItems.length === 0 && (
+              <div className="empty-state-hint">
+                <div style={{ fontSize: 11, marginBottom: 8 }}>Quick Tips:</div>
+                <ul style={{ fontSize: 10, textAlign: "left", margin: 0, paddingLeft: 20, color: "#808080" }}>
+                  <li>Open Library panel to browse assets</li>
+                  <li>Drag puppets or images to the scene</li>
+                  <li>Select items to animate them</li>
+                </ul>
+              </div>
+            )}
           </div>
         )}
       </div>
