@@ -85,24 +85,21 @@ function parsePantinFile(filePath) {
     const element = node;
     const idAttr = element.getAttribute("id");
     const membreAttr = element.getAttribute("data-membre");
+    const isMembre = parseBoolean(membreAttr);
+    const variantGroupAttr = element.getAttribute("data-variant-groupe");
 
     let localMemberId = currentMemberId;
 
-    if (membreAttr && idAttr) {
-      const parentId = currentMemberId ?? null;
+    // Parse member elements (with data-membre="true" and id)
+    if (isMembre && idAttr) {
+      const parentId = element.getAttribute("data-parent") || null;
       const member = {
         id: idAttr,
-        name: membreAttr,
+        name: idAttr,
         parentId,
         children: [],
-        pivot: parsePivot(element.getAttribute("data-pivot")),
-        interactive: parseBoolean(element.getAttribute("data-interactive")),
-        draggable: parseBoolean(element.getAttribute("data-draggable")),
+        pivot: parseTransformOrigin(element.getAttribute("transform-origin")),
         isBehindParent: parseBoolean(element.getAttribute("data-isbehindparent")),
-        side: element.getAttribute("data-side") || null,
-        variantGroup: element.getAttribute("data-variant-groupe") || null,
-        variantName: element.getAttribute("data-variant-name") || null,
-        variantDefault: parseBoolean(element.getAttribute("data-variant-default")),
       };
       members.push(member);
       memberMap.set(idAttr, member);
@@ -110,35 +107,38 @@ function parsePantinFile(filePath) {
         const parent = memberMap.get(parentId);
         if (parent) parent.children.push(idAttr);
       }
-      if (member.variantGroup) {
-        variantOwners.set(member.variantGroup, idAttr);
-      }
       localMemberId = idAttr;
     }
 
-    const variantGroupAttr = element.getAttribute("data-variant-groupe");
-    if (variantGroupAttr) {
+    // Parse variant elements (without id, with data-variant-groupe)
+    if (variantGroupAttr && !isMembre) {
       const group = variantGroups.get(variantGroupAttr) ?? {
         group: variantGroupAttr,
         defaultVariantId: null,
         variants: [],
       };
-      const ownerId = variantOwners.get(variantGroupAttr) ?? null;
+
+      const variantName = element.getAttribute("data-variant-name") || null;
+      const isDefault = parseBoolean(element.getAttribute("data-variant-default"));
+
       const variant = {
-        id: idAttr || null,
-        targetMemberId: localMemberId ?? currentMemberId ?? ownerId,
-        memberId: membreAttr && idAttr ? idAttr : null,
-        name: element.getAttribute("data-variant-name") || null,
-        isDefault: parseBoolean(element.getAttribute("data-variant-default")),
+        targetMemberId: currentMemberId,
+        name: variantName,
+        isDefault,
         isBehindParent: parseBoolean(element.getAttribute("data-isbehindparent")),
-        side: element.getAttribute("data-side") || null,
       };
+
       group.variants.push(variant);
-      if (variant.isDefault && !group.defaultVariantId) {
-        group.defaultVariantId =
-          variant.id ?? variant.memberId ?? variant.targetMemberId ?? ownerId;
+
+      // Set default variant ID (use a generated ID based on group and variant name)
+      if (isDefault && !group.defaultVariantId) {
+        group.defaultVariantId = currentMemberId;
       }
+
       variantGroups.set(variantGroupAttr, group);
+
+      // Don't continue walking children of variants
+      return;
     }
 
     const children = getChildElements(element);
@@ -186,11 +186,12 @@ function parseNumberAttribute(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function parsePivot(value) {
+function parseTransformOrigin(value) {
   if (!value) return null;
-  const [xStr, yStr] = value.split(",");
-  const x = parseFloat((xStr || "").trim());
-  const y = parseFloat((yStr || "").trim());
+  // Support both comma and space separators (e.g., "286, 275" or "286 275")
+  const parts = value.split(/[,\s]+/);
+  const x = parseFloat((parts[0] || "").trim());
+  const y = parseFloat((parts[1] || "").trim());
   if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
   return { x, y };
 }

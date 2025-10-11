@@ -26,7 +26,7 @@ export const useDraggable = (initialPosition: Position, options: Options = {}) =
   positionRef.current = position;
 
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
-  const { storageKey, panelWidth = 300, panelHeight = 400 } = options;
+  const { storageKey } = options;
   const optionsRef = useRef(options);
   optionsRef.current = options;
 

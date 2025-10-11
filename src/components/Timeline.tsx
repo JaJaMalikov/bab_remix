@@ -1,195 +1,238 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUi } from "../context/UiContext";
 import { useAnimation } from "../context/AnimationContext";
 import { useVerticalResize } from "../hooks/useVerticalResize";
 
-export const Timeline: React.FC = React.memo(() => {
-  const { showTracks, setShowTracks, timelineHeight, setTimelineHeight, sceneItems } = useUi();
-  const { duration, currentFrame, setCurrentFrame, tracks, removeKeyframe, playing, setPlaying, snapshotKeyframes } = useAnimation();
+const MIN_HEIGHT = 40;
+const MAX_HEIGHT = 100;
 
-  // Use the custom hook for resizing logic
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
+const extractClientX = (event: MouseEvent | TouchEvent): number | null => {
+  if ("touches" in event) {
+    const touch = event.touches[0] ?? event.changedTouches?.[0];
+    return touch?.clientX ?? null;
+  }
+  return (event as MouseEvent).clientX ?? null;
+};
+
+export const Timeline: React.FC = React.memo(() => {
+  const { timelineHeight, setTimelineHeight, sceneItems } = useUi();
+  const {
+    duration,
+    currentFrame,
+    setCurrentFrame,
+    tracks,
+    removeKeyframe,
+    playing,
+    setPlaying,
+    snapshotKeyframes,
+  } = useAnimation();
+
   const { onResizeMouseDown } = useVerticalResize({
     height: timelineHeight,
     setHeight: setTimelineHeight,
-    maxHeight: Math.round(window.innerHeight * 0.6),
+    minHeight: MIN_HEIGHT,
+    maxHeight: MAX_HEIGHT,
   });
 
-  // Get tracks grouped by target
-  const groupedTracks = useMemo(() => {
-    const groups: Record<string, typeof tracks> = {};
-    tracks.forEach((track) => {
-      const key = `${track.targetId}:${track.targetMemberId || 'null'}`;
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(track);
-    });
-    return groups;
-  }, [tracks]);
+  const laneRef = useRef<HTMLDivElement | null>(null);
+  const [isScrubbing, setIsScrubbing] = useState(false);
 
-  // Get label for track target
-  const getTargetLabel = useCallback(
-    (targetId: string, memberId: string | null) => {
-      const item = sceneItems.find((i) => i.id === targetId);
-      if (!item) return "Unknown";
-      if (!memberId) return item.label;
-      // Get member name from DOM
-      const anchor = item.el;
-      const puppetRoot = anchor.firstChild as SVGGElement | null;
-      if (puppetRoot) {
-        const memberEl = puppetRoot.querySelector(`#${CSS.escape(memberId)}`) as SVGGElement | null;
-        if (memberEl) {
-          const memberName = memberEl.getAttribute("data-membre") || memberId;
-          return `${item.label} › ${memberName}`;
-        }
-      }
-      return `${item.label} › ${memberId}`;
-    },
-    [sceneItems]
+  const maxFrameIndex = Math.max(duration - 1, 0);
+  const frameDivisor = Math.max(maxFrameIndex, 1);
+
+  useEffect(() => {
+    if (timelineHeight > MAX_HEIGHT) {
+      setTimelineHeight(MAX_HEIGHT);
+    }
+  }, [setTimelineHeight, timelineHeight]);
+
+  const frameMarkers = useMemo(
+    () =>
+      Array.from(
+        tracks.reduce((acc, track) => {
+          track.keyframes.forEach((kf) => {
+            acc.set(kf.frame, (acc.get(kf.frame) ?? 0) + 1);
+          });
+          return acc;
+        }, new Map<number, number>())
+      )
+        .sort((a, b) => a[0] - b[0])
+        .map(([frame, count]) => ({ frame, count })),
+    [tracks]
   );
 
-  // Memoized event handlers
+  const currentFramePosition = useMemo(() => (currentFrame / frameDivisor) * 100, [currentFrame, frameDivisor]);
+
+  const updateFrameFromClientX = useCallback(
+    (clientX: number) => {
+      const rect = laneRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const relativeX = clamp(clientX - rect.left, 0, rect.width);
+      const ratio = rect.width > 0 ? relativeX / rect.width : 0;
+      const nextFrame = Math.round(ratio * frameDivisor);
+      setCurrentFrame(clamp(nextFrame, 0, frameDivisor));
+    },
+    [frameDivisor, setCurrentFrame]
+  );
+
+  const handleLanePointerDown = useCallback(
+    (event: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      const initialClientX =
+        "touches" in event ? event.touches[0]?.clientX ?? null : event.clientX ?? null;
+      if (initialClientX == null) return;
+
+      setIsScrubbing(true);
+      updateFrameFromClientX(initialClientX);
+
+      const handleMove = (moveEvent: MouseEvent | TouchEvent) => {
+        const clientX = extractClientX(moveEvent);
+        if (clientX != null) {
+          updateFrameFromClientX(clientX);
+        }
+      };
+
+      const stopScrubbing = () => {
+        setIsScrubbing(false);
+        window.removeEventListener("mousemove", handleMove);
+        window.removeEventListener("touchmove", handleMove);
+        window.removeEventListener("mouseup", stopScrubbing);
+        window.removeEventListener("touchend", stopScrubbing);
+        window.removeEventListener("touchcancel", stopScrubbing);
+      };
+
+      window.addEventListener("mousemove", handleMove);
+      window.addEventListener("touchmove", handleMove, { passive: false });
+      window.addEventListener("mouseup", stopScrubbing);
+      window.addEventListener("touchend", stopScrubbing);
+      window.addEventListener("touchcancel", stopScrubbing);
+    },
+    [updateFrameFromClientX]
+  );
+
+  const gotoFrame = useCallback(
+    (frame: number) => {
+      setCurrentFrame(clamp(frame, 0, frameDivisor));
+    },
+    [frameDivisor, setCurrentFrame]
+  );
+
+  const clearFrameKeyframes = useCallback(
+    (frame: number) => {
+      tracks.forEach((track) => {
+        const hasKeyframe = track.keyframes.some((kf) => kf.frame === frame);
+        if (hasKeyframe) {
+          removeKeyframe(track.id, frame);
+        }
+      });
+    },
+    [removeKeyframe, tracks]
+  );
+
+  const tickStep = useMemo(() => {
+    if (frameDivisor > 240) return 24;
+    if (frameDivisor > 120) return 12;
+    if (frameDivisor > 60) return 8;
+    if (frameDivisor > 30) return 4;
+    return 1;
+  }, [frameDivisor]);
+
   const handleTogglePlay = useCallback(() => {
-    if (playing) {
-      setPlaying(false);
-    } else {
-      setPlaying(true);
-    }
-  }, [playing, setPlaying]);
+    setPlaying((prev) => !prev);
+  }, [setPlaying]);
 
   const handleStop = useCallback(() => {
     setPlaying(false);
     setCurrentFrame(0);
-  }, [setPlaying, setCurrentFrame]);
-
-  const handleToggleTracks = useCallback(() => setShowTracks(!showTracks), [showTracks, setShowTracks]);
-
-  const handleScrubberChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setCurrentFrame(parseInt(e.target.value, 10));
-    },
-    [setCurrentFrame]
-  );
-
-  const handleKeyframeClick = useCallback(
-    (trackId: string, frame: number) => {
-      if (window.confirm(`Delete keyframe at frame ${frame}?`)) {
-        removeKeyframe(trackId, frame);
-      }
-    },
-    [removeKeyframe]
-  );
+  }, [setCurrentFrame, setPlaying]);
 
   return (
-    <div className="timeline" style={{ position: "relative", height: timelineHeight }}>
-      <div className="timeline-resizer" onMouseDown={onResizeMouseDown} title="Drag to resize" />
-      <div className="timeline-header">
-        <div className="timeline-controls">
-          <button onClick={handleTogglePlay}>{playing ? "⏸ Pause" : "▶ Play"}</button>
-          <button onClick={handleStop}>⏹ Stop</button>
+    <div className="timeline" style={{ height: timelineHeight }}>
+      <div className="timeline-resizer" onMouseDown={onResizeMouseDown} title="Redimensionner la timeline" />
+      <div className="timeline-toolbar">
+        <div className="timeline-toolbar-left">
           <button
-            onClick={() => snapshotKeyframes(sceneItems)}
-            title="Snapshot all items in the scene to the current frame"
-            style={{
-              padding: "4px 8px",
-              background: "#ff9800",
-              border: "none",
-              borderRadius: 4,
-              color: "#fff",
-              cursor: "pointer",
-              fontSize: 12,
-              fontWeight: 600,
-              marginLeft: 8,
-            }}
+            type="button"
+            className="timeline-icon-button"
+            title={playing ? "Pause" : "Lecture"}
+            onClick={handleTogglePlay}
           >
-            Snapshot All
+            {playing ? "⏸" : "▶"}
           </button>
-          <span className="frame-counter">
-            Frame: {currentFrame} / {duration}
-          </span>
-          <button style={{ marginLeft: "auto" }} onClick={handleToggleTracks}>
-            {showTracks ? "Hide Tracks" : "Show Tracks"}
+          <button
+            type="button"
+            className="timeline-icon-button"
+            title="Revenir au début"
+            onClick={handleStop}
+          >
+            ⏹
+          </button>
+          <button
+            type="button"
+            className="timeline-icon-button"
+            title="Snapshot des éléments à ce frame"
+            onClick={() => snapshotKeyframes(sceneItems)}
+          >
+            📸
           </button>
         </div>
+        <div className="timeline-toolbar-right">
+          <span className="timeline-readout" title="Frame courant">
+            <span className="timeline-readout-label">Frame</span>
+            <span className="timeline-readout-value">{currentFrame}</span>
+          </span>
+          <span className="timeline-readout" title="Durée totale">
+            <span className="timeline-readout-label">Durée</span>
+            <span className="timeline-readout-value">{duration || 0}</span>
+          </span>
+        </div>
       </div>
-      <div className="timeline-content">
-        {showTracks && (
-          <div className="timeline-tracks">
-            {Object.entries(groupedTracks).map(([key, trackGroup]) => {
-              const [targetId, memberId] = key.split(":");
-              return (
-                <div key={key} style={{ marginBottom: 8 }}>
-                  <div style={{ fontSize: 11, color: "#b0b0b0", padding: "4px 8px", background: "#1e1e1e", borderRadius: 4 }}>
-                    {getTargetLabel(targetId, memberId === "null" ? null : memberId)}
-                  </div>
-                  {trackGroup.map((track) => (
-                    <div key={track.id} className="track">
-                      <div className="track-label" style={{ fontSize: 11 }}>
-                        {track.property}
-                      </div>
-                      <div className="track-keyframes" style={{ position: "relative" }}>
-                        {track.keyframes.map((kf) => {
-                          const left = (kf.frame / duration) * 100;
-                          const valueStr = typeof kf.value === "number" ? kf.value.toFixed(2) : String(kf.value);
-                          const title = [
-                            `Frame: ${kf.frame}`,
-                            `Value: ${valueStr}`,
-                            kf.variant && `Variant: ${kf.variant}`,
-                            kf.attachedObject && `Attached: ${kf.attachedObject.type} (${kf.attachedObject.id})`,
-                          ].filter(Boolean).join("\n");
-
-                          return (
-                            <div
-                              key={kf.frame}
-                              onClick={() => handleKeyframeClick(track.id, kf.frame)}
-                              style={{
-                                position: "absolute",
-                                left: `${left}%`,
-                                top: "50%",
-                                transform: "translate(-50%, -50%)",
-                                width: 8,
-                                height: 8,
-                                background: kf.variant ? "#ff9800" : "#5a9fd4", // Orange for variant
-                                borderRadius: "50%",
-                                cursor: "pointer",
-                                border: kf.attachedObject ? "2px solid #f44336" : "1px solid #fff", // Red border for attached object
-                              }}
-                              title={title}
-                            />
-                          );
-                        })}
-                        {/* Current frame indicator */}
-                        <div
-                          style={{
-                            position: "absolute",
-                            left: `${(currentFrame / duration) * 100}%`,
-                            top: 0,
-                            bottom: 0,
-                            width: 2,
-                            background: "#ff6b6b",
-                            pointerEvents: "none",
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-            {tracks.length === 0 && (
-              <div style={{ color: "#808080", fontSize: 12, padding: 16, textAlign: "center" }}>
-                No animation tracks yet. Add keyframes from the Inspector.
-              </div>
-            )}
-          </div>
+      <div
+        className={`timeline-lane${isScrubbing ? " is-scrubbing" : ""}`}
+        ref={laneRef}
+        onMouseDown={handleLanePointerDown}
+        onTouchStart={handleLanePointerDown}
+        role="presentation"
+      >
+        <div className="timeline-lane-background" />
+        <div className="timeline-playhead" style={{ left: `${currentFramePosition}%` }} />
+        {frameMarkers.map(({ frame, count }) => {
+          const left = (frame / frameDivisor) * 100;
+          return (
+            <button
+              key={frame}
+              type="button"
+              className={`timeline-marker${frame === currentFrame ? " is-active" : ""}`}
+              style={{ left: `${left}%` }}
+              title={
+                count > 1 ? `${count} keyframes au frame ${frame}` : `Keyframe au frame ${frame}`
+              }
+              onClick={() => gotoFrame(frame)}
+              onDoubleClick={() => clearFrameKeyframes(frame)}
+            >
+              <span className="timeline-marker-stem" />
+              <span className="timeline-marker-cap" />
+            </button>
+          );
+        })}
+        {frameMarkers.length === 0 && (
+          <div className="timeline-lane-empty">Aucune keyframe pour l’instant.</div>
         )}
-        <div className="timeline-scrubber">
-          <input
-            type="range"
-            min={0}
-            max={duration - 1}
-            value={currentFrame}
-            onChange={handleScrubberChange}
-            className="scrubber"
-          />
+        <div className="timeline-lane-scale">
+          {Array.from({ length: frameDivisor + 1 }, (_, index) => {
+            if (index !== 0 && index !== frameDivisor && index % tickStep !== 0) {
+              return null;
+            }
+            const left = (index / frameDivisor) * 100;
+            return (
+              <div key={index} className="timeline-lane-tick" style={{ left: `${left}%` }}>
+                <span className="timeline-lane-tick-line" />
+                <span className="timeline-lane-tick-label">{index}</span>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
