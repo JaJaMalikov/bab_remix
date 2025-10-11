@@ -7,6 +7,8 @@ export interface Position {
 
 type Options = {
   storageKey?: string;
+  panelWidth?: number;
+  panelHeight?: number;
 };
 
 /**
@@ -24,7 +26,9 @@ export const useDraggable = (initialPosition: Position, options: Options = {}) =
   positionRef.current = position;
 
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
-  const { storageKey } = options;
+  const { storageKey, panelWidth = 300, panelHeight = 400 } = options;
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
 
   // Load position from storage on mount or when storageKey changes.
   useEffect(() => {
@@ -56,10 +60,39 @@ export const useDraggable = (initialPosition: Position, options: Options = {}) =
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (dragStartPos.current) {
-      setPosition({
-        x: e.clientX - dragStartPos.current.x,
-        y: e.clientY - dragStartPos.current.y,
-      });
+      let x = e.clientX - dragStartPos.current.x;
+      let y = e.clientY - dragStartPos.current.y;
+
+      // Edge snapping with 20px threshold
+      const snapThreshold = 20;
+      const windowWidth = window.innerWidth;
+      const windowHeight = window.innerHeight;
+      const panelW = optionsRef.current.panelWidth || 300;
+      const panelH = optionsRef.current.panelHeight || 400;
+
+      // Snap to left edge
+      if (x < snapThreshold && x > -snapThreshold) {
+        x = 0;
+      }
+
+      // Snap to top edge
+      if (y < snapThreshold && y > -snapThreshold) {
+        y = 0;
+      }
+
+      // Snap to right edge
+      if (x + panelW > windowWidth - snapThreshold &&
+          x + panelW < windowWidth + snapThreshold) {
+        x = windowWidth - panelW;
+      }
+
+      // Snap to bottom edge
+      if (y + panelH > windowHeight - snapThreshold &&
+          y + panelH < windowHeight + snapThreshold) {
+        y = windowHeight - panelH;
+      }
+
+      setPosition({ x, y });
     }
   }, []); // Now stable, no dependencies
 

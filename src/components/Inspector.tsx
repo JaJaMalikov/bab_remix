@@ -14,6 +14,7 @@ function InspectorComponent() {
     setAngle,
     removeSceneItem,
     updateSceneItemLabel,
+    setShowInspector,
   } = useUi();
 
   const { currentFrame, addKeyframe, getTrack, removeAllTracksForTarget, getValueAtFrame, snapshotKeyframes } = useAnimation();
@@ -432,23 +433,8 @@ function InspectorComponent() {
       centerPoint.x = imgX + imgW / 2;
       centerPoint.y = imgY + imgH / 2;
 
-      // Convert to viewport (scene) coordinates
 
-      // Calculate top-left from center
-
-      // Get inherited rotation from parent member
-      const parentGraphics = imageEl.parentNode as (SVGGraphicsElement | null);
-      const parentCTM = parentGraphics?.getCTM();
-      const viewportCTM = viewport.getCTM();
-      let inheritedRotation = 0;
-
-      if (parentCTM && viewportCTM) {
-        // Extract rotation from matrix
-        const angle = Math.atan2(parentCTM.b, parentCTM.a) * (180 / Math.PI);
-        inheritedRotation = angle;
-      }
-
-      // Just clear attachment markers; no DOM reparent
+            // Just clear attachment markers; no DOM reparent
       imageEl.setAttribute('data-draggable', 'true');
       imageEl.removeAttribute('data-attached-to-puppet');
       imageEl.removeAttribute('data-attached-to-member');
@@ -561,6 +547,7 @@ function InspectorComponent() {
       width={300}
       height={600}
       storageKey="pos:panel:inspector"
+      onClose={() => setShowInspector(false)}
     >
       <div className="inspector-content">
         {/* Scene Items List */}

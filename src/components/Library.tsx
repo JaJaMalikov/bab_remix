@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, memo, useCallback } from "react";
 import { FloatingPanel } from "./FloatingPanel";
 import { AssetItem, Asset } from "./AssetItem";
+import { useUi } from "../context/UiContext";
 
 type ManifestEntry = {
   name: string;
@@ -12,6 +13,7 @@ const mapCategoryToType = (c: ManifestEntry["category"]): Asset["type"] =>
   c === "pantins" ? "pantin" : c === "objets" ? "objet" : "decor";
 
 export const Library = memo(() => {
+  const { setShowLibrary } = useUi();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [category, setCategory] = useState<"all" | "pantins" | "objets" | "decors">("all");
   const [query, setQuery] = useState("");
@@ -66,6 +68,7 @@ export const Library = memo(() => {
       width={300}
       height={400}
       storageKey="pos:panel:library"
+      onClose={() => setShowLibrary(false)}
     >
       <div className="library-content">
         <div className="library-search">
