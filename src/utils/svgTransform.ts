@@ -23,3 +23,35 @@ export function getRotationFromTransform(element: SVGElement): number {
   const v = parseFloat(rm[1] || "0");
   return Number.isFinite(v) ? v : 0;
 }
+
+const parseNumber = (value: string | null, fallback: number): number => {
+  const parsed = value === null ? NaN : parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+/**
+ * Apply rotation and scale transforms to an SVG image element, keeping it centered.
+ */
+export function setImageTransform(
+  element: SVGImageElement,
+  rotation: number,
+  scaleX = 1,
+  scaleY?: number,
+): void {
+  const x = parseNumber(element.getAttribute("x"), 0);
+  const y = parseNumber(element.getAttribute("y"), 0);
+  const width = parseNumber(element.getAttribute("width"), 0);
+  const height = parseNumber(element.getAttribute("height"), 0);
+
+  const cx = x + width / 2;
+  const cy = y + height / 2;
+  const finalRotation = Number.isFinite(rotation) ? rotation : 0;
+  const finalScaleX = Number.isFinite(scaleX) ? scaleX : 1;
+  const rawScaleY = scaleY ?? finalScaleX;
+  const finalScaleY = Number.isFinite(rawScaleY) ? rawScaleY : 1;
+
+  element.setAttribute(
+    "transform",
+    `rotate(${finalRotation} ${cx} ${cy}) scale(${finalScaleX} ${finalScaleY})`,
+  );
+}

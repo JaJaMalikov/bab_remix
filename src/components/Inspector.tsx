@@ -2,7 +2,8 @@ import React, { useMemo, useCallback, useState, useEffect } from "react";
 import { useUi } from "../context/UiContext";
 import { useAnimation, AnimationProperty } from "../context/AnimationContext";
 import { FloatingPanel } from "./FloatingPanel";
-import { setRotationWithOrigin, getRotationFromTransform } from "../utils/svgTransform";
+import { setRotationWithOrigin, getRotationFromTransform, setImageTransform } from "../utils/svgTransform";
+import { applyVariantSelection, findVisibleVariant } from "../utils/svgVariants";
 
 function InspectorComponent() {
   const {
@@ -61,61 +62,13 @@ function InspectorComponent() {
     selectedItem.metadata.variantGroups.forEach(group => {
       const key = `${selectedItem.id}:${group.group}`;
 
-      // If no variant is set for this group, set the default
       if (!activeVariants[key]) {
         const defaultVariant = group.variants.find(v => v.isDefault) || group.variants[0];
-        const defaultName = defaultVariant?.name;
+        const defaultName = defaultVariant?.name ?? null;
+
         if (defaultName) {
           setActiveVariants(prev => ({ ...prev, [key]: defaultName }));
-
-          // Find the target member containing the variants
-          const targetMemberId = defaultVariant.targetMemberId;
-          if (!targetMemberId) return;
-          const targetMember = puppetRoot.querySelector(`#${CSS.escape(targetMemberId)}`) as SVGGElement | null;
-          if (!targetMember) return;
-
-          // Find the parent member of targetMember
-          const targetMemberParentId = targetMember.getAttribute('data-parent');
-          const targetMemberParent = targetMemberParentId
-            ? puppetRoot.querySelector(`#${CSS.escape(targetMemberParentId)}`) as SVGGElement | null
-            : null;
-
-          // Hide all except default
-          group.variants.forEach(variant => {
-            if (!variant.name) return;
-            // Find variant element by data-variant-name attribute
-            // Search in entire puppet root because variants with isBehindParent may have been moved
-            const el = puppetRoot.querySelector(`[data-variant-groupe="${group.group}"][data-variant-name="${variant.name}"]`) as SVGElement | null;
-
-            if (el) {
-              if (variant.name === defaultName) {
-                el.style.display = '';
-                el.removeAttribute('display');
-                // Show parent containers
-                let parent = el.parentElement as unknown as SVGElement | null;
-                while (parent && parent !== puppetRoot) {
-                  if (parent.hasAttribute('display')) {
-                    parent.removeAttribute('display');
-                    (parent as SVGElement).style.display = '';
-                  }
-                  parent = parent.parentElement as unknown as SVGElement | null;
-                }
-                // If isBehindParent: move the TARGET MEMBER before its parent
-                if (variant.isBehindParent && targetMember && targetMemberParent && targetMemberParent.parentNode) {
-                  if (targetMember.nextSibling !== targetMemberParent) {
-                    targetMemberParent.parentNode.insertBefore(targetMember, targetMemberParent);
-                  }
-                } else if (!variant.isBehindParent && targetMember && targetMemberParent) {
-                  // Restore member to its normal position as child of its parent
-                  if (targetMember.parentNode !== targetMemberParent) {
-                    targetMemberParent.appendChild(targetMember);
-                  }
-                }
-              } else {
-                el.style.display = 'none';
-              }
-            }
-          });
+          applyVariantSelection(puppetRoot, group, defaultName);
         }
       }
     });
@@ -289,18 +242,8 @@ function InspectorComponent() {
       const newTransform = { ...transform, rotation: value };
       setTransform(newTransform);
 
-      const el = selectedItem.el;
-      const x = parseFloat(el.getAttribute("x") || "0");
-      const y = parseFloat(el.getAttribute("y") || "0");
-      const w = parseFloat(el.getAttribute("width") || "0");
-      const h = parseFloat(el.getAttribute("height") || "0");
-      const cx = x + w / 2;
-      const cy = y + h / 2;
-
-      el.setAttribute(
-        "transform",
-        `rotate(${value} ${cx} ${cy}) scale(${newTransform.scaleX} ${newTransform.scaleY})`
-      );
+      const el = selectedItem.el as SVGImageElement;
+      setImageTransform(el, value, newTransform.scaleX, newTransform.scaleY);
 
       // Auto keyframe for image rotation
       ensureInitialSnapshot();
@@ -316,18 +259,8 @@ function InspectorComponent() {
       const newTransform = { ...transform, [axis]: value };
       setTransform(newTransform);
 
-      const el = selectedItem.el;
-      const x = parseFloat(el.getAttribute("x") || "0");
-      const y = parseFloat(el.getAttribute("y") || "0");
-      const w = parseFloat(el.getAttribute("width") || "0");
-      const h = parseFloat(el.getAttribute("height") || "0");
-      const cx = x + w / 2;
-      const cy = y + h / 2;
-
-      el.setAttribute(
-        "transform",
-        `rotate(${newTransform.rotation} ${cx} ${cy}) scale(${newTransform.scaleX} ${newTransform.scaleY})`
-      );
+      const el = selectedItem.el as SVGImageElement;
+      setImageTransform(el, newTransform.rotation, newTransform.scaleX, newTransform.scaleY);
 
       // Auto keyframe for image scale
       ensureInitialSnapshot();
@@ -362,68 +295,11 @@ function InspectorComponent() {
       const key = `${selectedItem.id}:${groupName}`;
       setActiveVariants(prev => ({ ...prev, [key]: variantName }));
 
-      // Find the puppet root
       const anchor = selectedItem.el;
       const puppetRoot = anchor.firstChild as SVGGElement | null;
       if (!puppetRoot) return;
 
-      // Get the target member containing the variants
-      const targetMemberId = group.variants[0]?.targetMemberId;
-      if (!targetMemberId) return;
-
-      const targetMember = puppetRoot.querySelector(`#${CSS.escape(targetMemberId)}`) as SVGGElement | null;
-      if (!targetMember) return;
-
-      // Find the parent member of targetMember in the hierarchy
-      const targetMemberData = selectedItem.metadata?.variantGroups
-        ? (() => {
-            // Search in members list
-            const members = selectedItem.metadata?.variantGroups.flatMap(g =>
-              g.variants.map(v => v.targetMemberId)
-            ).filter((id, i, arr) => id && arr.indexOf(id) === i); // unique
-
-            // Actually we need to search in a members list from metadata
-            // For now, find parent by querying the DOM
-            const parentId = targetMember?.getAttribute('data-parent');
-            return parentId;
-          })()
-        : null;
-
-      const targetMemberParent = targetMemberData
-        ? puppetRoot.querySelector(`#${CSS.escape(targetMemberData)}`) as SVGGElement | null
-        : null;
-
-      // Switch variants
-      group.variants.forEach(variant => {
-        if (!variant.name) return;
-
-        // Find variant element by data-variant-name attribute
-        // Search in entire puppet root because variants with isBehindParent may have been moved
-        const el = puppetRoot.querySelector(`[data-variant-groupe="${groupName}"][data-variant-name="${variant.name}"]`) as SVGElement | null;
-
-        if (el) {
-          // Show/hide the variant element
-          if (variant.name === variantName) {
-            el.style.display = '';
-            el.removeAttribute('display');
-
-            // If isBehindParent: move the TARGET MEMBER (not the variant) before its parent
-            // This makes the member render behind its parent in z-order
-            if (variant.isBehindParent && targetMember && targetMemberParent && targetMemberParent.parentNode) {
-              if (targetMember.nextSibling !== targetMemberParent) {
-                targetMemberParent.parentNode.insertBefore(targetMember, targetMemberParent);
-              }
-            } else if (!variant.isBehindParent && targetMember && targetMemberParent) {
-              // Restore member to its normal position as child of its parent
-              if (targetMember.parentNode !== targetMemberParent) {
-                targetMemberParent.appendChild(targetMember);
-              }
-            }
-          } else {
-            el.style.display = 'none';
-          }
-        }
-      });
+      applyVariantSelection(puppetRoot, group, variantName);
 
       // Auto keyframe for active variant
       ensureInitialSnapshot();
@@ -501,16 +377,7 @@ function InspectorComponent() {
 
       // If member has variants and is hidden, find the visible variant instead
       if (member.style.display === 'none' || member.getAttribute('display') === 'none') {
-        // Look for visible variant that targets this member
-        const visibleVariant = Array.from(puppetRoot.querySelectorAll(`[data-variant-groupe]`))
-          .find(el => {
-            const targetId = el.getAttribute('data-variant-target') || el.id;
-            return targetId &&
-                   el.getAttribute('data-variant-groupe') === member?.getAttribute('data-variant-groupe') &&
-                   el.getAttribute('display') !== 'none' &&
-                   (el as HTMLElement).style.display !== 'none';
-          }) as SVGGElement | null;
-
+        const visibleVariant = findVisibleVariant(puppetRoot, memberId);
         if (visibleVariant) {
           member = visibleVariant;
         }

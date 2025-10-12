@@ -78,9 +78,9 @@ function parsePantinFile(filePath) {
   const members = [];
   const memberMap = new Map();
   const variantGroups = new Map();
-  const variantOwners = new Map();
+  new Map();
 
-  const walk = (node, currentMemberId) => {
+    const walk = (node, currentMemberId) => {
     if (!node || node.nodeType !== 1) return;
     const element = node;
     const idAttr = element.getAttribute("id");

@@ -1,4 +1,6 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
+import type { MouseEvent as ReactMouseEvent } from "react";
+import { useWindowDrag } from "./useWindowDrag";
 
 interface VerticalResizeArgs {
   height: number;
@@ -22,7 +24,7 @@ export const useVerticalResize = ({
   const resizeStartRef = useRef<{ startY: number; startH: number } | null>(null);
 
   const onResizeMouseDown = useCallback(
-    (e: React.MouseEvent) => {
+    (e: ReactMouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
       setIsResizing(true);
@@ -39,28 +41,19 @@ export const useVerticalResize = ({
       if (!resizeStartRef.current) return;
       const dy = resizeStartRef.current.startY - e.clientY;
       const newHeight = Math.max(minHeight, resizeStartRef.current.startH + dy);
-      
+
       // Apply maxHeight if it's provided
       setHeight(maxHeight ? Math.min(maxHeight, newHeight) : newHeight);
     },
     [setHeight, minHeight, maxHeight]
   );
 
-  const handleMouseUp = useCallback(() => {
+  const handleMouseUp = useCallback((_event: MouseEvent) => {
     setIsResizing(false);
     resizeStartRef.current = null;
   }, []);
 
-  useEffect(() => {
-    if (isResizing) {
-      window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseup", handleMouseUp);
-      return () => {
-        window.removeEventListener("mousemove", handleMouseMove);
-        window.removeEventListener("mouseup", handleMouseUp);
-      };
-    }
-  }, [isResizing, handleMouseMove, handleMouseUp]);
+  useWindowDrag(isResizing, handleMouseMove, handleMouseUp);
 
   return {
     onResizeMouseDown,

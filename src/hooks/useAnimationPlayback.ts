@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useAnimation } from '../context/AnimationContext';
 import { useUi } from '../context/UiContext';
-import { setRotationWithOrigin } from '../utils/svgTransform';
+import { setRotationWithOrigin, setImageTransform } from '../utils/svgTransform';
+import { applyVariantSelection, findVisibleVariant } from '../utils/svgVariants';
 
 /**
  * Hook that applies animation values to scene elements during playback
@@ -52,44 +53,7 @@ export const useAnimationPlayback = () => {
       }
 
       // Get target member for this variant group
-      const targetMemberId = group.variants[0]?.targetMemberId;
-      const targetMember = targetMemberId
-        ? (puppetRoot.querySelector(`#${CSS.escape(targetMemberId)}`) as SVGElement | null)
-        : null;
-
-      group.variants.forEach((v: any) => {
-        if (!v.name) return;
-
-        // Find variant by data-variant-name attribute
-        // Search in entire puppet root because variants with isBehindParent may have been moved
-        const el = puppetRoot.querySelector(`[data-variant-groupe="${groupName}"][data-variant-name="${v.name}"]`) as SVGElement | null;
-        if (!el) return;
-
-        if (v.name === value) {
-          el.style.display = '';
-          el.removeAttribute('display');
-
-          // If isBehindParent, place variant BEFORE the target member (as sibling)
-          // This renders it behind the parent member in z-order
-          if (v.isBehindParent && targetMember && targetMember.parentNode) {
-            if (el.nextSibling !== targetMember) {
-              targetMember.parentNode.insertBefore(el, targetMember);
-            }
-          }
-        } else {
-          el.style.display = 'none';
-        }
-
-        // Ensure parent containers are visible if they carried display="none"
-        let parent = el.parentElement as unknown as SVGElement | null;
-        while (parent && parent !== puppetRoot) {
-          if (parent.hasAttribute('display')) {
-            parent.removeAttribute('display');
-            (parent as SVGElement).style.display = '';
-          }
-          parent = parent.parentElement as unknown as SVGElement | null;
-        }
-      });
+      applyVariantSelection(puppetRoot, group, value);
     });
 
     // Group tracks by target to apply numeric transforms at once
@@ -162,20 +126,19 @@ export const useAnimationPlayback = () => {
             el.setAttribute('transform', `translate(${x}, ${y})`);
           } else {
             // Image - get current attributes
-            let x = parseFloat(el.getAttribute('x') || '0');
-            let y = parseFloat(el.getAttribute('y') || '0');
-            const w = parseFloat(el.getAttribute('width') || '0');
-            const h = parseFloat(el.getAttribute('height') || '0');
+            const imgEl = el as SVGImageElement;
+            let x = parseFloat(imgEl.getAttribute('x') || '0');
+            let y = parseFloat(imgEl.getAttribute('y') || '0');
 
             // Update position with animated values if present
             if (transforms.x !== undefined) x = transforms.x;
             if (transforms.y !== undefined) y = transforms.y;
 
-            el.setAttribute('x', String(x));
-            el.setAttribute('y', String(y));
+            imgEl.setAttribute('x', String(x));
+            imgEl.setAttribute('y', String(y));
 
             // Get current transform values
-            const transformAttr = el.getAttribute('transform') || '';
+            const transformAttr = imgEl.getAttribute('transform') || '';
             const rotMatch = transformAttr.match(/rotate\(([-\d.]+)/);
             const scaleMatch = transformAttr.match(/scale\(([-\d.]+)(?:[,\s]+([-\d.]+))?\)/);
 
@@ -188,10 +151,7 @@ export const useAnimationPlayback = () => {
             if (transforms.scaleX !== undefined) scaleX = transforms.scaleX;
             if (transforms.scaleY !== undefined) scaleY = transforms.scaleY;
 
-            const cx = x + w / 2;
-            const cy = y + h / 2;
-
-            el.setAttribute('transform', `rotate(${rotation} ${cx} ${cy}) scale(${scaleX} ${scaleY})`);
+            setImageTransform(imgEl, rotation, scaleX, scaleY);
           }
         }
       });
@@ -219,15 +179,7 @@ export const useAnimationPlayback = () => {
 
       // If base member is hidden due to variants, find the visible variant targeting this group
       if (member.style.display === 'none' || member.getAttribute('display') === 'none') {
-        const visibleVariant = Array.from(puppetRoot.querySelectorAll(`[data-variant-groupe]`))
-          .find((node) => {
-            const targetId = (node as Element).getAttribute('data-variant-target') || (node as Element).id;
-            return (
-              targetId === memberId &&
-              (node as Element).getAttribute('display') !== 'none' &&
-              (node as HTMLElement).style.display !== 'none'
-            );
-          }) as SVGGElement | null;
+        const visibleVariant = findVisibleVariant(puppetRoot, memberId);
         if (visibleVariant) member = visibleVariant;
       }
 

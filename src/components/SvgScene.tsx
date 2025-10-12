@@ -7,7 +7,8 @@ import type { PuppetMetadata as UiPuppetMetadata } from "../context/UiContext";
 import { useSceneDrag } from "../hooks/useSceneDrag";
 import { useScenePanZoom } from "../hooks/useScenePanZoom";
 import { useAnimationPlayback } from "../hooks/useAnimationPlayback";
-import { setRotationWithOrigin, getRotationFromTransform } from "../utils/svgTransform";
+import { setRotationWithOrigin, getRotationFromTransform, setImageTransform } from "../utils/svgTransform";
+import { applyVariantSelection } from "../utils/svgVariants";
 
 export const SvgScene = memo(() => {
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -325,13 +326,11 @@ export const SvgScene = memo(() => {
           img.setAttribute("data-id", itemData.id);
           img.style.cursor = "move";
 
-          const cx = itemData.transform.x + w / 2;
-          const cy = itemData.transform.y + h / 2;
           const rotation = itemData.transform.rotation || 0;
           const scaleX = itemData.transform.scaleX || 1;
           const scaleY = itemData.transform.scaleY || 1;
 
-          img.setAttribute("transform", `rotate(${rotation} ${cx} ${cy}) scale(${scaleX} ${scaleY})`);
+          setImageTransform(img, rotation, scaleX, scaleY);
 
           scene.appendChild(img);
           addSceneItem({ id: itemData.id, type: "image", label: itemData.label, el: img });
@@ -395,51 +394,8 @@ export const SvgScene = memo(() => {
 
                 // Initialize variant visibility - hide non-default variants
                 safeMeta.variantGroups.forEach((group) => {
-                  // Find the target member containing the variants
-                  const targetMemberId = group.variants[0]?.targetMemberId;
-                  if (!targetMemberId) return;
-
-                  const targetMember = g.querySelector(`#${CSS.escape(targetMemberId)}`) as SVGGElement | null;
-                  if (!targetMember) return;
-
-                  // Find the parent member of targetMember
-                  const targetMemberParentId = targetMember.getAttribute('data-parent');
-                  const targetMemberParent = targetMemberParentId
-                    ? g.querySelector(`#${CSS.escape(targetMemberParentId)}`) as SVGGElement | null
-                    : null;
-
-                  // Find the default variant name
                   const defaultVariant = group.variants.find(v => v.isDefault);
-                  const defaultVariantName = defaultVariant?.name;
-
-                  // Show only the default variant, hide all others
-                  // Search in entire puppet root because variants with isBehindParent may have been moved
-                  group.variants.forEach(variant => {
-                    if (!variant.name) return;
-
-                    const el = g.querySelector(`[data-variant-groupe="${group.group}"][data-variant-name="${variant.name}"]`) as SVGElement | null;
-
-                    if (el) {
-                      if (variant.name === defaultVariantName) {
-                        el.style.display = '';
-                        el.removeAttribute('display');
-
-                        // If isBehindParent: move the TARGET MEMBER before its parent
-                        if (variant.isBehindParent && targetMember && targetMemberParent && targetMemberParent.parentNode) {
-                          if (targetMember.nextSibling !== targetMemberParent) {
-                            targetMemberParent.parentNode.insertBefore(targetMember, targetMemberParent);
-                          }
-                        } else if (!variant.isBehindParent && targetMember && targetMemberParent) {
-                          // Restore member to its normal position as child of its parent
-                          if (targetMember.parentNode !== targetMemberParent) {
-                            targetMemberParent.appendChild(targetMember);
-                          }
-                        }
-                      } else {
-                        el.style.display = 'none';
-                      }
-                    }
-                  });
+                  applyVariantSelection(g, group, defaultVariant?.name ?? null);
                 });
               }
               // center the puppet around the original drop point
