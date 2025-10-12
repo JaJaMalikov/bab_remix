@@ -3,83 +3,6 @@ import { useUi } from "../context/UiContext";
 import { useAnimation } from "../context/AnimationContext";
 import { serializeProject, saveProjectToFile, loadProjectFromFile } from "../utils/projectSerializer";
 
-// Workspace preset management
-const saveWorkspace = (name: string) => {
-  const workspace = {
-    name,
-    timestamp: Date.now(),
-    panels: {
-      library: localStorage.getItem('pos:panel:library'),
-      librarySize: localStorage.getItem('pos:panel:library:size'),
-      libraryMinimized: localStorage.getItem('pos:panel:library:minimized'),
-      inspector: localStorage.getItem('pos:panel:inspector'),
-      inspectorSize: localStorage.getItem('pos:panel:inspector:size'),
-      inspectorMinimized: localStorage.getItem('pos:panel:inspector:minimized'),
-      layers: localStorage.getItem('pos:panel:layers'),
-      layersSize: localStorage.getItem('pos:panel:layers:size'),
-      layersMinimized: localStorage.getItem('pos:panel:layers:minimized'),
-    }
-  };
-  localStorage.setItem(`workspace:${name}`, JSON.stringify(workspace));
-};
-
-const loadWorkspace = (name: string) => {
-  const saved = localStorage.getItem(`workspace:${name}`);
-  if (!saved) return false;
-
-  try {
-    const workspace = JSON.parse(saved);
-    // Restore panel positions, sizes, and minimized states
-    Object.entries(workspace.panels).forEach(([key, value]) => {
-      if (value !== null) {
-        localStorage.setItem(key, value as string);
-      }
-    });
-    // Force page reload to apply workspace
-    window.location.reload();
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-const getWorkspaceList = (): string[] => {
-  const workspaces: string[] = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key?.startsWith('workspace:')) {
-      workspaces.push(key.replace('workspace:', ''));
-    }
-  }
-  return workspaces;
-};
-
-const deleteWorkspace = (name: string) => {
-  localStorage.removeItem(`workspace:${name}`);
-};
-
-// Built-in workspace presets
-const applyBuiltInWorkspace = (preset: 'default' | 'animation' | 'fullCanvas') => {
-  switch (preset) {
-    case 'default':
-      localStorage.setItem('pos:panel:library', JSON.stringify({ x: 20, y: 100 }));
-      localStorage.setItem('pos:panel:inspector', JSON.stringify({ x: window.innerWidth - 320, y: 20 }));
-      localStorage.setItem('pos:panel:layers', JSON.stringify({ x: 20, y: 20 }));
-      break;
-    case 'animation':
-      localStorage.setItem('pos:panel:library', JSON.stringify({ x: 0, y: 40 }));
-      localStorage.setItem('pos:panel:inspector', JSON.stringify({ x: window.innerWidth - 300, y: 40 }));
-      localStorage.setItem('pos:panel:layers', JSON.stringify({ x: 0, y: 350 }));
-      break;
-    case 'fullCanvas':
-      localStorage.setItem('pos:panel:library:minimized', 'true');
-      localStorage.setItem('pos:panel:inspector:minimized', 'true');
-      localStorage.setItem('pos:panel:layers:minimized', 'true');
-      break;
-  }
-  window.location.reload();
-};
-
 export const MenuBar = memo(() => {
   const {
     showTimeline,
@@ -96,16 +19,9 @@ export const MenuBar = memo(() => {
 
   const { tracks, duration } = useAnimation();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const [workspaces, setWorkspaces] = useState<string[]>([]);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Load workspace list when workspace menu opens
-  useEffect(() => {
-    if (openMenu === 'workspace') {
-      setWorkspaces(getWorkspaceList());
-    }
-  }, [openMenu]);
-
+  
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -156,34 +72,6 @@ export const MenuBar = memo(() => {
   const toggleMenu = (menu: string) => {
     setOpenMenu(openMenu === menu ? null : menu);
   };
-
-  const handleSaveWorkspace = useCallback(() => {
-    const name = prompt('Enter workspace name:');
-    if (name && name.trim()) {
-      saveWorkspace(name.trim());
-      alert(`Workspace "${name}" saved!`);
-      setOpenMenu(null);
-    }
-  }, []);
-
-  const handleLoadWorkspace = useCallback((name: string) => {
-    if (confirm(`Load workspace "${name}"? This will reload the page.`)) {
-      loadWorkspace(name);
-    }
-  }, []);
-
-  const handleDeleteWorkspace = useCallback((name: string) => {
-    if (confirm(`Delete workspace "${name}"?`)) {
-      deleteWorkspace(name);
-      setWorkspaces(getWorkspaceList());
-    }
-  }, []);
-
-  const handleApplyPreset = useCallback((preset: 'default' | 'animation' | 'fullCanvas') => {
-    if (confirm('Apply this workspace preset? This will reload the page.')) {
-      applyBuiltInWorkspace(preset);
-    }
-  }, []);
 
   return (
     <div className="menubar" ref={menuRef}>
@@ -239,69 +127,6 @@ export const MenuBar = memo(() => {
                   <span>Fit in View</span>
                   <span className="menu-shortcut">Ctrl+0</span>
                 </button>
-              </div>
-            )}
-          </div>
-
-          <div className="menu-item">
-            <button onClick={() => toggleMenu('workspace')} className="menu-trigger">
-              Workspace
-            </button>
-            {openMenu === 'workspace' && (
-              <div className="dropdown-menu">
-                <button onClick={handleSaveWorkspace}>
-                  <span className="menu-check"></span>
-                  <span>Save Current Workspace</span>
-                </button>
-                <div className="menu-separator" />
-                <button onClick={() => { handleApplyPreset('default'); }}>
-                  <span className="menu-check"></span>
-                  <span>Default Layout</span>
-                </button>
-                <button onClick={() => { handleApplyPreset('animation'); }}>
-                  <span className="menu-check"></span>
-                  <span>Animation Layout</span>
-                </button>
-                <button onClick={() => { handleApplyPreset('fullCanvas'); }}>
-                  <span className="menu-check"></span>
-                  <span>Full Canvas (Minimized)</span>
-                </button>
-                {workspaces.length > 0 && (
-                  <>
-                    <div className="menu-separator" />
-                    {workspaces.map((name) => (
-                      <button
-                        key={name}
-                        onClick={() => handleLoadWorkspace(name)}
-                        style={{ position: 'relative', paddingRight: 40 }}
-                      >
-                        <span className="menu-check"></span>
-                        <span>{name}</span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteWorkspace(name);
-                          }}
-                          style={{
-                            position: 'absolute',
-                            right: 8,
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            padding: '2px 6px',
-                            fontSize: 10,
-                            background: '#ff4444',
-                            border: 'none',
-                            borderRadius: 3,
-                            color: '#fff',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          ×
-                        </button>
-                      </button>
-                    ))}
-                  </>
-                )}
               </div>
             )}
           </div>
