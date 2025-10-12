@@ -114,6 +114,7 @@ export const useSceneDrag = (
         const tx = Math.round(drag.tx0 + dx);
         const ty = Math.round(drag.ty0 + dy);
         drag.el.setAttribute('transform', `translate(${tx}, ${ty})`);
+        window.dispatchEvent(new CustomEvent('attachment:update', { detail: { anchor: drag.el } }));
       } else if (drag.type === 'image') {
         const x = Math.round(drag.x0 + dx);
         const y = Math.round(drag.y0 + dy);
@@ -129,6 +130,9 @@ export const useSceneDrag = (
       if (draggingRef.current) {
         // Final notification when drag completes
         window.dispatchEvent(new CustomEvent('item:transformed'));
+        if (draggingRef.current.type === 'puppet') {
+          window.dispatchEvent(new CustomEvent('attachment:update', { detail: { anchor: draggingRef.current.el } }));
+        }
       }
       draggingRef.current = null;
     };
