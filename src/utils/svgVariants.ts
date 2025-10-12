@@ -75,6 +75,17 @@ export const applyVariantSelection = (
     targetMemberId,
   );
 
+  const ensureMemberInParent = () => {
+    if (!targetMember || !targetParent) {
+      return;
+    }
+    if (targetMember.parentNode !== targetParent) {
+      targetParent.appendChild(targetMember);
+    }
+  };
+
+  ensureMemberInParent();
+
   group.variants.forEach((variant) => {
     if (!variant.name) return;
 
@@ -106,22 +117,16 @@ export const applyVariantSelection = (
     }
 
     if (variant.isBehindParent) {
-      if (targetParent && targetParent.parentNode instanceof SVGGElement) {
-        if (targetMember.nextSibling !== targetParent) {
-          targetParent.parentNode.insertBefore(targetMember, targetParent);
+      if (targetParent) {
+        if (targetMember.parentNode !== targetParent) {
+          targetParent.appendChild(targetMember);
+        }
+        if (targetParent.firstChild !== targetMember) {
+          targetParent.insertBefore(targetMember, targetParent.firstChild);
         }
       }
-
-      const container = targetMember.parentNode;
-      if (container instanceof SVGGElement && variantElement.parentNode === container) {
-        if (variantElement.nextSibling !== targetMember) {
-          container.insertBefore(variantElement, targetMember);
-        }
-      }
-    } else if (targetParent && targetParent instanceof SVGGElement) {
-      if (targetMember.parentNode !== targetParent) {
-        targetParent.appendChild(targetMember);
-      }
+    } else if (targetParent) {
+      targetParent.appendChild(targetMember);
     }
   });
 };

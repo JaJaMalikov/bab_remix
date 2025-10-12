@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, memo } from "react";
+import { useEffect, useRef, useState, memo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { SvgPuppetInlineSimple } from "./SvgPuppet";
 import { Asset } from "./AssetItem";
@@ -63,7 +63,7 @@ export const SvgScene = memo(() => {
     return { viewport: viewportRef.current!, scene: sceneRef.current! };
   };
 
-  const setDecor = async (href: string) => {
+  const setDecor = useCallback(async (href: string) => {
     const img = new Image();
     img.decoding = "async";
     const p = new Promise<{ w: number; h: number }>((resolve, reject) => {
@@ -93,9 +93,9 @@ export const SvgScene = memo(() => {
       bgRef.current.setAttribute("height", String(h));
       bgRef.current.setAttribute("href", href);
     }
-  };
+  }, []);
 
-  const dropAsset = async (asset: Asset, x: number, y: number) => {
+  const dropAsset = useCallback(async (asset: Asset, x: number, y: number) => {
     const { scene } = ensureContainers();
     if (asset.type === "decor") {
       await setDecor(asset.path);
@@ -138,7 +138,7 @@ export const SvgScene = memo(() => {
     const id = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
     img.setAttribute('data-id', id);
     addSceneItem({ id, type: 'image', label: asset.name || asset.path.split('/').pop() || 'Image', el: img });
-  };
+  }, [addSceneItem, setDecor, setPuppets]);
 
   // Effect for drag/drop from library and click-to-select-limb
   useEffect(() => {
@@ -346,9 +346,10 @@ export const SvgScene = memo(() => {
 
   // Expose helpers to UI context (fitInView, importAsset)
   useEffect(() => {
-    setFitInView(() => doFitInView);
-    setImportAsset(() => (asset: Asset) => {
-      const svg = svgRef.current!;
+    setFitInView(doFitInView);
+    setImportAsset((asset: Asset) => {
+      const svg = svgRef.current;
+      if (!svg) return;
       const rect = svg.getBoundingClientRect();
       const cx = rect.left + rect.width / 2;
       const cy = rect.top + rect.height / 2;
@@ -359,7 +360,7 @@ export const SvgScene = memo(() => {
       setFitInView(undefined);
       setImportAsset(undefined);
     };
-  }, [doFitInView, toSceneCoords]);
+  }, [doFitInView, dropAsset, toSceneCoords]);
 
   return (
     <div className="scene-canvas" style={{ position: "relative" }}>
