@@ -7,6 +7,7 @@ import type { PuppetMetadata as UiPuppetMetadata } from "../context/UiContext";
 import { useSceneDrag } from "../hooks/useSceneDrag";
 import { useScenePanZoom } from "../hooks/useScenePanZoom";
 import { useAnimationPlayback } from "../hooks/useAnimationPlayback";
+import { setRotationWithOrigin, getRotationFromTransform } from "../utils/svgTransform";
 
 export const SvgScene = memo(() => {
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -222,15 +223,11 @@ export const SvgScene = memo(() => {
       `#${CSS.escape(limbId)}`,
     ) as SVGGElement | null;
     if (!g) return;
-    g.style.transform = `rotate(${deg}deg)`;
+    setRotationWithOrigin(g, deg);
   };
 
   const getLimbRotationFromDom = (g: SVGGElement): number => {
-    const t = g.style.transform || "";
-    const rm = t.match(/rotate\(([-+\d.]+)deg\)/);
-    if (!rm) return 0;
-    const v = parseFloat(rm[1] || "0");
-    return isFinite(v) ? v : 0;
+    return getRotationFromTransform(g);
   };
 
   // Apply rotation when angle or selected limb changes
@@ -293,7 +290,8 @@ export const SvgScene = memo(() => {
                 Object.entries(itemData.memberTransforms).forEach(([memberId, transform]) => {
                   const memberEl = puppetRoot.querySelector(`#${CSS.escape(memberId)}`) as SVGGElement | null;
                   if (memberEl && transform && typeof transform === 'object' && 'rotation' in transform) {
-                    memberEl.style.transform = `rotate(${transform.rotation}deg)`;
+                    const rotation = typeof transform.rotation === 'number' ? transform.rotation : 0;
+                    setRotationWithOrigin(memberEl, rotation);
                   }
                 });
               }
@@ -383,14 +381,10 @@ export const SvgScene = memo(() => {
                     group: group.group,
                     defaultVariantId: group.defaultVariantId ?? null,
                     variants: (group.variants || []).map((v: any) => ({
-                      id: v.id ?? (v.memberId ?? ""),
                       targetMemberId: v.targetMemberId ?? null,
-                      memberId: v.memberId ?? null,
                       name: v.name ?? null,
                       isDefault: !!v.isDefault,
-                      // preserve extra fields used for layout/z-order
                       isBehindParent: !!v.isBehindParent,
-                      side: v.side ?? null,
                     })),
                   })),
                 };
@@ -398,6 +392,55 @@ export const SvgScene = memo(() => {
                 if (item) {
                   item.metadata = safeMeta;
                 }
+
+                // Initialize variant visibility - hide non-default variants
+                safeMeta.variantGroups.forEach((group) => {
+                  // Find the target member containing the variants
+                  const targetMemberId = group.variants[0]?.targetMemberId;
+                  if (!targetMemberId) return;
+
+                  const targetMember = g.querySelector(`#${CSS.escape(targetMemberId)}`) as SVGGElement | null;
+                  if (!targetMember) return;
+
+                  // Find the parent member of targetMember
+                  const targetMemberParentId = targetMember.getAttribute('data-parent');
+                  const targetMemberParent = targetMemberParentId
+                    ? g.querySelector(`#${CSS.escape(targetMemberParentId)}`) as SVGGElement | null
+                    : null;
+
+                  // Find the default variant name
+                  const defaultVariant = group.variants.find(v => v.isDefault);
+                  const defaultVariantName = defaultVariant?.name;
+
+                  // Show only the default variant, hide all others
+                  // Search in entire puppet root because variants with isBehindParent may have been moved
+                  group.variants.forEach(variant => {
+                    if (!variant.name) return;
+
+                    const el = g.querySelector(`[data-variant-groupe="${group.group}"][data-variant-name="${variant.name}"]`) as SVGElement | null;
+
+                    if (el) {
+                      if (variant.name === defaultVariantName) {
+                        el.style.display = '';
+                        el.removeAttribute('display');
+
+                        // If isBehindParent: move the TARGET MEMBER before its parent
+                        if (variant.isBehindParent && targetMember && targetMemberParent && targetMemberParent.parentNode) {
+                          if (targetMember.nextSibling !== targetMemberParent) {
+                            targetMemberParent.parentNode.insertBefore(targetMember, targetMemberParent);
+                          }
+                        } else if (!variant.isBehindParent && targetMember && targetMemberParent) {
+                          // Restore member to its normal position as child of its parent
+                          if (targetMember.parentNode !== targetMemberParent) {
+                            targetMemberParent.appendChild(targetMember);
+                          }
+                        }
+                      } else {
+                        el.style.display = 'none';
+                      }
+                    }
+                  });
+                });
               }
               // center the puppet around the original drop point
               try {

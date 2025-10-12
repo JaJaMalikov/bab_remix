@@ -1,6 +1,6 @@
 {
   "id": "manu",
-  "source": "pantins/manu2.svg",
+  "source": "pantins/test.svg",
   "width": 572,
   "height": 561,
   "viewBox": "0 0 572 561",
@@ -17,10 +17,6 @@
         "cuisse_droite",
         "cuisse_gauche"
       ],
-      "pivot": {
-        "x": 286,
-        "y": 275
-      },
       "isBehindParent": false
     },
     {
@@ -30,10 +26,6 @@
       "children": [
         "bouche"
       ],
-      "pivot": {
-        "x": 286,
-        "y": 143
-      },
       "isBehindParent": false
     },
     {
@@ -41,10 +33,6 @@
       "name": "bouche",
       "parentId": "tete",
       "children": [],
-      "pivot": {
-        "x": 50,
-        "y": 50
-      },
       "isBehindParent": false
     },
     {
@@ -54,10 +42,6 @@
       "children": [
         "avant_bras_gauche"
       ],
-      "pivot": {
-        "x": 348,
-        "y": 167.048
-      },
       "isBehindParent": false
     },
     {
@@ -67,10 +51,6 @@
       "children": [
         "main_gauche"
       ],
-      "pivot": {
-        "x": 428,
-        "y": 167.048
-      },
       "isBehindParent": false
     },
     {
@@ -78,10 +58,6 @@
       "name": "main_gauche",
       "parentId": "avant_bras_gauche",
       "children": [],
-      "pivot": {
-        "x": 505,
-        "y": 167.048
-      },
       "isBehindParent": false
     },
     {
@@ -89,10 +65,6 @@
       "name": "haut_bras_droite",
       "parentId": "torse",
       "children": [],
-      "pivot": {
-        "x": 224.046,
-        "y": 167.048
-      },
       "isBehindParent": false
     },
     {
@@ -102,10 +74,6 @@
       "children": [
         "main_droite"
       ],
-      "pivot": {
-        "x": 144.046,
-        "y": 167.048
-      },
       "isBehindParent": false
     },
     {
@@ -113,10 +81,6 @@
       "name": "main_droite",
       "parentId": "avant_bras_droite",
       "children": [],
-      "pivot": {
-        "x": 67.046,
-        "y": 167.048
-      },
       "isBehindParent": false
     },
     {
@@ -126,10 +90,6 @@
       "children": [
         "tibia_droite"
       ],
-      "pivot": {
-        "x": 257,
-        "y": 313
-      },
       "isBehindParent": true
     },
     {
@@ -139,10 +99,6 @@
       "children": [
         "pied_droite"
       ],
-      "pivot": {
-        "x": 257,
-        "y": 425
-      },
       "isBehindParent": false
     },
     {
@@ -150,10 +106,6 @@
       "name": "pied_droite",
       "parentId": "tibia_droite",
       "children": [],
-      "pivot": {
-        "x": 257,
-        "y": 531
-      },
       "isBehindParent": false
     },
     {
@@ -163,10 +115,6 @@
       "children": [
         "tibia_gauche"
       ],
-      "pivot": {
-        "x": 314,
-        "y": 313
-      },
       "isBehindParent": true
     },
     {
@@ -176,10 +124,6 @@
       "children": [
         "pied_gauche"
       ],
-      "pivot": {
-        "x": 314,
-        "y": 425
-      },
       "isBehindParent": false
     },
     {
@@ -187,10 +131,6 @@
       "name": "pied_gauche",
       "parentId": "tibia_gauche",
       "children": [],
-      "pivot": {
-        "x": 314,
-        "y": 531
-      },
       "isBehindParent": false
     }
   ],

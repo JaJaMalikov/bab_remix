@@ -206,19 +206,35 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
           // 3. Snapshot puppet variants
           item.metadata?.variantGroups.forEach(group => {
-            let activeVariantId: string | null = null;
+            let activeVariantName: string | null = null;
+
+            // Find the target member containing the variants
+            const targetMemberId = group.variants[0]?.targetMemberId;
+            if (!targetMemberId) return;
+
+            const targetMember = puppetRoot.querySelector(`#${CSS.escape(targetMemberId)}`) as SVGGElement | null;
+            if (!targetMember) return;
+
+            // Find active variant by checking visibility
             for (const variant of group.variants) {
-              const variantEl = puppetRoot.querySelector(`#${CSS.escape(variant.id)}`) as SVGElement | null;
+              if (!variant.name) continue;
+
+              // Find variant element by data-variant-name attribute
+              const variantEl = Array.from(targetMember.children).find(child => {
+                return child.getAttribute('data-variant-groupe') === group.group &&
+                       child.getAttribute('data-variant-name') === variant.name;
+              }) as SVGElement | null;
+
               if (variantEl && variantEl.style.display !== 'none' && variantEl.getAttribute('display') !== 'none') {
-                activeVariantId = variant.id;
+                activeVariantName = variant.name;
                 break;
               }
             }
 
-            if (activeVariantId) {
+            if (activeVariantName) {
               const previousValue = getValueAtFrame(targetId, group.group, 'activeVariant', currentFrame - 1);
-              if (currentFrame === 0 || previousValue !== activeVariantId) {
-                addKeyframe(targetId, group.group, 'activeVariant', currentFrame, activeVariantId);
+              if (currentFrame === 0 || previousValue !== activeVariantName) {
+                addKeyframe(targetId, group.group, 'activeVariant', currentFrame, activeVariantName);
               }
             }
           });

@@ -2,6 +2,7 @@ import React, { useMemo, useCallback, useState, useEffect } from "react";
 import { useUi } from "../context/UiContext";
 import { useAnimation, AnimationProperty } from "../context/AnimationContext";
 import { FloatingPanel } from "./FloatingPanel";
+import { setRotationWithOrigin, getRotationFromTransform } from "../utils/svgTransform";
 
 function InspectorComponent() {
   const {
@@ -62,15 +63,32 @@ function InspectorComponent() {
 
       // If no variant is set for this group, set the default
       if (!activeVariants[key]) {
-        const defaultId = group.defaultVariantId || group.variants.find(v => v.isDefault)?.id || group.variants[0]?.id;
-        if (defaultId) {
-          setActiveVariants(prev => ({ ...prev, [key]: defaultId }));
+        const defaultVariant = group.variants.find(v => v.isDefault) || group.variants[0];
+        const defaultName = defaultVariant?.name;
+        if (defaultName) {
+          setActiveVariants(prev => ({ ...prev, [key]: defaultName }));
+
+          // Find the target member containing the variants
+          const targetMemberId = defaultVariant.targetMemberId;
+          if (!targetMemberId) return;
+          const targetMember = puppetRoot.querySelector(`#${CSS.escape(targetMemberId)}`) as SVGGElement | null;
+          if (!targetMember) return;
+
+          // Find the parent member of targetMember
+          const targetMemberParentId = targetMember.getAttribute('data-parent');
+          const targetMemberParent = targetMemberParentId
+            ? puppetRoot.querySelector(`#${CSS.escape(targetMemberParentId)}`) as SVGGElement | null
+            : null;
 
           // Hide all except default
           group.variants.forEach(variant => {
-            const el = puppetRoot.querySelector(`#${CSS.escape(variant.id)}`) as SVGElement | null;
+            if (!variant.name) return;
+            // Find variant element by data-variant-name attribute
+            // Search in entire puppet root because variants with isBehindParent may have been moved
+            const el = puppetRoot.querySelector(`[data-variant-groupe="${group.group}"][data-variant-name="${variant.name}"]`) as SVGElement | null;
+
             if (el) {
-              if (variant.id === defaultId) {
+              if (variant.name === defaultName) {
                 el.style.display = '';
                 el.removeAttribute('display');
                 // Show parent containers
@@ -82,13 +100,15 @@ function InspectorComponent() {
                   }
                   parent = parent.parentElement as unknown as SVGElement | null;
                 }
-                // If the default variant must be behind, re-parent to the beginning of target member's parent
-                const vinfo = group.variants.find(v => v.id === defaultId) as any;
-                if (vinfo?.isBehindParent && vinfo?.targetMemberId) {
-                  const targetMember = puppetRoot.querySelector(`#${CSS.escape(vinfo.targetMemberId)}`) as SVGElement | null;
-                  const parentLive = (targetMember?.parentNode as (Node & { insertBefore: Function; firstChild: ChildNode | null }) | null) ?? null;
-                  if (parentLive) {
-                    parentLive.insertBefore(el, parentLive.firstChild);
+                // If isBehindParent: move the TARGET MEMBER before its parent
+                if (variant.isBehindParent && targetMember && targetMemberParent && targetMemberParent.parentNode) {
+                  if (targetMember.nextSibling !== targetMemberParent) {
+                    targetMemberParent.parentNode.insertBefore(targetMember, targetMemberParent);
+                  }
+                } else if (!variant.isBehindParent && targetMember && targetMemberParent) {
+                  // Restore member to its normal position as child of its parent
+                  if (targetMember.parentNode !== targetMemberParent) {
+                    targetMemberParent.appendChild(targetMember);
                   }
                 }
               } else {
@@ -139,8 +159,7 @@ function InspectorComponent() {
     const limbs = puppetRoot.querySelectorAll("[data-membre]");
     return Array.from(limbs).map((limb) => ({
       id: limb.id,
-      name: limb.getAttribute("data-membre") || limb.id,
-      side: limb.getAttribute("data-side") || null,
+      name: limb.id, // In new format, id is the member name
     }));
   }, [selectedItem]);
 
@@ -193,13 +212,7 @@ function InspectorComponent() {
         if (puppetRoot) {
           const limbEl = puppetRoot.querySelector(`#${CSS.escape(limbId)}`) as SVGGElement | null;
           if (limbEl) {
-            const transformStyle = limbEl.style.transform || "";
-            const match = transformStyle.match(/rotate\(([-\d.]+)deg\)/);
-            if (match) {
-              setAngle(parseFloat(match[1] || "0"));
-            } else {
-              setAngle(0);
-            }
+            setAngle(getRotationFromTransform(limbEl));
           }
         }
       }
@@ -216,7 +229,7 @@ function InspectorComponent() {
         if (puppetRoot) {
           const limbEl = puppetRoot.querySelector(`#${CSS.escape(selectedLimb)}`) as SVGGElement | null;
           if (limbEl) {
-            limbEl.style.transform = `rotate(${newAngle}deg)`;
+            setRotationWithOrigin(limbEl, newAngle);
             // Auto keyframe for limb rotation
             ensureInitialSnapshot();
             addKeyframe(selectedItem.id, selectedLimb, 'rotation', currentFrame, newAngle);
@@ -339,7 +352,7 @@ function InspectorComponent() {
 
   // Handle variant change
   const handleVariantChange = useCallback(
-    (groupName: string, variantId: string) => {
+    (groupName: string, variantName: string) => {
       if (!selectedItem || selectedItem.type !== "puppet" || !selectedItem.metadata) return;
 
       const group = selectedItem.metadata.variantGroups.find(g => g.group === groupName);
@@ -347,56 +360,74 @@ function InspectorComponent() {
 
       // Store active variant
       const key = `${selectedItem.id}:${groupName}`;
-      setActiveVariants(prev => ({ ...prev, [key]: variantId }));
+      setActiveVariants(prev => ({ ...prev, [key]: variantName }));
 
       // Find the puppet root
       const anchor = selectedItem.el;
       const puppetRoot = anchor.firstChild as SVGGElement | null;
       if (!puppetRoot) return;
 
-      // Compute target member only to support isBehindParent placement
-      const variantInfo = group.variants.find(v => v.id === variantId);
-      const targetMember = variantInfo?.targetMemberId
-        ? (puppetRoot.querySelector(`#${CSS.escape(variantInfo.targetMemberId)}`) as SVGElement | null)
+      // Get the target member containing the variants
+      const targetMemberId = group.variants[0]?.targetMemberId;
+      if (!targetMemberId) return;
+
+      const targetMember = puppetRoot.querySelector(`#${CSS.escape(targetMemberId)}`) as SVGGElement | null;
+      if (!targetMember) return;
+
+      // Find the parent member of targetMember in the hierarchy
+      const targetMemberData = selectedItem.metadata?.variantGroups
+        ? (() => {
+            // Search in members list
+            const members = selectedItem.metadata?.variantGroups.flatMap(g =>
+              g.variants.map(v => v.targetMemberId)
+            ).filter((id, i, arr) => id && arr.indexOf(id) === i); // unique
+
+            // Actually we need to search in a members list from metadata
+            // For now, find parent by querying the DOM
+            const parentId = targetMember?.getAttribute('data-parent');
+            return parentId;
+          })()
         : null;
 
-      // Search in the entire puppet root (variants may be in separate groups)
+      const targetMemberParent = targetMemberData
+        ? puppetRoot.querySelector(`#${CSS.escape(targetMemberData)}`) as SVGGElement | null
+        : null;
+
+      // Switch variants
       group.variants.forEach(variant => {
-        const el = puppetRoot.querySelector(`#${CSS.escape(variant.id)}`) as SVGElement | null;
+        if (!variant.name) return;
+
+        // Find variant element by data-variant-name attribute
+        // Search in entire puppet root because variants with isBehindParent may have been moved
+        const el = puppetRoot.querySelector(`[data-variant-groupe="${groupName}"][data-variant-name="${variant.name}"]`) as SVGElement | null;
+
         if (el) {
           // Show/hide the variant element
-          if (variant.id === variantId) {
+          if (variant.name === variantName) {
             el.style.display = '';
             el.removeAttribute('display');
 
-          // Respect DOM natural order for normal cases.
-          // Only re-parent when isBehindParent=true, to the beginning of the target member's parent.
-            const isBehind = (variant as any).isBehindParent as boolean | undefined;
-            if (isBehind && targetMember) {
-              const parentLive = (targetMember.parentNode as (Node & { insertBefore: Function; firstChild: ChildNode | null }) | null) ?? null;
-              if (parentLive) {
-                parentLive.insertBefore(el, parentLive.firstChild);
+            // If isBehindParent: move the TARGET MEMBER (not the variant) before its parent
+            // This makes the member render behind its parent in z-order
+            if (variant.isBehindParent && targetMember && targetMemberParent && targetMemberParent.parentNode) {
+              if (targetMember.nextSibling !== targetMemberParent) {
+                targetMemberParent.parentNode.insertBefore(targetMember, targetMemberParent);
+              }
+            } else if (!variant.isBehindParent && targetMember && targetMemberParent) {
+              // Restore member to its normal position as child of its parent
+              if (targetMember.parentNode !== targetMemberParent) {
+                targetMemberParent.appendChild(targetMember);
               }
             }
           } else {
             el.style.display = 'none';
-          }
-
-          // Also handle parent container (var_XXX groups have display="none" attribute)
-          let parent = el.parentElement as unknown as SVGElement | null;
-          while (parent && parent !== puppetRoot) {
-            if (parent.hasAttribute('display')) {
-              parent.removeAttribute('display');
-              (parent as SVGElement).style.display = '';
-            }
-            parent = parent.parentElement as unknown as SVGElement | null;
           }
         }
       });
 
       // Auto keyframe for active variant
       ensureInitialSnapshot();
-      addKeyframe(selectedItem.id, groupName, 'activeVariant', currentFrame, variantId);
+      addKeyframe(selectedItem.id, groupName, 'activeVariant', currentFrame, variantName);
     },
     [selectedItem, addKeyframe, currentFrame, ensureInitialSnapshot]
   );
@@ -802,10 +833,8 @@ function InspectorComponent() {
                           const puppetRoot = (puppet.el as SVGGElement).firstChild as SVGGElement | null;
                           if (!puppetRoot) return 'Unknown';
                           const member = puppetRoot.querySelector(`#${CSS.escape(attachedMemberId || '')}`) as SVGGElement | null;
-                          const memberName = member?.getAttribute('data-membre') || attachedMemberId;
-                          const side = member?.getAttribute('data-side');
-                          const label = side ? `${memberName} (${side})` : memberName;
-                          return `${puppet.label} › ${label}`;
+                          const memberName = member?.id || attachedMemberId; // In new format, id is the member name
+                          return `${puppet.label} › ${memberName}`;
                         })()}
                       </div>
                       <button
@@ -843,12 +872,10 @@ function InspectorComponent() {
                             if (!puppetRoot) return null;
                             const members = puppetRoot.querySelectorAll('[data-membre]');
                             return Array.from(members).map((member) => {
-                              const name = member.getAttribute('data-membre') || member.id;
-                              const side = member.getAttribute('data-side');
-                              const label = side ? `${name} (${side})` : name;
+                              const name = member.id; // In new format, id is the member name
                               return (
                                 <option key={`${puppet.id}:${member.id}`} value={`${puppet.id}:${member.id}`}>
-                                  {puppet.label} › {label}
+                                  {puppet.label} › {name}
                                 </option>
                               );
                             });
@@ -889,13 +916,13 @@ function InspectorComponent() {
                   <div key={group.group} className="property">
                     <label>{group.group}</label>
                     <select
-                      value={getCurrentVariant(group.group) || group.defaultVariantId || ''}
+                      value={getCurrentVariant(group.group) || group.variants.find(v => v.isDefault)?.name || ''}
                       onChange={(e) => handleVariantChange(group.group, e.target.value)}
                       style={{ width: '100%', padding: '4px 6px', fontSize: 11 }}
                     >
                       {group.variants.map((variant) => (
-                        <option key={variant.id} value={variant.id}>
-                          {variant.name || variant.id}
+                        <option key={variant.name || 'unknown'} value={variant.name || ''}>
+                          {variant.name}
                         </option>
                       ))}
                     </select>
@@ -927,7 +954,6 @@ function InspectorComponent() {
                       }}
                     >
                       <span>{limb.name}</span>
-                      {limb.side && <span style={{ opacity: 0.6, fontSize: 10 }}>({limb.side})</span>}
                     </button>
                   ))}
                 </div>

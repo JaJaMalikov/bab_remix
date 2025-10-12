@@ -7,13 +7,10 @@ export interface PuppetMetadata {
     group: string;
     defaultVariantId: string | null;
     variants: Array<{
-      id: string;
       targetMemberId: string | null;
-      memberId: string | null;
       name: string | null;
       isDefault: boolean;
       isBehindParent?: boolean;
-      side?: string | null;
     }>;
   }>;
 }

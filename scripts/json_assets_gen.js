@@ -98,7 +98,6 @@ function parsePantinFile(filePath) {
         name: idAttr,
         parentId,
         children: [],
-        pivot: parseTransformOrigin(element.getAttribute("transform-origin")),
         isBehindParent: parseBoolean(element.getAttribute("data-isbehindparent")),
       };
       members.push(member);
@@ -184,16 +183,6 @@ function parseNumberAttribute(value) {
   if (!value) return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
-}
-
-function parseTransformOrigin(value) {
-  if (!value) return null;
-  // Support both comma and space separators (e.g., "286, 275" or "286 275")
-  const parts = value.split(/[,\s]+/);
-  const x = parseFloat((parts[0] || "").trim());
-  const y = parseFloat((parts[1] || "").trim());
-  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-  return { x, y };
 }
 
 const manifest = scanDir(ASSETS_DIR);

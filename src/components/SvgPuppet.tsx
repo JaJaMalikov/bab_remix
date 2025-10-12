@@ -1,34 +1,19 @@
 import { useEffect, useRef } from "react";
 import type { CSSProperties, RefObject } from "react";
 
-type PuppetPivot = {
-  x: number;
-  y: number;
-};
-
 type PuppetMemberMetadata = {
   id: string;
   name: string;
   parentId: string | null;
   children: string[];
-  pivot: PuppetPivot | null;
-  interactive: boolean;
-  draggable: boolean;
   isBehindParent: boolean;
-  side: string | null;
-  variantGroup: string | null;
-  variantName: string | null;
-  variantDefault: boolean;
 };
 
 type PuppetVariantMetadata = {
-  id: string | null;
   targetMemberId: string | null;
-  memberId: string | null;
   name: string | null;
   isDefault: boolean;
   isBehindParent: boolean;
-  side: string | null;
 };
 
 type PuppetVariantGroupMetadata = {
@@ -53,19 +38,11 @@ type PuppetMetadata = {
 const puppetCache = new Map<string, SVGGElement>();
 const metadataCache = new Map<string, PuppetMetadata | null>();
 
-const TRANSFORM_BOX_STYLE_KEY = "transformBox" as const;
-
 const cssEscape = (value: string) => {
   if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
     return CSS.escape(value);
   }
   return value.replace(/([.*+?^${}()|[\]\\])/g, "\\$1");
-};
-
-const setPivotOnElement = (element: SVGGElement, pivot: PuppetPivot) => {
-  const style = element.style as CSSStyleDeclaration & { [TRANSFORM_BOX_STYLE_KEY]?: string };
-  style[TRANSFORM_BOX_STYLE_KEY] = "view-box";
-  style.transformOrigin = `${pivot.x}px ${pivot.y}px`;
 };
 
 const applyMetadataToGroup = (group: SVGGElement, metadata: PuppetMetadata | null | undefined) => {
@@ -80,10 +57,6 @@ const applyMetadataToGroup = (group: SVGGElement, metadata: PuppetMetadata | nul
       : (group.querySelector(`#${cssEscape(member.id)}`) as SVGGElement | null);
     if (!target) continue;
 
-    if (member.pivot) {
-      setPivotOnElement(target, member.pivot);
-    }
-
     if (member.isBehindParent) {
       behindElements.push(target);
     }
@@ -97,20 +70,9 @@ const applyMetadataToGroup = (group: SVGGElement, metadata: PuppetMetadata | nul
   }
 };
 
-const fallbackProcessLimbs = (group: SVGGElement) => {
-  const limbs = group.querySelectorAll('g[data-pivot]') as NodeListOf<SVGGElement>;
-  limbs.forEach((el) => {
-    const attr = el.getAttribute("data-pivot");
-    if (!attr) return;
-    const [sxStr, syStr] = attr.split(",");
-    const sx = parseFloat((sxStr || "").trim());
-    const sy = parseFloat((syStr || "").trim());
-    if (!Number.isFinite(sx) || !Number.isFinite(sy)) return;
-    setPivotOnElement(el, { x: sx, y: sy });
-  });
-};
 
 const fallbackReorderBehindElements = (group: SVGGElement) => {
+  // Reorder behind elements
   const behind = Array.from(
     group.querySelectorAll('[data-isbehindparent="true"]') as NodeListOf<SVGGElement>,
   );
@@ -124,6 +86,7 @@ const fallbackReorderBehindElements = (group: SVGGElement) => {
 
 /**
  * Parses SVG text and processes it into a ready-to-use puppet element.
+ * In the new format, all members and variants are nested inside the root member.
  * @param svgText The raw SVG content.
  * @param metadata Optional pre-parsed metadata describing the puppet.
  * @returns A processed SVGGElement or null if parsing fails.
@@ -133,38 +96,28 @@ function processSvgText(svgText: string, metadata?: PuppetMetadata | null): SVGG
   const doc = parser.parseFromString(svgText, "image/svg+xml");
   const svgRoot = doc.documentElement as unknown as SVGSVGElement;
 
-  let torse: SVGGElement | null = null;
+  // Find the root member (contains the entire puppet hierarchy)
+  let rootMember: SVGGElement | null = null;
   if (metadata?.rootMemberId) {
-    torse = svgRoot.querySelector(`#${cssEscape(metadata.rootMemberId)}`) as SVGGElement | null;
+    rootMember = svgRoot.querySelector(`#${cssEscape(metadata.rootMemberId)}`) as SVGGElement | null;
   }
-  if (!torse) {
-    torse = svgRoot.querySelector('[data-membre="torse"]') as SVGGElement | null;
+  if (!rootMember) {
+    // Find first element with data-membre="true"
+    rootMember = svgRoot.querySelector('[data-membre="true"]') as SVGGElement | null;
   }
-  if (!torse) return null;
+  if (!rootMember) return null;
 
-  // Create container group
-  const container = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  // Clone the root member (which contains all children members and variants)
+  const clonedRoot = rootMember.cloneNode(true) as SVGGElement;
 
-  // Clone the main puppet (torse)
-  const mainPuppet = torse.cloneNode(true) as SVGGElement;
-  container.appendChild(mainPuppet);
-
-  // Clone all variant groups (siblings of torse)
-  const children = Array.from(svgRoot.children);
-  for (const child of children) {
-    if (child !== torse && child.nodeType === 1) {
-      const cloned = child.cloneNode(true) as SVGElement;
-      container.appendChild(cloned);
-    }
-  }
-
+  // Apply metadata for transforms and z-ordering
   if (metadata) {
-    applyMetadataToGroup(container, metadata);
+    applyMetadataToGroup(clonedRoot, metadata);
   } else {
-    fallbackProcessLimbs(container);
-    fallbackReorderBehindElements(container);
+    fallbackReorderBehindElements(clonedRoot);
   }
-  return container;
+
+  return clonedRoot;
 }
 
 const toMetadataUrl = (src: string) => {

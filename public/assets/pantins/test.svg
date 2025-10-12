@@ -1,5 +1,95 @@
+<!--suppress ALL -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 <svg id="manu" width="572" height="561" viewBox="0 0 572 561" xmlns="http://www.w3.org/2000/svg">
-    <g id="torse" data-membre="true" data-parent="root" transform-origin="286, 275">
+    <g id="torse" data-membre="true" data-parent="root" style="transform-origin: 286px 275px;">
         <path
             d="M 309.579,334.037 315,255 h -58 l 4.301,78.756 c 0,0 18.123,10.266 24.704,10.244 6.301,-0.022 23.574,-9.963 23.574,-9.963 z"
             fill="#262626" />
@@ -38,7 +128,7 @@
         <path
             d="m 289.126,286.497 c 0,0.383 -0.08,0.766 -0.22,1.128 -0.15,0.353 -0.361,0.675 -0.631,0.957 -0.281,0.272 -0.602,0.483 -0.952,0.634 -0.361,0.141 -0.742,0.222 -1.123,0.222 -0.38,0 -0.761,-0.081 -1.122,-0.222 -0.351,-0.151 -0.671,-0.362 -0.942,-0.634 -0.28,-0.282 -0.491,-0.604 -0.641,-0.957 -0.14,-0.362 -0.221,-0.745 -0.221,-1.128 0.04,-0.745 0.371,-1.45 0.912,-1.963 0.541,-0.524 1.263,-0.806 2.014,-0.806 0.742,0 1.463,0.282 2.005,0.806 0.541,0.513 0.871,1.218 0.911,1.963 z"
             fill="#231f20" />
-        <g id="tete" transform-origin="286, 143" data-membre="true" data-parent="torse">
+        <g id="tete" style="transform-origin: 286px 143px;" data-membre="true" data-parent="torse">
             <g>
                 <path
                     d="m 254.451,12.0479 c -4.752,0.5624 -8.61,4.4994 -11.523,6.8797 -6.541,5.5742 -8.751,11.2186 -10.318,14.071 -2.02,3.7161 -3.075,8.3662 -2.221,14.7438 0.462,3.4851 1.075,8.2859 2.16,12.3033 0.834,3.0833 1.748,6.1968 3.306,8.9889 1.939,3.4751 3.215,3.6659 4.239,6.0462 1.759,4.0977 1.899,9.0291 4.542,13.4683 1.034,1.7275 0.723,-4.5095 0.502,-7.1008 -0.201,-2.6213 -0.322,-5.2326 -0.352,-7.854 -0.08,-4.1278 -0.462,-8.2356 -1.135,-12.3032 -0.834,-4.7807 -1.326,-8.4064 -3.587,-12.705 -0.994,-1.8782 -0.703,-9.4108 2.271,-14.0609 3.536,-5.8353 7.404,-10.6863 12.458,-15.0251 -1.457,-2.7921 -0.09,-7.4824 -0.332,-7.4522 z"
@@ -112,7 +202,7 @@
                     fill="#241c1c" fill-opacity="0.91" stroke="#000000" stroke-width="0.976271"
                     stroke-miterlimit="3.2" />
             </g>
-            <g id="bouche" data-membre="true" data-parent="tete" transform-origin="50%, 50%">
+            <g id="bouche" data-membre="true" data-parent="tete" style="transform-origin: 50% 50%;">
                 <g data-variant-groupe="bouche" data-variant-default="true" data-variant-name="bouche">
                     <path fill-rule="evenodd" clip-rule="evenodd"
                         d="m 286.993,111.669 c 8.56,0.081 18.135,0.623 18.135,3.254 0,2.883 -9.505,9.843 -18.537,9.843 -9.042,0 -18.968,-6.649 -18.968,-9.531 0,-3.988 16.075,-3.596 19.37,-3.566 z"
@@ -259,12 +349,12 @@
                 </g>
             </g>
         </g>
-        <g id="haut_bras_gauche" transform-origin="348, 167.048" data-parent="torse" data-membre="true">
+        <g id="haut_bras_gauche" style="transform-origin: 348px 167.048px;" data-parent="torse" data-membre="true">
             <path d="m 333,167.048 c 0,8 7,15 15,15 h 80 v -30 h -80 c -8,0 -15,7 -15,15 z" fill="#262626" />
-            <g id="avant_bras_gauche" transform-origin="428, 167.048" data-parent="haut_bras_gauche" data-membre="true">
+            <g id="avant_bras_gauche" style="transform-origin: 428px 167.048px;" data-parent="haut_bras_gauche" data-membre="true">
                 <path d="m 413,167.048 c 0,8 7,15 15,15 h 74 v -30 h -74 c -8,0 -15,7 -15,15 z" fill="#262626" />
                 <path d="M 507.959,180.548 502,180.546 502.041,153.548 508,153.55 Z" fill="#ffffff" />
-                <g id="main_gauche" transform-origin="505, 167.048" data-parent="avant_bras_gauche" data-membre="true">
+                <g id="main_gauche" style="transform-origin: 505px 167.048px;" data-parent="avant_bras_gauche" data-membre="true">
                     <g data-variant-default="true" data-variant-groupe="main_gauche" data-variant-name="recto"
                         data-isbehindparent="true">
                         <path
@@ -460,14 +550,14 @@
                 </g>
             </g>
         </g>
-        <g id="haut_bras_droite" transform-origin="224.046, 167.048" data-parent="torse" data-membre="true">
+        <g id="haut_bras_droite" style="transform-origin :224.046px 167.048px;" data-parent="torse" data-membre="true">
             <path d="m 239.046,167.048 c 0,8 -7,15 -15,15 h -80 v -30 h 80 c 8,0 15,7 15,15 z" fill="#262626" />
-            <g id="avant_bras_droite" transform-origin="144.046, 167.048" data-parent="haut_bras_froite"
+            <g id="avant_bras_droite" style="transform-origin: 144.046px 167.048px;" data-parent="haut_bras_froite"
                 data-membre="true">
                 <path d="m 159.046,167.048 c 0,8 -7,15 -15,15 H 70.0457 v -30 h 74.0003 c 8,0 15,7 15,15 z"
                     fill="#262626" />
                 <path d="m 64.0862,180.548 5.9594,-0.002 -0.0405,-26.998 -5.9595,0.002 z" fill="#ffffff" />
-                <g id="main_droite" transform-origin="67.046, 167.048" data-parent="avant_bras_droite"
+                <g id="main_droite" style="transform-origin: 67.046px 167.048px;" data-parent="avant_bras_droite"
                     data-membre="true">
                     <g data-variant-default="true" data-variant-groupe="main_droite" data-variant-name="recto"
                         data-isbehindparent="true">
@@ -664,15 +754,15 @@
                 </g>
             </g>
         </g>
-        <g id="cuisse_droite" transform-origin="257, 313" data-isbehindparent="true" data-membre="true"
+        <g id="cuisse_droite" style="transform-origin: 257px 313px;" data-isbehindparent="true" data-membre="true"
             data-parent="torse">
             <path d="M 239,425 V 313 h 18 18 v 112 z" fill="#262626" />
-            <g id="tibia_droite" transform-origin="257, 425" data-parent="cuisse_droite" data-membre="true">
+            <g id="tibia_droite" style="transform-origin: 257px 425px;" data-parent="cuisse_droite" data-membre="true">
                 <path
                     d="m 257.08,407 c 9.896,0 17.92,7.775 17.92,17.7 V 523 H 239 V 424.703 C 239.149,414.898 247.273,407 257.08,407 Z"
                     fill="#262626" />
                 <path d="m 272,523 h -30 v 16 h 30 z" fill="#ffffff" />
-                <g id="pied_droite" transform-origin="257, 531" data-parent="tibia_droite" data-membre="true">
+                <g id="pied_droite" style="transform-origin: 257px 531px;" data-parent="tibia_droite" data-membre="true">
                     <path
                         d="m 276.838,552.361 -0.069,8.178 -25.629,-0.049 v -4.536 c -7.878,1.012 -15.986,3.692 -23.864,4.585 -5.156,0.616 -11.079,0.934 -23.066,-1.171 -3.61,-0.575 -7.08,-1.36 -10.401,-2.342 -6.333,-1.926 -12.515,-3.861 -14.809,-5.787 0.259,-1.092 0.339,-2.571 0.868,-3.156 2.902,1.588 6.362,3.057 10.63,4.377 6.293,2.193 12.924,3.762 20.044,4.457 7.011,1.111 13.343,0.923 19.267,0 14.729,-3.197 19.675,-4.04 21.819,-4.149 8.477,-0.606 16.844,-0.318 25.21,-0.407 z"
                         fill="#000000" />
@@ -689,14 +779,14 @@
             </g>
         </g>
         <g id="cuisse_gauche" data-parent="torse" data-isbehindparent="true" data-membre="true"
-            transform-origin="314, 313">
+            style="transform-origin: 314px 313px;">
             <path d="M 296,425 V 313 h 18 18 v 112 z" fill="#262626" />
-            <g id="tibia_gauche" transform-origin="314, 425" data-membre="true" data-parent="cuisse_gauche">
+            <g id="tibia_gauche" style="transform-origin: 314px 425px;" data-membre="true" data-parent="cuisse_gauche">
                 <path
                     d="m 314.08,407 c 9.896,0 17.92,7.775 17.92,17.7 V 523 H 296 V 424.703 C 296.149,414.898 304.273,407 314.08,407 Z"
                     fill="#262626" />
                 <path d="m 299,523 h 30 v 16 h -30 z" fill="#ffffff" />
-                <g id="pied_gauche" transform-origin="314, 531" data-parent="tibia_gauche" data-membre="true">
+                <g id="pied_gauche" style="transform-origin: 314px 531px;" data-parent="tibia_gauche" data-membre="true">
                     <path
                         d="m 294.162,552.361 0.069,8.178 25.629,-0.049 v -4.536 c 7.878,1.012 15.986,3.692 23.864,4.585 5.156,0.616 11.079,0.934 23.066,-1.171 3.61,-0.575 7.08,-1.36 10.401,-2.342 6.333,-1.926 12.515,-3.861 14.809,-5.787 -0.259,-1.092 -0.339,-2.571 -0.868,-3.156 -2.902,1.588 -6.362,3.057 -10.63,4.377 -6.293,2.193 -12.924,3.762 -20.044,4.457 -7.011,1.111 -13.343,0.923 -19.267,0 -14.729,-3.197 -19.675,-4.04 -21.819,-4.149 -8.477,-0.606 -16.844,-0.318 -25.21,-0.407 z"
                         fill="#000000" />

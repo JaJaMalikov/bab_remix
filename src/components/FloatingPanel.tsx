@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect, useCallback } from "react";
+import React, { ReactNode, useState, useEffect, useCallback } from "react";
 import { useDraggable, Position } from "../hooks/useDraggable";
 import { useResizable } from "../hooks/useResizable";
 

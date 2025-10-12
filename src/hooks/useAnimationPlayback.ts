@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAnimation } from '../context/AnimationContext';
 import { useUi } from '../context/UiContext';
+import { setRotationWithOrigin } from '../utils/svgTransform';
 
 /**
  * Hook that applies animation values to scene elements during playback
@@ -50,28 +51,29 @@ export const useAnimationPlayback = () => {
         return;
       }
 
-      // We keep DOM natural order for normal cases.
-      // When a variant declares isBehindParent=true, we move it to the beginning of the target member's parent.
-
-      // Resolve target member once from the active variant (if any)
-      const activeInfo = group.variants.find((vv: any) => vv.id === value);
-      const targetMember = activeInfo?.targetMemberId
-        ? (puppetRoot.querySelector(`#${CSS.escape(activeInfo.targetMemberId)}`) as SVGElement | null)
+      // Get target member for this variant group
+      const targetMemberId = group.variants[0]?.targetMemberId;
+      const targetMember = targetMemberId
+        ? (puppetRoot.querySelector(`#${CSS.escape(targetMemberId)}`) as SVGElement | null)
         : null;
 
       group.variants.forEach((v: any) => {
-        const el = puppetRoot.querySelector(`#${CSS.escape(v.id)}`) as SVGElement | null;
+        if (!v.name) return;
+
+        // Find variant by data-variant-name attribute
+        // Search in entire puppet root because variants with isBehindParent may have been moved
+        const el = puppetRoot.querySelector(`[data-variant-groupe="${groupName}"][data-variant-name="${v.name}"]`) as SVGElement | null;
         if (!el) return;
 
-        if (v.id === value) {
+        if (v.name === value) {
           el.style.display = '';
           el.removeAttribute('display');
 
-          // If requested, push behind by placing as first child of the target member's parent
-          if ((v as any).isBehindParent && targetMember) {
-            const parentLive = (targetMember.parentNode as (Node & { insertBefore: Function; firstChild: ChildNode | null }) | null) ?? null;
-            if (parentLive) {
-              parentLive.insertBefore(el, parentLive.firstChild);
+          // If isBehindParent, place variant BEFORE the target member (as sibling)
+          // This renders it behind the parent member in z-order
+          if (v.isBehindParent && targetMember && targetMember.parentNode) {
+            if (el.nextSibling !== targetMember) {
+              targetMember.parentNode.insertBefore(el, targetMember);
             }
           }
         } else {
@@ -117,7 +119,7 @@ export const useAnimationPlayback = () => {
         track.property === 'scaleY'
       ) {
         const numericValue = typeof value === 'string' ? parseFloat(value) : value;
-        if (typeof numericValue === 'number' && !isNaN(numericValue)) {
+        if (!isNaN(numericValue)) {
           transforms[track.property] = numericValue as number;
         }
       }
@@ -140,7 +142,7 @@ export const useAnimationPlayback = () => {
           if (puppetRoot) {
             const memberEl = puppetRoot.querySelector(`#${CSS.escape(memberId)}`) as SVGGElement | null;
             if (memberEl && transforms.rotation !== undefined) {
-              memberEl.style.transform = `rotate(${transforms.rotation}deg)`;
+              setRotationWithOrigin(memberEl, transforms.rotation);
             }
           }
         }

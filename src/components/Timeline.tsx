@@ -140,8 +140,8 @@ export const Timeline: React.FC = React.memo(() => {
   }, [frameDivisor]);
 
   const handleTogglePlay = useCallback(() => {
-    setPlaying((prev) => !prev);
-  }, [setPlaying]);
+    setPlaying(!playing);
+  }, [setPlaying, playing]);
 
   const handleStop = useCallback(() => {
     setPlaying(false);

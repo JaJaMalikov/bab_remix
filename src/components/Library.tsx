@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, memo, useCallback } from "react";
+import React, { useEffect, useMemo, useState, memo, useCallback } from "react";
 import { FloatingPanel } from "./FloatingPanel";
 import { AssetItem, Asset } from "./AssetItem";
 import { useUi } from "../context/UiContext";
