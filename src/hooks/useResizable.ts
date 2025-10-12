@@ -1,4 +1,6 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import type { MouseEvent as ReactMouseEvent } from "react";
+import { useWindowDrag } from "./useWindowDrag";
 
 export interface Size {
   width: number;
@@ -40,7 +42,7 @@ export const useResizable = (initialSize: Size, options: Options = {}) => {
     } catch {}
   }, [storageKey]);
 
-  const onResizeMouseDown = useCallback((e: React.MouseEvent) => {
+  const onResizeMouseDown = useCallback((e: ReactMouseEvent) => {
     e.stopPropagation();
     setIsResizing(true);
     resizeStartRef.current = {
@@ -60,7 +62,7 @@ export const useResizable = (initialSize: Size, options: Options = {}) => {
     setSize({ width: nw, height: nh });
   }, []);
 
-  const handleMouseUp = useCallback(() => {
+  const handleMouseUp = useCallback((_event: MouseEvent) => {
     setIsResizing(false);
     resizeStartRef.current = null;
     if (storageKey) {
@@ -70,16 +72,7 @@ export const useResizable = (initialSize: Size, options: Options = {}) => {
     }
   }, [storageKey]);
 
-  useEffect(() => {
-    if (isResizing) {
-      window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseup", handleMouseUp);
-      return () => {
-        window.removeEventListener("mousemove", handleMouseMove);
-        window.removeEventListener("mouseup", handleMouseUp);
-      };
-    }
-  }, [isResizing, handleMouseMove, handleMouseUp]);
+  useWindowDrag(isResizing, handleMouseMove, handleMouseUp);
 
   return {
     size,

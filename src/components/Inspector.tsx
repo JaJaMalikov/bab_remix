@@ -375,22 +375,9 @@ function InspectorComponent() {
       if (!targetMember) return;
 
       // Find the parent member of targetMember in the hierarchy
-      const targetMemberData = selectedItem.metadata?.variantGroups
-        ? (() => {
-            // Search in members list
-            const members = selectedItem.metadata?.variantGroups.flatMap(g =>
-              g.variants.map(v => v.targetMemberId)
-            ).filter((id, i, arr) => id && arr.indexOf(id) === i); // unique
-
-            // Actually we need to search in a members list from metadata
-            // For now, find parent by querying the DOM
-            const parentId = targetMember?.getAttribute('data-parent');
-            return parentId;
-          })()
-        : null;
-
-      const targetMemberParent = targetMemberData
-        ? puppetRoot.querySelector(`#${CSS.escape(targetMemberData)}`) as SVGGElement | null
+      const targetMemberParentId = targetMember?.getAttribute('data-parent');
+      const targetMemberParent = targetMemberParentId
+        ? (puppetRoot.querySelector(`#${CSS.escape(targetMemberParentId)}`) as SVGGElement | null)
         : null;
 
       // Switch variants

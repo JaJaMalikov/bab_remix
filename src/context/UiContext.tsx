@@ -1,4 +1,13 @@
-import React, { createContext, useContext, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import type { ReactNode } from "react";
 
 export interface PuppetMetadata {
   id: string;
@@ -73,7 +82,25 @@ export interface UiState {
 
 const Ctx = createContext<UiState | null>(null);
 
-export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const NUMBERED_LABEL_SUFFIX = / \(\d+\)$/;
+
+const deriveUniqueLabel = (existing: SceneItem[], desiredLabel: string) => {
+  const normalizedBase = desiredLabel.replace(NUMBERED_LABEL_SUFFIX, "");
+  const candidates = new Set(existing.map((item) => item.label));
+  if (!candidates.has(desiredLabel)) {
+    return desiredLabel;
+  }
+
+  let suffix = 2;
+  while (candidates.has(`${normalizedBase} (${suffix})`)) {
+    suffix += 1;
+  }
+  return `${normalizedBase} (${suffix})`;
+};
+
+type UiProviderProps = { children: ReactNode };
+
+export const UiProvider = ({ children }: UiProviderProps) => {
   const [selectedPuppet, setSelectedPuppet] = useState<SVGGElement | null>(null);
   const [limbIds, setLimbIds] = useState<string[]>([]);
   const [selectedLimb, setSelectedLimb] = useState<string>("");
@@ -87,45 +114,96 @@ export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const [showToolbar, setShowToolbar] = useState<boolean>(true);
   const [showTracks, setShowTracks] = useState<boolean>(false);
   const [sceneItems, setSceneItems] = useState<SceneItem[]>([]);
-  const [fitInView, _setFitInView] = useState<UiState['fitInView']>(undefined);
-  const [importAsset, _setImportAsset] = useState<UiState['importAsset']>(undefined);
+  const [, setHelpersVersion] = useState(0);
+  const fitInViewRef = useRef<UiState['fitInView']>(undefined);
+  const importAssetRef = useRef<UiState['importAsset']>(undefined);
 
-  const addSceneItem: UiState['addSceneItem'] = (item) => {
+  const addSceneItem = useCallback<UiState['addSceneItem']>((item) => {
     setSceneItems((prev) => {
-      // Generate unique label if duplicate
       const existing = prev.filter((i) => i.id !== item.id);
-      const sameName = existing.filter((i) => i.label.startsWith(item.label.replace(/ \(\d+\)$/, '')));
-      if (sameName.length > 0) {
-        item.label = `${item.label} (${sameName.length + 1})`;
-      }
-      return [...existing, item];
+      const nextLabel = deriveUniqueLabel(existing, item.label);
+      return [...existing, { ...item, label: nextLabel }];
     });
-  };
-  const removeSceneItem: UiState['removeSceneItem'] = (id) => {
+  }, []);
+
+  const removeSceneItem = useCallback<UiState['removeSceneItem']>((id) => {
     setSceneItems((prev) => prev.filter((i) => i.id !== id));
-  };
-  const updateSceneItemLabel: UiState['updateSceneItemLabel'] = (id, label) => {
-    setSceneItems((prev) => prev.map((i) => i.id === id ? { ...i, label } : i));
-  };
-  const bringForward: UiState['bringForward'] = (id) => {
-    const item = sceneItems.find((i) => i.id === id);
-    if (!item || !(item.el as any).parentNode) return;
-    const parent = (item.el as any).parentNode as Node & { insertBefore: Function; lastChild: ChildNode | null };
-    if (item.el.nextSibling) {
-      parent.insertBefore(item.el.nextSibling, item.el);
+  }, []);
+
+  const updateSceneItemLabel = useCallback<UiState['updateSceneItemLabel']>((id, label) => {
+    setSceneItems((prev) => prev.map((i) => (i.id === id ? { ...i, label } : i)));
+  }, []);
+
+  const reorderSceneItem = useCallback((id: string, direction: 1 | -1) => {
+    setSceneItems((prev) => {
+      const index = prev.findIndex((item) => item.id === id);
+      if (index === -1) {
+        return prev;
+      }
+
+      const targetIndex = Math.min(Math.max(index + direction, 0), prev.length - 1);
+      if (targetIndex === index) {
+        return prev;
+      }
+
+      const currentItem = prev[index];
+      const parent = currentItem.el.parentNode;
+      if (!parent) {
+        return prev;
+      }
+
+      if (direction > 0) {
+        const nextSibling = currentItem.el.nextSibling;
+        if (!nextSibling) {
+          return prev;
+        }
+        parent.insertBefore(currentItem.el, nextSibling.nextSibling);
+      } else {
+        const previousSibling = currentItem.el.previousSibling;
+        if (!previousSibling) {
+          return prev;
+        }
+        parent.insertBefore(currentItem.el, previousSibling);
+      }
+
+      const updated = [...prev];
+      const [moved] = updated.splice(index, 1);
+      updated.splice(targetIndex, 0, moved);
+      return updated;
+    });
+  }, []);
+
+  const bringForward = useCallback<UiState['bringForward']>((id) => {
+    reorderSceneItem(id, 1);
+  }, [reorderSceneItem]);
+
+  const sendBackward = useCallback<UiState['sendBackward']>((id) => {
+    reorderSceneItem(id, -1);
+  }, [reorderSceneItem]);
+
+  const setFitInView = useCallback<UiState['setFitInView']>((fn) => {
+    const next = fn ?? undefined;
+    if (fitInViewRef.current === next) {
+      return;
     }
-  };
-  const sendBackward: UiState['sendBackward'] = (id) => {
-    const item = sceneItems.find((i) => i.id === id);
-    if (!item || !(item.el as any).parentNode) return;
-    const parent = (item.el as any).parentNode as Node & { insertBefore: Function; firstChild: ChildNode | null };
-    if (item.el.previousSibling) {
-      parent.insertBefore(item.el, item.el.previousSibling);
+    fitInViewRef.current = next;
+    setHelpersVersion((version) => version + 1);
+  }, [setHelpersVersion]);
+
+  const setImportAsset = useCallback<UiState['setImportAsset']>((fn) => {
+    const next = fn ?? undefined;
+    if (importAssetRef.current === next) {
+      return;
     }
-  };
+    importAssetRef.current = next;
+    setHelpersVersion((version) => version + 1);
+  }, [setHelpersVersion]);
+
+  const fitInView = fitInViewRef.current;
+  const importAsset = importAssetRef.current;
 
   // load persisted UI layout
-  React.useEffect(() => {
+  useEffect(() => {
     try {
       const raw = localStorage.getItem('ui:layout');
       if (raw) {
@@ -140,7 +218,7 @@ export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       }
     } catch {}
   }, []);
-  React.useEffect(() => {
+  useEffect(() => {
     try {
       const v = {
         showTimeline,
@@ -188,9 +266,9 @@ export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       bringForward,
       sendBackward,
       fitInView,
-      setFitInView: _setFitInView,
+      setFitInView,
       importAsset,
-      setImportAsset: _setImportAsset,
+      setImportAsset,
     }),
     [
       selectedPuppet,
@@ -206,8 +284,15 @@ export const UiProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       showToolbar,
       showTracks,
       sceneItems,
+      addSceneItem,
+      removeSceneItem,
+      updateSceneItemLabel,
+      bringForward,
+      sendBackward,
       fitInView,
+      setFitInView,
       importAsset,
+      setImportAsset,
     ],
   );
 
