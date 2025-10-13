@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAnimation } from '../context/AnimationContext';
 import { useUi } from '../context/UiContext';
+import type { SceneItem } from '../context/UiContext';
 import { setRotationWithOrigin, setImageTransform } from '../utils/svgTransform';
 import { applyVariantSelection, findVisibleVariant } from '../utils/svgVariants';
 
@@ -19,81 +20,115 @@ export const useAnimationPlayback = () => {
     return () => window.removeEventListener("animation:refresh", handleRefresh);
   }, []);
 
-  const updateAttachments = useCallback((puppetFilter?: Set<string>) => {
+  const { attachmentEntries, puppetAnchors } = useMemo(() => {
+    const attachments: Array<{
+      item: SceneItem;
+      image: SVGImageElement;
+      puppetId: string;
+      memberId: string;
+      offset: { cx: number; cy: number };
+    }> = [];
+    const puppets = new Map<string, { anchor: SVGGElement; item: SceneItem }>();
+
     sceneItems.forEach((item) => {
-      if (item.type !== 'image') return;
-      const el = item.el as SVGImageElement;
-      const puppetId = el.getAttribute('data-attached-to-puppet');
-      const memberId = el.getAttribute('data-attached-to-member');
-      const offCx = el.getAttribute('data-attachment-offset-cx');
-      const offCy = el.getAttribute('data-attachment-offset-cy');
-      if (!puppetId || !memberId || offCx === null || offCy === null) return;
-      if (puppetFilter && !puppetFilter.has(puppetId)) return;
-
-      const visibilityState = el.getAttribute('data-visibility-state');
-      const isVisibleByTrack = visibilityState !== 'hidden';
-      if (!isVisibleByTrack) {
-        el.setAttribute('display', 'none');
-        el.style.display = 'none';
+      if (item.type === 'puppet') {
+        const anchor = item.el as SVGGElement;
+        puppets.set(item.id, { anchor, item });
         return;
       }
 
-      const puppet = sceneItems.find((i) => i.id === puppetId);
-      if (!puppet || puppet.type !== 'puppet') return;
-
-      const puppetAnchor = puppet.el as SVGGElement;
-      const puppetDisplayAttr = puppetAnchor.getAttribute('display');
-      const puppetStyleDisplay = puppetAnchor.style.display || '';
-      if (puppetDisplayAttr === 'none' || puppetStyleDisplay === 'none') {
-        el.setAttribute('display', 'none');
-        el.style.display = 'none';
+      if (item.type !== 'image') {
         return;
       }
 
-      const puppetRoot = puppetAnchor.firstChild as SVGGElement | null;
-      if (!puppetRoot) return;
+      const image = item.el as SVGImageElement;
+      const puppetId = image.getAttribute('data-attached-to-puppet');
+      const memberId = image.getAttribute('data-attached-to-member');
+      const offCx = image.getAttribute('data-attachment-offset-cx');
+      const offCy = image.getAttribute('data-attachment-offset-cy');
 
-      let member = puppetRoot.querySelector(`#${CSS.escape(memberId)}`) as SVGGElement | null;
-      if (!member) return;
-
-      if (member.style.display === 'none' || member.getAttribute('display') === 'none') {
-        const visibleVariant = findVisibleVariant(puppetRoot, memberId);
-        if (visibleVariant) member = visibleVariant;
+      if (!puppetId || !memberId || offCx === null || offCy === null) {
+        return;
       }
 
-      const svg = el.ownerSVGElement;
-      if (!svg) return;
-      const viewport = svg.querySelector('[data-viewport]') as SVGGElement | null;
-      if (!viewport) return;
-
-      const memberMatrix = member.getScreenCTM();
-      const viewportMatrix = viewport.getScreenCTM();
-      if (!memberMatrix || !viewportMatrix) return;
-
-      const viewportInverse = viewportMatrix.inverse();
-      const memberLocalToViewport = viewportInverse.multiply(memberMatrix);
-
-      const localPoint = svg.createSVGPoint();
-      localPoint.x = parseFloat(offCx);
-      localPoint.y = parseFloat(offCy);
-      const scenePoint = localPoint.matrixTransform(memberLocalToViewport);
-
-      const imgW = parseFloat(el.getAttribute('width') || '0');
-      const imgH = parseFloat(el.getAttribute('height') || '0');
-      const sceneX = scenePoint.x - imgW / 2;
-      const sceneY = scenePoint.y - imgH / 2;
-
-      el.setAttribute('x', String(Math.round(sceneX)));
-      el.setAttribute('y', String(Math.round(sceneY)));
-
-      const angle = Math.atan2(memberLocalToViewport.b, memberLocalToViewport.a) * (180 / Math.PI);
-      const cx = sceneX + imgW / 2;
-      const cy = sceneY + imgH / 2;
-      el.setAttribute('transform', `rotate(${angle} ${cx} ${cy})`);
-      el.removeAttribute('display');
-      el.style.display = '';
+      const offset = { cx: parseFloat(offCx), cy: parseFloat(offCy) };
+      attachments.push({ item, image, puppetId, memberId, offset });
     });
+
+    return { attachmentEntries: attachments, puppetAnchors: puppets };
   }, [sceneItems]);
+
+  const updateAttachments = useCallback(
+    (puppetFilter?: Set<string>) => {
+      attachmentEntries.forEach(({ image, puppetId, memberId, offset }) => {
+        if (puppetFilter && !puppetFilter.has(puppetId)) return;
+
+        const visibilityState = image.getAttribute('data-visibility-state');
+        const isVisibleByTrack = visibilityState !== 'hidden';
+        if (!isVisibleByTrack) {
+          image.setAttribute('display', 'none');
+          image.style.display = 'none';
+          return;
+        }
+
+        const puppetEntry = puppetAnchors.get(puppetId);
+        if (!puppetEntry) return;
+
+        const { anchor } = puppetEntry;
+        const puppetDisplayAttr = anchor.getAttribute('display');
+        const puppetStyleDisplay = anchor.style.display || '';
+        if (puppetDisplayAttr === 'none' || puppetStyleDisplay === 'none') {
+          image.setAttribute('display', 'none');
+          image.style.display = 'none';
+          return;
+        }
+
+        const puppetRoot = anchor.firstChild as SVGGElement | null;
+        if (!puppetRoot) return;
+
+        let member = puppetRoot.querySelector(`#${CSS.escape(memberId)}`) as SVGGElement | null;
+        if (!member) return;
+
+        if (member.style.display === 'none' || member.getAttribute('display') === 'none') {
+          const visibleVariant = findVisibleVariant(puppetRoot, memberId);
+          if (visibleVariant) member = visibleVariant;
+        }
+
+        const svg = image.ownerSVGElement;
+        if (!svg) return;
+        const viewport = svg.querySelector('[data-viewport]') as SVGGElement | null;
+        if (!viewport) return;
+
+        const memberMatrix = member.getScreenCTM();
+        const viewportMatrix = viewport.getScreenCTM();
+        if (!memberMatrix || !viewportMatrix) return;
+
+        const viewportInverse = viewportMatrix.inverse();
+        const memberLocalToViewport = viewportInverse.multiply(memberMatrix);
+
+        const localPoint = svg.createSVGPoint();
+        localPoint.x = offset.cx;
+        localPoint.y = offset.cy;
+        const scenePoint = localPoint.matrixTransform(memberLocalToViewport);
+
+        const imgW = parseFloat(image.getAttribute('width') || '0');
+        const imgH = parseFloat(image.getAttribute('height') || '0');
+        const sceneX = scenePoint.x - imgW / 2;
+        const sceneY = scenePoint.y - imgH / 2;
+
+        image.setAttribute('x', String(Math.round(sceneX)));
+        image.setAttribute('y', String(Math.round(sceneY)));
+
+        const angle = Math.atan2(memberLocalToViewport.b, memberLocalToViewport.a) * (180 / Math.PI);
+        const cx = sceneX + imgW / 2;
+        const cy = sceneY + imgH / 2;
+        image.setAttribute('transform', `rotate(${angle} ${cx} ${cy})`);
+        image.removeAttribute('display');
+        image.style.display = '';
+      });
+    },
+    [attachmentEntries, puppetAnchors],
+  );
 
   useEffect(() => {
     // First, apply non-numeric properties like variants before transforms
