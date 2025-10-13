@@ -1,7 +1,17 @@
 import React, { createContext, useContext, useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { SceneItem } from "./UiContext";
 
-export type AnimationProperty = 'rotation' | 'x' | 'y' | 'scaleX' | 'scaleY' | 'activeVariant' | 'attachment';
+export type AnimationProperty =
+  | 'rotation'
+  | 'x'
+  | 'y'
+  | 'scaleX'
+  | 'scaleY'
+  | 'activeVariant'
+  | 'attachment'
+  | 'visible';
+
+type KeyframeValue = number | string | boolean;
 
 export interface AttachedObject {
   type: 'image' | 'text' | 'audio';
@@ -10,7 +20,7 @@ export interface AttachedObject {
 
 export interface Keyframe {
   frame: number;
-  value: number | string;
+  value: KeyframeValue;
   variant?: string;
   attachedObject?: AttachedObject;
 }
@@ -33,10 +43,18 @@ export interface AnimationState {
   setDuration: (frames: number) => void;
   setCurrentFrame: (frame: number) => void;
 
-  addKeyframe: (targetId: string, targetMemberId: string | null, property: AnimationProperty, frame: number, value: number | string, variant?: string, attachedObject?: AttachedObject) => void;
+  addKeyframe: (
+    targetId: string,
+    targetMemberId: string | null,
+    property: AnimationProperty,
+    frame: number,
+    value: KeyframeValue,
+    variant?: string,
+    attachedObject?: AttachedObject
+  ) => void;
   removeKeyframe: (trackId: string, frame: number) => void;
   getTrack: (targetId: string, targetMemberId: string | null, property: AnimationProperty) => AnimationTrack | undefined;
-  getValueAtFrame: (targetId: string, targetMemberId: string | null, property: AnimationProperty, frame: number) => number | string | null;
+  getValueAtFrame: (targetId: string, targetMemberId: string | null, property: AnimationProperty, frame: number) => KeyframeValue | null;
   removeAllTracksForTarget: (targetId: string) => void;
   snapshotKeyframes: (items: SceneItem[]) => void;
 }
@@ -53,7 +71,15 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const lastFrameRef = useRef<number>(-1);
 
   const addKeyframe = useCallback(
-    (targetId: string, targetMemberId: string | null, property: AnimationProperty, frame: number, value: number | string, variant?: string, attachedObject?: AttachedObject) => {
+    (
+      targetId: string,
+      targetMemberId: string | null,
+      property: AnimationProperty,
+      frame: number,
+      value: KeyframeValue,
+      variant?: string,
+      attachedObject?: AttachedObject
+    ) => {
       setTracks((prev) => {
         // Find or create track
         const trackKey = `${targetId}:${targetMemberId || 'null'}:${property}`;
@@ -112,7 +138,7 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   );
 
   const getValueAtFrame = useCallback(
-    (targetId: string, targetMemberId: string | null, property: AnimationProperty, frame: number): number | string | null => {
+    (targetId: string, targetMemberId: string | null, property: AnimationProperty, frame: number): KeyframeValue | null => {
       const track = getTrack(targetId, targetMemberId, property);
       if (!track || track.keyframes.length === 0) return null;
 
@@ -124,7 +150,7 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (!after) return before.value;
 
       // For variants and attachments, use step interpolation
-      if (property === 'activeVariant' || property === 'attachment') {
+      if (property === 'activeVariant' || property === 'attachment' || property === 'visible') {
         return before.value;
       }
 
@@ -185,6 +211,17 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             addKeyframe(targetId, null, prop, currentFrame, currentValue);
           }
         });
+
+        const displayAttr = el.getAttribute('display');
+        const styleDisplay =
+          (el as SVGGraphicsElement).style && (el as SVGGraphicsElement).style.display
+            ? (el as SVGGraphicsElement).style.display
+            : '';
+        const isVisible = displayAttr !== 'none' && styleDisplay !== 'none';
+        const prevVisible = getValueAtFrame(targetId, null, 'visible', currentFrame - 1);
+        if (currentFrame === 0 || prevVisible === null || Boolean(prevVisible) !== isVisible) {
+          addKeyframe(targetId, null, 'visible', currentFrame, isVisible);
+        }
 
         // 2. Snapshot puppet members rotation
         if (item.type === "puppet") {

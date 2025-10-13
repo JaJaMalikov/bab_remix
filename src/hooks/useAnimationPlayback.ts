@@ -30,10 +30,26 @@ export const useAnimationPlayback = () => {
       if (!puppetId || !memberId || offCx === null || offCy === null) return;
       if (puppetFilter && !puppetFilter.has(puppetId)) return;
 
+      const visibilityState = el.getAttribute('data-visibility-state');
+      const isVisibleByTrack = visibilityState !== 'hidden';
+      if (!isVisibleByTrack) {
+        el.setAttribute('display', 'none');
+        el.style.display = 'none';
+        return;
+      }
+
       const puppet = sceneItems.find((i) => i.id === puppetId);
       if (!puppet || puppet.type !== 'puppet') return;
 
       const puppetAnchor = puppet.el as SVGGElement;
+      const puppetDisplayAttr = puppetAnchor.getAttribute('display');
+      const puppetStyleDisplay = puppetAnchor.style.display || '';
+      if (puppetDisplayAttr === 'none' || puppetStyleDisplay === 'none') {
+        el.setAttribute('display', 'none');
+        el.style.display = 'none';
+        return;
+      }
+
       const puppetRoot = puppetAnchor.firstChild as SVGGElement | null;
       if (!puppetRoot) return;
 
@@ -74,6 +90,8 @@ export const useAnimationPlayback = () => {
       const cx = sceneX + imgW / 2;
       const cy = sceneY + imgH / 2;
       el.setAttribute('transform', `rotate(${angle} ${cx} ${cy})`);
+      el.removeAttribute('display');
+      el.style.display = '';
     });
   }, [sceneItems]);
 
@@ -114,10 +132,19 @@ export const useAnimationPlayback = () => {
       applyVariantSelection(puppetRoot, group, value);
     });
 
+    const itemVisibility = new Map<string, boolean>();
+    tracks.forEach((track) => {
+      if (track.property !== 'visible' || track.targetMemberId !== null) return;
+      const rawValue = getValueAtFrame(track.targetId, track.targetMemberId, track.property, currentFrame);
+      if (rawValue === null) return;
+      itemVisibility.set(track.targetId, Boolean(rawValue));
+    });
+
     // Group tracks by target to apply numeric transforms at once
     const targetTransforms = new Map<string, Map<string, Record<string, number>>>();
 
     tracks.forEach((track) => {
+      if (track.property === 'visible') return;
       const value = getValueAtFrame(track.targetId, track.targetMemberId, track.property, currentFrame);
       if (value === null) return;
 
@@ -140,9 +167,17 @@ export const useAnimationPlayback = () => {
         track.property === 'scaleX' ||
         track.property === 'scaleY'
       ) {
-        const numericValue = typeof value === 'string' ? parseFloat(value) : value;
-        if (!isNaN(numericValue)) {
-          transforms[track.property] = numericValue as number;
+        let numericValue: number | null = null;
+        if (typeof value === 'string') {
+          const parsed = parseFloat(value);
+          if (!isNaN(parsed)) {
+            numericValue = parsed;
+          }
+        } else if (typeof value === 'number') {
+          numericValue = value;
+        }
+        if (numericValue !== null) {
+          transforms[track.property] = numericValue;
         }
       }
     });
@@ -213,6 +248,20 @@ export const useAnimationPlayback = () => {
           }
         }
       });
+    });
+
+    sceneItems.forEach((item) => {
+      const el = item.el as SVGGraphicsElement;
+      const visible = itemVisibility.has(item.id) ? itemVisibility.get(item.id)! : true;
+      if (visible) {
+        el.removeAttribute('display');
+        el.style.display = '';
+        el.setAttribute('data-visibility-state', 'visible');
+      } else {
+        el.setAttribute('display', 'none');
+        el.style.display = 'none';
+        el.setAttribute('data-visibility-state', 'hidden');
+      }
     });
 
     // Finally, update positions of images attached to puppet members (follow mode)

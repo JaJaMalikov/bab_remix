@@ -105,6 +105,14 @@ export const SvgScene = memo(() => {
     }
   }, []);
 
+  const initializeVisibilityForItem = useCallback((itemId: string) => {
+    const frame = currentFrame;
+    addKeyframe(itemId, null, 'visible', frame, true);
+    if (frame > 0) {
+      addKeyframe(itemId, null, 'visible', frame - 1, false);
+    }
+  }, [addKeyframe, currentFrame]);
+
   const dropAsset = useCallback(async (asset: Asset, x: number, y: number) => {
     const { scene } = ensureContainers();
     if (asset.type === "decor") {
@@ -126,6 +134,7 @@ export const SvgScene = memo(() => {
       // Metadata will be added in onReady callback
       setPuppets((prev) => [...prev, { id, src: asset.path, anchor, dropX: x, dropY: y }]);
       addSceneItem({ id, type: 'puppet', label: asset.name || asset.path.split('/').pop() || 'Puppet', el: anchor });
+      initializeVisibilityForItem(id);
       return;
     }
 
@@ -148,7 +157,8 @@ export const SvgScene = memo(() => {
     const id = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
     img.setAttribute('data-id', id);
     addSceneItem({ id, type: 'image', label: asset.name || asset.path.split('/').pop() || 'Image', el: img });
-  }, [addSceneItem, setDecor, setPuppets]);
+    initializeVisibilityForItem(id);
+  }, [addSceneItem, initializeVisibilityForItem, setDecor, setPuppets]);
 
   // Effect for drag/drop from library and click-to-select-limb
   useEffect(() => {
