@@ -35,13 +35,8 @@
     "category": "objets"
   },
   {
-    "name": "Pantins.tar",
-    "path": "pantins/pantins.tar.gz",
-    "category": "pantins"
-  },
-  {
-    "name": "Test",
-    "path": "pantins/test.svg",
+    "name": "Manu",
+    "path": "pantins/manu.svg",
     "category": "pantins"
   }
 ]
