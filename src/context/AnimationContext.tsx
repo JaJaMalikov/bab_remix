@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useMemo, useState, useCallback, useEffect, useRef } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { SceneItem } from "./UiContext";
 
 export type AnimationProperty =
@@ -38,10 +39,10 @@ export interface AnimationState {
   currentFrame: number;
   tracks: AnimationTrack[];
   playing: boolean;
-  setPlaying: (playing: boolean) => void;
+  setPlaying: Dispatch<SetStateAction<boolean>>;
 
   setDuration: (frames: number) => void;
-  setCurrentFrame: (frame: number) => void;
+  setCurrentFrame: Dispatch<SetStateAction<number>>;
 
   addKeyframe: (
     targetId: string,

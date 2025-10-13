@@ -1,44 +1,36 @@
-import { useEffect } from 'react';
-import { useUi } from '../context/UiContext';
-import { useAnimation } from '../context/AnimationContext';
+import { useEffect } from "react";
+import { useUi } from "../context/UiContext";
+import { useAnimation } from "../context/AnimationContext";
 
 export function useKeyboardShortcuts() {
-  const {
-    showLibrary,
-    setShowLibrary,
-    showInspector,
-    setShowInspector,
-    showTimeline,
-    setShowTimeline,
-    fitInView,
-  } = useUi();
+  const { setShowLibrary, setShowInspector, setShowTimeline, fitInView } = useUi();
 
-  const { playing, setPlaying, currentFrame, setCurrentFrame, duration } = useAnimation();
+  const { setPlaying, setCurrentFrame, duration } = useAnimation();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if user is typing in an input
       const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
         return;
       }
 
       // Ctrl/Cmd + shortcuts
       if (e.ctrlKey || e.metaKey) {
         switch (e.key.toLowerCase()) {
-          case 'l':
+          case "l":
             e.preventDefault();
-            setShowLibrary(!showLibrary);
+            setShowLibrary((prev) => !prev);
             break;
-          case 'i':
+          case "i":
             e.preventDefault();
-            setShowInspector(!showInspector);
+            setShowInspector((prev) => !prev);
             break;
-          case 'g':
+          case "g":
             e.preventDefault();
-            setShowTimeline(!showTimeline);
+            setShowTimeline((prev) => !prev);
             break;
-          case '0':
+          case "0":
             e.preventDefault();
             fitInView?.();
             break;
@@ -48,47 +40,30 @@ export function useKeyboardShortcuts() {
 
       // Playback shortcuts
       switch (e.key) {
-        case ' ':
+        case " ":
           e.preventDefault();
-          setPlaying(!playing);
+          setPlaying((prev) => !prev);
           break;
-        case 'ArrowRight':
+        case "ArrowRight":
           e.preventDefault();
-          if (currentFrame < duration - 1) {
-            setCurrentFrame(currentFrame + 1);
-          }
+          setCurrentFrame((prev) => Math.min(prev + 1, Math.max(duration - 1, 0)));
           break;
-        case 'ArrowLeft':
+        case "ArrowLeft":
           e.preventDefault();
-          if (currentFrame > 0) {
-            setCurrentFrame(currentFrame - 1);
-          }
+          setCurrentFrame((prev) => Math.max(prev - 1, 0));
           break;
-        case 'Home':
+        case "Home":
           e.preventDefault();
           setCurrentFrame(0);
           break;
-        case 'End':
+        case "End":
           e.preventDefault();
-          setCurrentFrame(duration - 1);
+          setCurrentFrame(Math.max(duration - 1, 0));
           break;
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [
-    showLibrary,
-    setShowLibrary,
-    showInspector,
-    setShowInspector,
-    showTimeline,
-    setShowTimeline,
-    fitInView,
-    playing,
-    setPlaying,
-    currentFrame,
-    setCurrentFrame,
-    duration,
-  ]);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [setShowLibrary, setShowInspector, setShowTimeline, fitInView, setPlaying, setCurrentFrame, duration]);
 }

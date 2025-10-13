@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
-import type { ReactNode } from "react";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
 
 export interface PuppetMetadata {
   id: string;
@@ -51,19 +51,19 @@ export interface UiState {
 
   // Panels & layout
   showTimeline: boolean;
-  setShowTimeline: (v: boolean) => void;
+  setShowTimeline: Dispatch<SetStateAction<boolean>>;
   timelineHeight: number;
-  setTimelineHeight: (px: number) => void;
+  setTimelineHeight: Dispatch<SetStateAction<number>>;
   showLibrary: boolean;
-  setShowLibrary: (v: boolean) => void;
+  setShowLibrary: Dispatch<SetStateAction<boolean>>;
   showInspector: boolean;
-  setShowInspector: (v: boolean) => void;
+  setShowInspector: Dispatch<SetStateAction<boolean>>;
   showLayers: boolean;
-  setShowLayers: (v: boolean) => void;
+  setShowLayers: Dispatch<SetStateAction<boolean>>;
   showToolbar: boolean;
-  setShowToolbar: (v: boolean) => void;
+  setShowToolbar: Dispatch<SetStateAction<boolean>>;
   showTracks: boolean;
-  setShowTracks: (v: boolean) => void;
+  setShowTracks: Dispatch<SetStateAction<boolean>>;
 
   // Scene items for Layers panel
   sceneItems: SceneItem[];
