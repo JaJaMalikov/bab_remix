@@ -1,5 +1,28 @@
 import { AnimationTrack } from "../context/AnimationContext";
 
+const parseNumber = (value: string | null, fallback = 0) => {
+  if (value === null) return fallback;
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const parseAnchorTranslation = (anchor: SVGGElement | null) => {
+  if (!anchor) return { tx: 0, ty: 0 };
+  const transformAttr = anchor.getAttribute("transform") || "";
+  const match = transformAttr.match(/translate\(([-\d.]+)[,\s]+([-\d.]+)\)/);
+  const tx = match ? parseFloat(match[1] || "0") : 0;
+  const ty = match ? parseFloat(match[2] || "0") : 0;
+  return {
+    tx: Number.isFinite(tx) ? tx : 0,
+    ty: Number.isFinite(ty) ? ty : 0,
+  };
+};
+
+const findAnchorById = (svg: SVGSVGElement | null, puppetId: string | null) => {
+  if (!svg || !puppetId) return null;
+  return svg.querySelector(`[data-anchor="puppet"][data-id="${CSS.escape(puppetId)}"]`) as SVGGElement | null;
+};
+
 export interface ProjectData {
   version: string;
   scene: {
@@ -75,22 +98,32 @@ export function serializeProject(params: {
       }
     } else {
       // Image
-      const x = parseFloat(el.getAttribute("x") || "0");
-      const y = parseFloat(el.getAttribute("y") || "0");
-      transform.x = x;
-      transform.y = y;
+      const graphicEl = el as SVGGraphicsElement;
+      const localX = parseNumber(graphicEl.getAttribute("x"));
+      const localY = parseNumber(graphicEl.getAttribute("y"));
+      let sceneX = localX;
+      let sceneY = localY;
 
-      const transformAttr = el.getAttribute("transform") || "";
+      if (graphicEl.getAttribute("data-attached-mode") === "embedded") {
+        const anchor = findAnchorById(graphicEl.ownerSVGElement, graphicEl.getAttribute("data-attached-to-puppet"));
+        const { tx, ty } = parseAnchorTranslation(anchor);
+        sceneX = localX + tx;
+        sceneY = localY + ty;
+      }
+
+      transform.x = sceneX;
+      transform.y = sceneY;
+
+      const transformAttr = graphicEl.getAttribute("transform") || "";
       const rotMatch = transformAttr.match(/rotate\(([-\d.]+)/);
       const scaleMatch = transformAttr.match(/scale\(([-\d.]+)(?:[,\s]+([-\d.]+))?\)/);
-
       if (rotMatch) transform.rotation = parseFloat(rotMatch[1] || "0");
       if (scaleMatch) {
         transform.scaleX = parseFloat(scaleMatch[1] || "1");
         transform.scaleY = scaleMatch[2] ? parseFloat(scaleMatch[2]) : transform.scaleX;
       }
 
-      source = el.getAttribute("href") || "";
+      source = el.getAttribute("data-source") || el.getAttribute("href") || "";
     }
 
     return {

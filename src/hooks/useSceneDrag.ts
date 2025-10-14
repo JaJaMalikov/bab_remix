@@ -1,7 +1,8 @@
 import React, { useRef, useEffect, useCallback } from 'react';
+import { readGraphicTransform, setImageTransform } from '../utils/svgTransform';
 
 // The state of a drag operation
-type DraggingRef = 
+type DraggingRef =
   | null
   | {
       type: 'puppet';
@@ -10,14 +11,16 @@ type DraggingRef =
       startY: number;
       tx0: number;
       ty0: number;
+      itemId: string | null;
     }
   | {
-      type: 'image';
-      el: SVGImageElement;
+      type: 'graphic';
+      el: SVGGraphicsElement;
       startX: number;
       startY: number;
       x0: number;
       y0: number;
+      itemId: string | null;
     };
 
 type Coords = { x: number; y: number };
@@ -58,14 +61,14 @@ export const useSceneDrag = (
       if (e.button !== 0) return; // drag only with left click
       const path: EventTarget[] = (e.composedPath && e.composedPath()) || [];
       let anchor: SVGGElement | null = null;
-      let img: SVGImageElement | null = null;
+      let img: SVGGraphicsElement | null = null;
       for (const n of path) {
         if (n instanceof SVGGElement && n.hasAttribute('data-anchor')) {
           anchor = n as SVGGElement;
           break;
         }
-        if (n instanceof SVGImageElement && n.hasAttribute('data-draggable')) {
-          img = n as SVGImageElement;
+        if (n instanceof SVGGraphicsElement && n.hasAttribute('data-draggable')) {
+          img = n as SVGGraphicsElement;
           break;
         }
       }
@@ -83,18 +86,20 @@ export const useSceneDrag = (
           startY: pt.y,
           tx0: tx,
           ty0: ty,
+          itemId: anchor.getAttribute('data-id'),
         };
         e.preventDefault();
       } else if (img) {
         const x0 = parseFloat(img.getAttribute('x') || '0');
         const y0 = parseFloat(img.getAttribute('y') || '0');
         draggingRef.current = {
-          type: 'image',
+          type: 'graphic',
           el: img,
           startX: pt.x,
           startY: pt.y,
           x0: isFinite(x0) ? x0 : 0,
           y0: isFinite(y0) ? y0 : 0,
+          itemId: img.getAttribute('data-id'),
         };
         e.preventDefault();
       }
@@ -115,23 +120,30 @@ export const useSceneDrag = (
         const ty = Math.round(drag.ty0 + dy);
         drag.el.setAttribute('transform', `translate(${tx}, ${ty})`);
         window.dispatchEvent(new CustomEvent('attachment:update', { detail: { anchor: drag.el } }));
-      } else if (drag.type === 'image') {
+      } else if (drag.type === 'graphic') {
         const x = Math.round(drag.x0 + dx);
         const y = Math.round(drag.y0 + dy);
         drag.el.setAttribute('x', String(x));
         drag.el.setAttribute('y', String(y));
+
+        const transformAttr = drag.el.getAttribute('transform') || '';
+        if (/\brotate\(/.test(transformAttr) || /\bscale\(/.test(transformAttr)) {
+          const { rotation, scaleX, scaleY } = readGraphicTransform(drag.el);
+          setImageTransform(drag.el, rotation, scaleX, scaleY);
+        }
       }
 
       // Notify Inspector of transform change
-      window.dispatchEvent(new CustomEvent('item:transformed'));
+      window.dispatchEvent(new CustomEvent('item:transformed', { detail: { id: drag.itemId, final: false } }));
     };
 
     const onMouseUp = () => {
       if (draggingRef.current) {
+        const drag = draggingRef.current;
         // Final notification when drag completes
-        window.dispatchEvent(new CustomEvent('item:transformed'));
-        if (draggingRef.current.type === 'puppet') {
-          window.dispatchEvent(new CustomEvent('attachment:update', { detail: { anchor: draggingRef.current.el } }));
+        window.dispatchEvent(new CustomEvent('item:transformed', { detail: { id: drag.itemId, final: true } }));
+        if (drag.type === 'puppet') {
+          window.dispatchEvent(new CustomEvent('attachment:update', { detail: { anchor: drag.el } }));
         }
       }
       draggingRef.current = null;

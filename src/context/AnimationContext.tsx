@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useMemo, useState, useCallback, useEffect, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { SceneItem } from "./UiContext";
+import { readItemTransform } from "../utils/svgTransform";
 
 export type AnimationProperty =
   | 'rotation'
@@ -82,35 +83,37 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       attachedObject?: AttachedObject
     ) => {
       setTracks((prev) => {
-        // Find or create track
         const trackKey = `${targetId}:${targetMemberId || 'null'}:${property}`;
-        let track = prev.find(
+        const trackIndex = prev.findIndex(
           (t) => t.targetId === targetId && t.targetMemberId === targetMemberId && t.property === property
         );
 
-        if (!track) {
-          track = {
+        const newKeyframe = { frame, value, variant, attachedObject };
+
+        // Create new track if it doesn't exist
+        if (trackIndex === -1) {
+          return [...prev, {
             id: trackKey,
             targetId,
             targetMemberId,
             property,
-            keyframes: [],
-          };
-          prev = [...prev, track];
+            keyframes: [newKeyframe],
+          }];
         }
 
-        const newKeyframe = { frame, value, variant, attachedObject };
+        // Update existing track
+        const track = prev[trackIndex];
+        const existingKfIndex = track.keyframes.findIndex((kf) => kf.frame === frame);
 
-        // Add or update keyframe
-        const existingIndex = track.keyframes.findIndex((kf) => kf.frame === frame);
-        if (existingIndex >= 0) {
-          track.keyframes[existingIndex] = { ...track.keyframes[existingIndex], ...newKeyframe };
-        } else {
-          track.keyframes.push(newKeyframe);
-          track.keyframes.sort((a, b) => a.frame - b.frame);
-        }
+        const updatedKeyframes = existingKfIndex >= 0
+          ? track.keyframes.map((kf, i) => i === existingKfIndex ? { ...kf, ...newKeyframe } : kf)
+          : [...track.keyframes, newKeyframe].sort((a, b) => a.frame - b.frame);
 
-        return [...prev];
+        return [
+          ...prev.slice(0, trackIndex),
+          { ...track, keyframes: updatedKeyframes },
+          ...prev.slice(trackIndex + 1),
+        ];
       });
     },
     []
@@ -175,125 +178,134 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setTracks((prev) => prev.filter((t) => t.targetId !== targetId));
   }, []);
 
-  const snapshotKeyframes = useCallback(
-    (items: SceneItem[]) => {
-      items.forEach(item => {
-        const el = item.el;
-        const targetId = item.id;
+  // Helper: snapshot item transforms
+  const snapshotItemTransform = useCallback(
+    (item: SceneItem, currentFrame: number) => {
+      const currentTransform = readItemTransform(item.el, item.type);
+      const properties = ['x', 'y', 'rotation', 'scaleX', 'scaleY'] as const;
 
-        // 1. Snapshot main item transform
-        let currentTransform: { x: number; y: number; rotation: number; scaleX: number; scaleY: number };
-        if (item.type === "puppet") {
-          const transformAttr = el.getAttribute("transform") || "";
-          const match = transformAttr.match(/translate\(([-\d.]+)[,\s]+([-\d.]+)\)/);
-          currentTransform = match
-            ? { x: parseFloat(match[1] || "0"), y: parseFloat(match[2] || "0"), rotation: 0, scaleX: 1, scaleY: 1 }
-            : { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 };
-        } else { // image
-          const x = parseFloat(el.getAttribute("x") || "0");
-          const y = parseFloat(el.getAttribute("y") || "0");
-          const transformAttr = el.getAttribute("transform") || "";
-          const rotMatch = transformAttr.match(/rotate\(([-\d.]+)/);
-          const scaleMatch = transformAttr.match(/scale\(([-\d.]+)(?:[,\s]+([-\d.]+))?\)/);
-          const rotation = rotMatch ? parseFloat(rotMatch[1] || "0") : 0;
-          const scaleX = scaleMatch ? parseFloat(scaleMatch[1] || "1") : 1;
-          const scaleY = scaleMatch && scaleMatch[2] ? parseFloat(scaleMatch[2]) : scaleX;
-          currentTransform = { x, y, rotation, scaleX, scaleY };
+      properties.forEach(prop => {
+        if (item.type === 'puppet' && prop !== 'x' && prop !== 'y') return;
+
+        const currentValue = currentTransform[prop];
+        const previousValue = getValueAtFrame(item.id, null, prop, currentFrame - 1);
+
+        if (currentFrame === 0 || previousValue === null || Math.abs((currentValue as number) - (previousValue as number)) > 1e-4) {
+          addKeyframe(item.id, null, prop, currentFrame, currentValue);
         }
+      });
+    },
+    [getValueAtFrame, addKeyframe]
+  );
 
-        const properties = ['x', 'y', 'rotation', 'scaleX', 'scaleY'] as const;
-        properties.forEach(prop => {
-          if (item.type === 'puppet' && prop !== 'x' && prop !== 'y') return;
+  // Helper: snapshot item visibility
+  const snapshotItemVisibility = useCallback(
+    (item: SceneItem, currentFrame: number) => {
+      const el = item.el as SVGGraphicsElement;
+      const displayAttr = el.getAttribute('display');
+      const styleDisplay = el.style?.display || '';
+      const isVisible = displayAttr !== 'none' && styleDisplay !== 'none';
+      const prevVisible = getValueAtFrame(item.id, null, 'visible', currentFrame - 1);
 
-          const currentValue = currentTransform[prop];
-          const previousValue = getValueAtFrame(targetId, null, prop, currentFrame - 1);
+      if (currentFrame === 0 || prevVisible === null || Boolean(prevVisible) !== isVisible) {
+        addKeyframe(item.id, null, 'visible', currentFrame, isVisible);
+      }
+    },
+    [getValueAtFrame, addKeyframe]
+  );
 
-          if (currentFrame === 0 || previousValue === null || Math.abs((currentValue as number) - (previousValue as number)) > 1e-4) {
-            addKeyframe(targetId, null, prop, currentFrame, currentValue);
-          }
+  // Helper: snapshot puppet member rotations
+  const snapshotPuppetMembers = useCallback(
+    (item: SceneItem, currentFrame: number) => {
+      if (item.type !== 'puppet') return;
+
+      const puppetRoot = item.el.firstChild as SVGGElement | null;
+      if (!puppetRoot) return;
+
+      const members = puppetRoot.querySelectorAll('[data-membre]') as NodeListOf<SVGGElement>;
+      members.forEach(memberEl => {
+        const memberId = memberEl.id;
+        const transformStyle = memberEl.style.transform || '';
+        const match = transformStyle.match(/rotate\(([-\d.]+)deg\)/);
+        const currentValue = match ? parseFloat(match[1] || '0') : 0;
+        const previousValue = getValueAtFrame(item.id, memberId, 'rotation', currentFrame - 1);
+
+        if (currentFrame === 0 || previousValue === null || Math.abs(currentValue - (previousValue as number)) > 1e-4) {
+          addKeyframe(item.id, memberId, 'rotation', currentFrame, currentValue);
+        }
+      });
+    },
+    [getValueAtFrame, addKeyframe]
+  );
+
+  // Helper: snapshot puppet variants
+  const snapshotPuppetVariants = useCallback(
+    (item: SceneItem, currentFrame: number) => {
+      if (item.type !== 'puppet' || !item.metadata) return;
+
+      const puppetRoot = item.el.firstChild as SVGGElement | null;
+      if (!puppetRoot) return;
+
+      item.metadata.variantGroups.forEach(group => {
+        const targetMemberId = group.variants[0]?.targetMemberId;
+        if (!targetMemberId) return;
+
+        const targetMember = puppetRoot.querySelector(`#${CSS.escape(targetMemberId)}`) as SVGGElement | null;
+        if (!targetMember) return;
+
+        // Find active variant by checking visibility
+        const activeVariant = group.variants.find(variant => {
+          if (!variant.name) return false;
+
+          const variantEl = Array.from(targetMember.children).find(child =>
+            child.getAttribute('data-variant-groupe') === group.group &&
+            child.getAttribute('data-variant-name') === variant.name
+          ) as SVGElement | null;
+
+          return variantEl && variantEl.style.display !== 'none' && variantEl.getAttribute('display') !== 'none';
         });
 
-        const displayAttr = el.getAttribute('display');
-        const styleDisplay =
-          (el as SVGGraphicsElement).style && (el as SVGGraphicsElement).style.display
-            ? (el as SVGGraphicsElement).style.display
-            : '';
-        const isVisible = displayAttr !== 'none' && styleDisplay !== 'none';
-        const prevVisible = getValueAtFrame(targetId, null, 'visible', currentFrame - 1);
-        if (currentFrame === 0 || prevVisible === null || Boolean(prevVisible) !== isVisible) {
-          addKeyframe(targetId, null, 'visible', currentFrame, isVisible);
-        }
-
-        // 2. Snapshot puppet members rotation
-        if (item.type === "puppet") {
-          const puppetRoot = item.el.firstChild as SVGGElement | null;
-          if (!puppetRoot) return;
-
-          const members = puppetRoot.querySelectorAll("[data-membre]") as NodeListOf<SVGGElement>;
-          members.forEach(memberEl => {
-            const memberId = memberEl.id;
-            const transformStyle = memberEl.style.transform || "";
-            const match = transformStyle.match(/rotate\(([-\d.]+)deg\)/);
-            const currentValue = match ? parseFloat(match[1] || "0") : 0;
-            const previousValue = getValueAtFrame(targetId, memberId, 'rotation', currentFrame - 1);
-
-            if (currentFrame === 0 || previousValue === null || Math.abs(currentValue - (previousValue as number)) > 1e-4) {
-              addKeyframe(targetId, memberId, 'rotation', currentFrame, currentValue);
-            }
-          });
-
-          // 3. Snapshot puppet variants
-          item.metadata?.variantGroups.forEach(group => {
-            let activeVariantName: string | null = null;
-
-            // Find the target member containing the variants
-            const targetMemberId = group.variants[0]?.targetMemberId;
-            if (!targetMemberId) return;
-
-            const targetMember = puppetRoot.querySelector(`#${CSS.escape(targetMemberId)}`) as SVGGElement | null;
-            if (!targetMember) return;
-
-            // Find active variant by checking visibility
-            for (const variant of group.variants) {
-              if (!variant.name) continue;
-
-              // Find variant element by data-variant-name attribute
-              const variantEl = Array.from(targetMember.children).find(child => {
-                return child.getAttribute('data-variant-groupe') === group.group &&
-                       child.getAttribute('data-variant-name') === variant.name;
-              }) as SVGElement | null;
-
-              if (variantEl && variantEl.style.display !== 'none' && variantEl.getAttribute('display') !== 'none') {
-                activeVariantName = variant.name;
-                break;
-              }
-            }
-
-            if (activeVariantName) {
-              const previousValue = getValueAtFrame(targetId, group.group, 'activeVariant', currentFrame - 1);
-              if (currentFrame === 0 || previousValue !== activeVariantName) {
-                addKeyframe(targetId, group.group, 'activeVariant', currentFrame, activeVariantName);
-              }
-            }
-          });
-        }
-
-        // 4. Snapshot attachments for images
-        if (item.type === 'image') {
-          const imageEl = item.el as SVGImageElement;
-          const attachedPuppetId = imageEl.getAttribute('data-attached-to-puppet');
-          const attachedMemberId = imageEl.getAttribute('data-attached-to-member');
-
-          const currentValue = attachedPuppetId ? `${attachedPuppetId}:${attachedMemberId}` : null;
-          const previousValue = getValueAtFrame(targetId, null, 'attachment', currentFrame - 1);
-
-          if (currentFrame === 0 || previousValue !== currentValue) {
-            addKeyframe(targetId, null, 'attachment', currentFrame, currentValue || '');
+        if (activeVariant?.name) {
+          const previousValue = getValueAtFrame(item.id, group.group, 'activeVariant', currentFrame - 1);
+          if (currentFrame === 0 || previousValue !== activeVariant.name) {
+            addKeyframe(item.id, group.group, 'activeVariant', currentFrame, activeVariant.name);
           }
         }
       });
     },
-    [addKeyframe, currentFrame, getValueAtFrame]
+    [getValueAtFrame, addKeyframe]
+  );
+
+  // Helper: snapshot image attachments
+  const snapshotImageAttachment = useCallback(
+    (item: SceneItem, currentFrame: number) => {
+      if (item.type !== 'image') return;
+
+      const imageEl = item.el as SVGGraphicsElement;
+      const attachedPuppetId = imageEl.getAttribute('data-attached-to-puppet');
+      const attachedMemberId = imageEl.getAttribute('data-attached-to-member');
+
+      const currentValue = attachedPuppetId ? `${attachedPuppetId}:${attachedMemberId}` : null;
+      const previousValue = getValueAtFrame(item.id, null, 'attachment', currentFrame - 1);
+
+      if (currentFrame === 0 || previousValue !== currentValue) {
+        addKeyframe(item.id, null, 'attachment', currentFrame, currentValue || '');
+      }
+    },
+    [getValueAtFrame, addKeyframe]
+  );
+
+  const snapshotKeyframes = useCallback(
+    (items: SceneItem[]) => {
+      items.forEach(item => {
+        snapshotItemTransform(item, currentFrame);
+        snapshotItemVisibility(item, currentFrame);
+        snapshotPuppetMembers(item, currentFrame);
+        snapshotPuppetVariants(item, currentFrame);
+        snapshotImageAttachment(item, currentFrame);
+      });
+    },
+    [currentFrame, snapshotItemTransform, snapshotItemVisibility, snapshotPuppetMembers, snapshotPuppetVariants, snapshotImageAttachment]
   );
 
   // Playback animation loop

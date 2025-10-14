@@ -1,8 +1,9 @@
-import React, { useMemo, useCallback, useState, useEffect } from "react";
+import React, { useMemo, useCallback, useState, useEffect, useRef } from "react";
 import { useUi } from "../context/UiContext";
 import { useAnimation, AnimationProperty } from "../context/AnimationContext";
 import { FloatingPanel } from "./FloatingPanel";
-import { setRotationWithOrigin, getRotationFromTransform, setImageTransform } from "../utils/svgTransform";
+import { setRotationWithOrigin, getRotationFromTransform, setImageTransform, readGraphicTransform, readItemTransform } from "../utils/svgTransform";
+import { embedAttachmentIntoMember, releaseAttachmentFromMember } from "../utils/attachment";
 import { applyVariantSelection, findVisibleVariant } from "../utils/svgVariants";
 
 function InspectorComponent() {
@@ -40,16 +41,70 @@ function InspectorComponent() {
   // Live transform state
   const [transform, setTransform] = useState({ x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 });
   const [transformRefresh, setTransformRefresh] = useState(0);
+  const lastTransformsRef = useRef<Map<string, Record<string, number>>>(new Map());
 
   // Active variants per puppet (keyed by puppetId:groupName)
   const [activeVariants, setActiveVariants] = useState<Record<string, string>>({});
 
   // Listen for drag/transform updates
   useEffect(() => {
-    const handleTransformUpdate = () => setTransformRefresh(prev => prev + 1);
+    const THRESHOLD = 0.01;
+    const handleTransformUpdate = (event: Event) => {
+      setTransformRefresh((prev) => prev + 1);
+
+      const customEvent = event as CustomEvent<{ id?: string; final?: boolean }>;
+      const detail = customEvent.detail || {};
+      if (!detail.id) return;
+
+      const item = sceneItems.find((i) => i.id === detail.id);
+      if (!item) return;
+
+      const snapshot = readItemTransform(item.el, item.type);
+      const isFinal = Boolean(detail.final);
+
+      if (isFinal) {
+        const lastSnapshot = lastTransformsRef.current.get(item.id) ?? {};
+        const changedProps: Array<{ property: AnimationProperty; value: number }> = [];
+
+        const diff = (prop: keyof typeof snapshot, property: AnimationProperty) => {
+          const next = snapshot[prop];
+          const prev = lastSnapshot[prop];
+          if (typeof next !== 'number') return;
+
+          if (typeof prev !== 'number' || Math.abs(prev - next) > THRESHOLD) {
+            changedProps.push({ property, value: next });
+          }
+        };
+
+        if (item.type === 'puppet') {
+          diff('x', 'x');
+          diff('y', 'y');
+        } else if (item.type === 'image') {
+          const graphicEl = item.el as SVGGraphicsElement;
+          const isEmbeddedAttachment = graphicEl.getAttribute('data-attached-mode') === 'embedded';
+          if (!isEmbeddedAttachment) {
+            diff('x', 'x');
+            diff('y', 'y');
+          }
+          diff('rotation', 'rotation');
+          diff('scaleX', 'scaleX');
+          diff('scaleY', 'scaleY');
+        }
+
+        if (changedProps.length > 0) {
+          ensureInitialSnapshot();
+          changedProps.forEach(({ property, value }) => {
+            addKeyframe(item.id, null, property, currentFrame, value);
+          });
+        }
+
+        lastTransformsRef.current.set(item.id, snapshot);
+      }
+    };
+
     window.addEventListener("item:transformed", handleTransformUpdate);
     return () => window.removeEventListener("item:transformed", handleTransformUpdate);
-  }, []);
+  }, [sceneItems, addKeyframe, currentFrame, ensureInitialSnapshot]);
 
   // Initialize default variants when selecting a puppet
   useEffect(() => {
@@ -77,29 +132,7 @@ function InspectorComponent() {
   // Read transform from DOM whenever selectedItem, currentFrame, or drag updates
   useEffect(() => {
     if (!selectedItem) return;
-    const el = selectedItem.el;
-
-    if (selectedItem.type === "puppet") {
-      const transformAttr = el.getAttribute("transform") || "";
-      const match = transformAttr.match(/translate\(([-\d.]+)[,\s]+([-\d.]+)\)/);
-      if (match) {
-        setTransform({ x: parseFloat(match[1] || "0"), y: parseFloat(match[2] || "0"), rotation: 0, scaleX: 1, scaleY: 1 });
-      }
-    } else {
-      const x = parseFloat(el.getAttribute("x") || "0");
-      const y = parseFloat(el.getAttribute("y") || "0");
-      const transformAttr = el.getAttribute("transform") || "";
-
-      // Parse rotation and scale from transform
-      const rotMatch = transformAttr.match(/rotate\(([-\d.]+)/);
-      const scaleMatch = transformAttr.match(/scale\(([-\d.]+)(?:[,\s]+([-\d.]+))?\)/);
-
-      const rotation = rotMatch ? parseFloat(rotMatch[1] || "0") : 0;
-      const scaleX = scaleMatch ? parseFloat(scaleMatch[1] || "1") : 1;
-      const scaleY = scaleMatch && scaleMatch[2] ? parseFloat(scaleMatch[2]) : scaleX;
-
-      setTransform({ x, y, rotation, scaleX, scaleY });
-    }
+    setTransform(readItemTransform(selectedItem.el, selectedItem.type));
   }, [selectedItem, currentFrame, transformRefresh]);
 
   // Get limb list for selected puppet
@@ -225,7 +258,13 @@ function InspectorComponent() {
       if (selectedItem.type === "puppet") {
         el.setAttribute("transform", `translate(${newTransform.x}, ${newTransform.y})`);
       } else {
-        el.setAttribute(axis, String(value));
+        const graphicEl = el as SVGGraphicsElement;
+        graphicEl.setAttribute(axis, String(value));
+        const transformAttr = el.getAttribute("transform") || "";
+        if (/\brotate\(/.test(transformAttr) || /\bscale\(/.test(transformAttr)) {
+          const { rotation, scaleX, scaleY } = readGraphicTransform(graphicEl);
+          setImageTransform(graphicEl, rotation, scaleX, scaleY);
+        }
       }
 
       // Auto keyframe for position
@@ -242,7 +281,7 @@ function InspectorComponent() {
       const newTransform = { ...transform, rotation: value };
       setTransform(newTransform);
 
-      const el = selectedItem.el as SVGImageElement;
+      const el = selectedItem.el as SVGGraphicsElement;
       setImageTransform(el, value, newTransform.scaleX, newTransform.scaleY);
 
       // Auto keyframe for image rotation
@@ -259,7 +298,7 @@ function InspectorComponent() {
       const newTransform = { ...transform, [axis]: value };
       setTransform(newTransform);
 
-      const el = selectedItem.el as SVGImageElement;
+      const el = selectedItem.el as SVGGraphicsElement;
       setImageTransform(el, newTransform.rotation, newTransform.scaleX, newTransform.scaleY);
 
       // Auto keyframe for image scale
@@ -308,60 +347,63 @@ function InspectorComponent() {
     [selectedItem, addKeyframe, currentFrame, ensureInitialSnapshot]
   );
 
+  // Helper to update attachment with automatic keyframing and error handling
+  const updateAttachmentWithKeyframes = useCallback(
+    (updateFn: () => Record<string, any> | null, errorMessage: string) => {
+      if (!selectedItem || selectedItem.type !== 'image') return;
+
+      try {
+        const result = updateFn();
+        if (!result) throw new Error(errorMessage);
+
+        ensureInitialSnapshot();
+
+        // Add keyframes for all returned properties
+        Object.entries(result).forEach(([prop, value]) => {
+          if (value !== undefined) {
+            addKeyframe(selectedItem.id, null, prop as AnimationProperty, currentFrame, value);
+          }
+        });
+
+        window.dispatchEvent(new Event('animation:refresh'));
+      } catch {
+        alert(errorMessage);
+      }
+    },
+    [selectedItem, ensureInitialSnapshot, addKeyframe, currentFrame]
+  );
+
   // Handle detaching image from puppet member
   const handleDetachFromMember = useCallback(() => {
-    if (!selectedItem || selectedItem.type !== "image") return;
+    if (!selectedItem || selectedItem.type !== 'image') return;
 
-    const imageEl = selectedItem.el as SVGImageElement;
+    const imageEl = selectedItem.el as SVGGraphicsElement;
     if (!imageEl.hasAttribute('data-attached-to-puppet')) return;
 
-    try {
-      const svg = imageEl.ownerSVGElement;
-      if (!svg) return;
+    updateAttachmentWithKeyframes(() => {
+      const releaseResult = releaseAttachmentFromMember(imageEl);
+      if (!releaseResult) return null;
 
-      // Get viewport to calculate scene-relative coordinates
-      const viewport = svg.querySelector('[data-viewport]') as SVGGElement | null;
-      if (!viewport) return;
-
-      // Get image dimensions
-      const imgW = parseFloat(imageEl.getAttribute('width') || '0');
-      const imgH = parseFloat(imageEl.getAttribute('height') || '0');
-
-      // Get image's ABSOLUTE position with all inherited transforms
-      const imageScreenCTM = imageEl.getScreenCTM();
-      const viewportScreenCTM = viewport.getScreenCTM();
-      if (!imageScreenCTM || !viewportScreenCTM) return;
-
-      // Get image center in screen coordinates
-      const imgX = parseFloat(imageEl.getAttribute('x') || '0');
-      const imgY = parseFloat(imageEl.getAttribute('y') || '0');
-
-      const centerPoint = svg.createSVGPoint();
-      centerPoint.x = imgX + imgW / 2;
-      centerPoint.y = imgY + imgH / 2;
-
-
-            // Just clear attachment markers; no DOM reparent
-      imageEl.setAttribute('data-draggable', 'true');
       imageEl.removeAttribute('data-attached-to-puppet');
       imageEl.removeAttribute('data-attached-to-member');
       imageEl.removeAttribute('data-attachment-offset-cx');
       imageEl.removeAttribute('data-attachment-offset-cy');
 
-      // Auto keyframe for detachment
-      ensureInitialSnapshot();
-      addKeyframe(selectedItem.id, null, 'attachment', currentFrame, '');
-      // Request immediate visual refresh
-      window.dispatchEvent(new Event('animation:refresh'));
-    } catch (error) {
-      alert('Failed to detach image. Please try again.');
-    }
-  }, [selectedItem]);
+      return {
+        attachment: '',
+        x: releaseResult.sceneX,
+        y: releaseResult.sceneY,
+        rotation: releaseResult.rotation,
+        scaleX: releaseResult.scaleX,
+        scaleY: releaseResult.scaleY,
+      };
+    }, 'Failed to detach image. Please try again.');
+  }, [selectedItem, updateAttachmentWithKeyframes]);
 
   // Handle attaching image to puppet member
   const handleAttachToMember = useCallback(
     (targetValue: string) => {
-      if (!selectedItem || selectedItem.type !== "image") return;
+      if (!selectedItem || selectedItem.type !== 'image') return;
 
       const [puppetId, memberId] = targetValue.split(':');
       const puppet = sceneItems.find(item => item.id === puppetId);
@@ -383,59 +425,30 @@ function InspectorComponent() {
         }
       }
 
-      const imageEl = selectedItem.el as SVGImageElement;
+      const imageEl = selectedItem.el as SVGGraphicsElement;
 
-      try {
-        // Get viewBox group (scene container) to get correct coordinates
-        const svg = imageEl.ownerSVGElement;
-        if (!svg) return;
-        const viewport = svg.querySelector('[data-viewport]') as SVGGElement | null;
-        if (!viewport) return;
+      updateAttachmentWithKeyframes(() => {
+        const attachmentResult = embedAttachmentIntoMember({
+          element: imageEl,
+          member,
+          anchor: puppetAnchor,
+          layer: (imageEl.getAttribute('data-attachment-layer') as 'front' | 'behind') || 'front',
+        });
+        if (!attachmentResult) return null;
 
-        // Image dimensions
-        const imgW = parseFloat(imageEl.getAttribute('width') || '0');
-        const imgH = parseFloat(imageEl.getAttribute('height') || '0');
+        imageEl.setAttribute('data-attached-to-puppet', puppetId);
+        imageEl.setAttribute('data-attached-to-member', memberId);
+        imageEl.removeAttribute('data-attachment-offset-cx');
+        imageEl.removeAttribute('data-attachment-offset-cy');
 
-        // Image center in scene coordinates (without pan/zoom)
-        const imgX = parseFloat(imageEl.getAttribute('x') || '0');
-        const imgY = parseFloat(imageEl.getAttribute('y') || '0');
-        const imgCenterX = imgX + imgW / 2;
-        const imgCenterY = imgY + imgH / 2;
-
-        // Get member's transformation matrix relative to viewport (not screen!)
-        const memberMatrix = member.getScreenCTM();
-        const viewportMatrix = viewport.getScreenCTM();
-        if (!memberMatrix || !viewportMatrix) return;
-
-        // Convert to viewport-relative matrix
-        const viewportInverse = viewportMatrix.inverse();
-        const memberLocalMatrix = viewportInverse.multiply(memberMatrix);
-
-        // Transform image center to member's local space
-        const memberInverse = memberLocalMatrix.inverse();
-        const localPoint = svg.createSVGPoint();
-        localPoint.x = imgCenterX;
-        localPoint.y = imgCenterY;
-        const localTransformed = localPoint.matrixTransform(memberInverse);
-
-      // Store attachment offsets (center in member local coords); do not reparent
-      imageEl.setAttribute('data-attached-to-puppet', puppetId);
-      imageEl.setAttribute('data-attached-to-member', memberId);
-      imageEl.setAttribute('data-attachment-offset-cx', String(localTransformed.x));
-      imageEl.setAttribute('data-attachment-offset-cy', String(localTransformed.y));
-      imageEl.removeAttribute('transform');
-      imageEl.removeAttribute('data-draggable');
-
-      // Auto keyframe for attachment
-      ensureInitialSnapshot();
-      addKeyframe(selectedItem.id, null, 'attachment', currentFrame, `${puppetId}:${memberId}`);
-      // Request immediate visual refresh
-      window.dispatchEvent(new Event('animation:refresh'));
-    } catch (error) {
-      alert('Failed to attach image. Please try again.');
-    }
-  },
-    [selectedItem, sceneItems, addKeyframe, currentFrame, ensureInitialSnapshot]
+        return {
+          attachment: `${puppetId}:${memberId}`,
+          x: attachmentResult.localX,
+          y: attachmentResult.localY,
+        };
+      }, 'Failed to attach image. Please try again.');
+    },
+    [selectedItem, sceneItems, updateAttachmentWithKeyframes]
   );
 
   return (
@@ -501,7 +514,13 @@ function InspectorComponent() {
               <h4>Properties</h4>
               <div className="property">
                 <label>Type</label>
-                <div>{selectedItem.type === "puppet" ? "Puppet" : "Image"}</div>
+                <div>
+                  {selectedItem.type === "puppet"
+                    ? "Puppet"
+                    : selectedItem.el instanceof SVGImageElement
+                      ? "Image"
+                      : "Objet"}
+                </div>
               </div>
               <div className="property">
                 <label>Name</label>
@@ -683,7 +702,7 @@ function InspectorComponent() {
 
             {/* Attach to Member (for images) */}
             {selectedItem.type === "image" && (() => {
-              const imageEl = selectedItem.el as SVGImageElement;
+              const imageEl = selectedItem.el as SVGGraphicsElement;
               const isAttached = imageEl.hasAttribute('data-attached-to-puppet');
               const attachedPuppetId = imageEl.getAttribute('data-attached-to-puppet');
               const attachedMemberId = imageEl.getAttribute('data-attached-to-member');

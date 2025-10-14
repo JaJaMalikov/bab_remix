@@ -4,6 +4,7 @@ import { useUi } from '../context/UiContext';
 import type { SceneItem } from '../context/UiContext';
 import { setRotationWithOrigin, setImageTransform } from '../utils/svgTransform';
 import { applyVariantSelection, findVisibleVariant } from '../utils/svgVariants';
+import { embedAttachmentIntoMember, ensureEmbeddedAttachment, releaseAttachmentFromMember } from '../utils/attachment';
 
 /**
  * Hook that applies animation values to scene elements during playback
@@ -20,10 +21,52 @@ export const useAnimationPlayback = () => {
     return () => window.removeEventListener("animation:refresh", handleRefresh);
   }, []);
 
+  // Helper: find visible member (handling variants)
+  const findMemberOrVariant = useCallback((puppetRoot: SVGGElement, memberId: string): SVGGElement | null => {
+    let member = puppetRoot.querySelector(`#${CSS.escape(memberId)}`) as SVGGElement | null;
+    if (!member) return null;
+
+    if (member.style.display === 'none' || member.getAttribute('display') === 'none') {
+      const visibleVariant = findVisibleVariant(puppetRoot, memberId);
+      if (visibleVariant) return visibleVariant;
+    }
+    return member;
+  }, []);
+
+  // Helper: clear attachment attributes
+  const clearAttachmentAttributes = useCallback((imageEl: SVGGraphicsElement) => {
+    if (imageEl.getAttribute('data-attached-mode') === 'embedded') {
+      releaseAttachmentFromMember(imageEl);
+    }
+    imageEl.removeAttribute('data-attached-to-puppet');
+    imageEl.removeAttribute('data-attached-to-member');
+    imageEl.removeAttribute('data-attachment-offset-cx');
+    imageEl.removeAttribute('data-attachment-offset-cy');
+  }, []);
+
+  // Helper: process embedded attachment
+  const processEmbeddedAttachment = useCallback((
+    image: SVGGraphicsElement,
+    puppetId: string,
+    memberId: string,
+    puppets: Map<string, { anchor: SVGGElement; item: SceneItem }>
+  ) => {
+    const puppetEntry = puppets.get(puppetId);
+    if (!puppetEntry) return;
+
+    const puppetRoot = puppetEntry.anchor.firstChild as SVGGElement | null;
+    if (!puppetRoot) return;
+
+    const member = findMemberOrVariant(puppetRoot, memberId);
+    if (member) {
+      ensureEmbeddedAttachment({ element: image, member });
+    }
+  }, [findMemberOrVariant]);
+
   const { attachmentEntries, puppetAnchors } = useMemo(() => {
     const attachments: Array<{
       item: SceneItem;
-      image: SVGImageElement;
+      image: SVGGraphicsElement;
       puppetId: string;
       memberId: string;
       offset: { cx: number; cy: number };
@@ -32,31 +75,39 @@ export const useAnimationPlayback = () => {
 
     sceneItems.forEach((item) => {
       if (item.type === 'puppet') {
-        const anchor = item.el as SVGGElement;
-        puppets.set(item.id, { anchor, item });
+        puppets.set(item.id, { anchor: item.el as SVGGElement, item });
         return;
       }
 
-      if (item.type !== 'image') {
-        return;
-      }
+      if (item.type !== 'image') return;
 
-      const image = item.el as SVGImageElement;
+      const image = item.el as SVGGraphicsElement;
       const puppetId = image.getAttribute('data-attached-to-puppet');
       const memberId = image.getAttribute('data-attached-to-member');
-      const offCx = image.getAttribute('data-attachment-offset-cx');
-      const offCy = image.getAttribute('data-attachment-offset-cy');
 
-      if (!puppetId || !memberId || offCx === null || offCy === null) {
+      if (!puppetId || !memberId) return;
+
+      const mode = image.getAttribute('data-attached-mode');
+      if (mode === 'embedded') {
+        processEmbeddedAttachment(image, puppetId, memberId, puppets);
         return;
       }
 
-      const offset = { cx: parseFloat(offCx), cy: parseFloat(offCy) };
-      attachments.push({ item, image, puppetId, memberId, offset });
+      const offCx = image.getAttribute('data-attachment-offset-cx');
+      const offCy = image.getAttribute('data-attachment-offset-cy');
+      if (offCx === null || offCy === null) return;
+
+      attachments.push({
+        item,
+        image,
+        puppetId,
+        memberId,
+        offset: { cx: parseFloat(offCx), cy: parseFloat(offCy) }
+      });
     });
 
     return { attachmentEntries: attachments, puppetAnchors: puppets };
-  }, [sceneItems]);
+  }, [sceneItems, refreshTrigger, processEmbeddedAttachment]);
 
   const updateAttachments = useCallback(
     (puppetFilter?: Set<string>) => {
@@ -167,6 +218,60 @@ export const useAnimationPlayback = () => {
       applyVariantSelection(puppetRoot, group, value);
     });
 
+    tracks.forEach((track) => {
+      if (track.property !== 'attachment') return;
+      const value = getValueAtFrame(track.targetId, track.targetMemberId, track.property, currentFrame);
+      const item = sceneItems.find((i) => i.id === track.targetId);
+      if (!item || item.type !== 'image') return;
+
+      const imageEl = item.el as SVGGraphicsElement;
+
+      // Clear attachment if no value or invalid format
+      if (!value || typeof value !== 'string') {
+        clearAttachmentAttributes(imageEl);
+        return;
+      }
+
+      const [puppetId, memberId] = value.split(':');
+      if (!puppetId || !memberId) {
+        clearAttachmentAttributes(imageEl);
+        return;
+      }
+
+      // Find puppet and member
+      const puppetEntry = puppetAnchors.get(puppetId);
+      if (!puppetEntry) return;
+
+      const puppetRoot = puppetEntry.anchor.firstChild as SVGGElement | null;
+      if (!puppetRoot) return;
+
+      const member = findMemberOrVariant(puppetRoot, memberId);
+      if (!member) return;
+
+      // Check if already attached correctly
+      const currentPuppet = imageEl.getAttribute('data-attached-to-puppet');
+      const currentMember = imageEl.getAttribute('data-attached-to-member');
+      const mode = imageEl.getAttribute('data-attached-mode');
+
+      if (currentPuppet === puppetId && currentMember === memberId && mode === 'embedded') {
+        ensureEmbeddedAttachment({ element: imageEl, member });
+        return;
+      }
+
+      // Attach to new member
+      if (mode === 'embedded') {
+        releaseAttachmentFromMember(imageEl);
+      }
+
+      const embedded = embedAttachmentIntoMember({ element: imageEl, member, anchor: puppetEntry.anchor });
+      if (!embedded) return;
+
+      imageEl.setAttribute('data-attached-to-puppet', puppetId);
+      imageEl.setAttribute('data-attached-to-member', memberId);
+      imageEl.removeAttribute('data-attachment-offset-cx');
+      imageEl.removeAttribute('data-attachment-offset-cy');
+    });
+
     const itemVisibility = new Map<string, boolean>();
     tracks.forEach((track) => {
       if (track.property !== 'visible' || track.targetMemberId !== null) return;
@@ -176,7 +281,7 @@ export const useAnimationPlayback = () => {
     });
 
     // Group tracks by target to apply numeric transforms at once
-    const targetTransforms = new Map<string, Map<string, Record<string, number>>>();
+    const targetTransforms = new Map<string, Record<string, number>>();
 
     tracks.forEach((track) => {
       if (track.property === 'visible') return;
@@ -184,16 +289,7 @@ export const useAnimationPlayback = () => {
       if (value === null) return;
 
       const targetKey = `${track.targetId}:${track.targetMemberId || 'null'}`;
-      if (!targetTransforms.has(targetKey)) {
-        targetTransforms.set(targetKey, new Map());
-      }
 
-      const targetMap = targetTransforms.get(targetKey)!;
-      if (!targetMap.has(track.targetId)) {
-        targetMap.set(track.targetId, {});
-      }
-
-      const transforms = targetMap.get(track.targetId)!;
       // Only apply numeric properties here
       if (
         track.property === 'x' ||
@@ -212,77 +308,77 @@ export const useAnimationPlayback = () => {
           numericValue = value;
         }
         if (numericValue !== null) {
-          transforms[track.property] = numericValue;
+          const existing = targetTransforms.get(targetKey) || {};
+          existing[track.property] = numericValue;
+          targetTransforms.set(targetKey, existing);
         }
       }
     });
 
     // Apply grouped transforms
-    targetTransforms.forEach((targetMap, targetKey) => {
+    targetTransforms.forEach((transforms, targetKey) => {
       const [targetId, memberIdStr] = targetKey.split(':');
       const memberId = memberIdStr === 'null' ? null : memberIdStr;
       const item = sceneItems.find((i) => i.id === targetId);
       if (!item) return;
 
-      targetMap.forEach((transforms, _targetId) => {
-        const el = item.el;
+      const el = item.el;
 
-        // Apply to puppet member
-        if (memberId && item.type === 'puppet') {
-          const anchor = el;
-          const puppetRoot = anchor.firstChild as SVGGElement | null;
-          if (puppetRoot) {
-            const memberEl = puppetRoot.querySelector(`#${CSS.escape(memberId)}`) as SVGGElement | null;
-            if (memberEl && transforms.rotation !== undefined) {
-              setRotationWithOrigin(memberEl, transforms.rotation);
-            }
+      // Apply to puppet member
+      if (memberId && item.type === 'puppet') {
+        const anchor = el;
+        const puppetRoot = anchor.firstChild as SVGGElement | null;
+        if (puppetRoot) {
+          const memberEl = puppetRoot.querySelector(`#${CSS.escape(memberId)}`) as SVGGElement | null;
+          if (memberEl && transforms.rotation !== undefined) {
+            setRotationWithOrigin(memberEl, transforms.rotation);
           }
         }
-        // Apply to whole item
-        else if (!memberId) {
-          if (item.type === 'puppet') {
-            // Puppet position - get current or default
-            const transformAttr = el.getAttribute('transform') || '';
-            const match = transformAttr.match(/translate\(([-\d.]+)[,\s]+([-\d.]+)\)/);
-            let x = match ? parseFloat(match[1] || '0') : 0;
-            let y = match ? parseFloat(match[2] || '0') : 0;
+      }
+      // Apply to whole item
+      else if (!memberId) {
+        if (item.type === 'puppet') {
+          // Puppet position - get current or default
+          const transformAttr = el.getAttribute('transform') || '';
+          const match = transformAttr.match(/translate\(([-\d.]+)[,\s]+([-\d.]+)\)/);
+          let x = match ? parseFloat(match[1] || '0') : 0;
+          let y = match ? parseFloat(match[2] || '0') : 0;
 
-            // Update with animated values if present
-            if (transforms.x !== undefined) x = transforms.x;
-            if (transforms.y !== undefined) y = transforms.y;
+          // Update with animated values if present
+          if (transforms.x !== undefined) x = transforms.x;
+          if (transforms.y !== undefined) y = transforms.y;
 
-            el.setAttribute('transform', `translate(${x}, ${y})`);
-          } else {
-            // Image - get current attributes
-            const imgEl = el as SVGImageElement;
-            let x = parseFloat(imgEl.getAttribute('x') || '0');
-            let y = parseFloat(imgEl.getAttribute('y') || '0');
+          el.setAttribute('transform', `translate(${x}, ${y})`);
+        } else {
+          // Image - get current attributes
+          const imgEl = el as SVGGraphicsElement;
+          let x = parseFloat(imgEl.getAttribute('x') || '0');
+          let y = parseFloat(imgEl.getAttribute('y') || '0');
 
-            // Update position with animated values if present
-            if (transforms.x !== undefined) x = transforms.x;
-            if (transforms.y !== undefined) y = transforms.y;
+          // Update position with animated values if present
+          if (transforms.x !== undefined) x = transforms.x;
+          if (transforms.y !== undefined) y = transforms.y;
 
-            imgEl.setAttribute('x', String(x));
-            imgEl.setAttribute('y', String(y));
+          imgEl.setAttribute('x', String(x));
+          imgEl.setAttribute('y', String(y));
 
-            // Get current transform values
-            const transformAttr = imgEl.getAttribute('transform') || '';
-            const rotMatch = transformAttr.match(/rotate\(([-\d.]+)/);
-            const scaleMatch = transformAttr.match(/scale\(([-\d.]+)(?:[,\s]+([-\d.]+))?\)/);
+          // Get current transform values
+          const transformAttr = imgEl.getAttribute('transform') || '';
+          const rotMatch = transformAttr.match(/rotate\(([-\d.]+)/);
+          const scaleMatch = transformAttr.match(/scale\(([-\d.]+)(?:[,\s]+([-\d.]+))?\)/);
 
-            let rotation = rotMatch ? parseFloat(rotMatch[1] || '0') : 0;
-            let scaleX = scaleMatch ? parseFloat(scaleMatch[1] || '1') : 1;
-            let scaleY = scaleMatch && scaleMatch[2] ? parseFloat(scaleMatch[2]) : scaleX;
+          let rotation = rotMatch ? parseFloat(rotMatch[1] || '0') : 0;
+          let scaleX = scaleMatch ? parseFloat(scaleMatch[1] || '1') : 1;
+          let scaleY = scaleMatch && scaleMatch[2] ? parseFloat(scaleMatch[2]) : scaleX;
 
-            // Update with animated values if present
-            if (transforms.rotation !== undefined) rotation = transforms.rotation;
-            if (transforms.scaleX !== undefined) scaleX = transforms.scaleX;
-            if (transforms.scaleY !== undefined) scaleY = transforms.scaleY;
+          // Update with animated values if present
+          if (transforms.rotation !== undefined) rotation = transforms.rotation;
+          if (transforms.scaleX !== undefined) scaleX = transforms.scaleX;
+          if (transforms.scaleY !== undefined) scaleY = transforms.scaleY;
 
-            setImageTransform(imgEl, rotation, scaleX, scaleY);
-          }
+          setImageTransform(imgEl, rotation, scaleX, scaleY);
         }
-      });
+      }
     });
 
     sceneItems.forEach((item) => {

@@ -1013,7 +1013,7 @@ body {
 }
 
 
-g.selected {
+image.selected {
   filter: drop-shadow(1px 1px 0 red)
           drop-shadow(-1px -1px 0 red)
           drop-shadow(1px -1px 0 red)

@@ -36,9 +36,6 @@ export interface UiState {
   selectedPuppet: SVGGElement | null;
   setSelectedPuppet: (g: SVGGElement | null) => void;
 
-  limbIds: string[];
-  setLimbIds: (ids: string[]) => void;
-
   selectedLimb: string;
   setSelectedLimb: (id: string) => void;
 
@@ -102,7 +99,6 @@ type UiProviderProps = { children: ReactNode };
 
 export const UiProvider = ({ children }: UiProviderProps) => {
   const [selectedPuppet, setSelectedPuppet] = useState<SVGGElement | null>(null);
-  const [limbIds, setLimbIds] = useState<string[]>([]);
   const [selectedLimb, setSelectedLimb] = useState<string>("");
   const [angle, setAngle] = useState<number>(0);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -237,8 +233,6 @@ export const UiProvider = ({ children }: UiProviderProps) => {
     () => ({
       selectedPuppet,
       setSelectedPuppet,
-      limbIds,
-      setLimbIds,
       selectedLimb,
       setSelectedLimb,
       angle,
@@ -272,7 +266,6 @@ export const UiProvider = ({ children }: UiProviderProps) => {
     }),
     [
       selectedPuppet,
-      limbIds,
       selectedLimb,
       angle,
       selectedItemId,

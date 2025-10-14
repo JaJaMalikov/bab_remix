@@ -38,5 +38,10 @@
     "name": "Manu",
     "path": "pantins/manu.svg",
     "category": "pantins"
+  },
+  {
+    "name": "Manu o",
+    "path": "pantins/manu_o.svg",
+    "category": "pantins"
   }
 ]

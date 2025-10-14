@@ -113,49 +113,132 @@ export const SvgScene = memo(() => {
     }
   }, [addKeyframe, currentFrame]);
 
-  const dropAsset = useCallback(async (asset: Asset, x: number, y: number) => {
-    const { scene } = ensureContainers();
-    if (asset.type === "decor") {
-      await setDecor(asset.path);
-      return;
+  // Helper: Generate unique item ID
+  const generateItemId = () => `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
+
+  // Helper: Parse SVG dimensions from attributes or viewBox
+  const parseSvgDimensions = (svg: SVGSVGElement): { width: number; height: number } => {
+    let width = parseFloat(svg.getAttribute("width") || "");
+    let height = parseFloat(svg.getAttribute("height") || "");
+
+    if (!Number.isFinite(width) || width <= 0 || !Number.isFinite(height) || height <= 0) {
+      const viewBox = svg.getAttribute("viewBox");
+      if (viewBox) {
+        const parts = viewBox.trim().split(/[\s,]+/).map((n) => parseFloat(n));
+        if (parts.length === 4 && parts.every((n) => Number.isFinite(n))) {
+          width = parts[2];
+          height = parts[3];
+        }
+      }
     }
 
-    if (asset.type === "pantin") {
-      const anchor = document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        "g",
-      );
-      anchor.setAttribute("transform", `translate(${Math.round(x)}, ${Math.round(y)})`);
-      anchor.setAttribute("data-anchor", "puppet");
-      anchor.setAttribute("data-source", asset.path); // Store source for serialization
-      anchor.style.cursor = "move";
-      scene.appendChild(anchor);
-      const id = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
-      // Metadata will be added in onReady callback
-      setPuppets((prev) => [...prev, { id, src: asset.path, anchor, dropX: x, dropY: y }]);
-      addSceneItem({ id, type: 'puppet', label: asset.name || asset.path.split('/').pop() || 'Puppet', el: anchor });
-      initializeVisibilityForItem(id);
-      return;
+    return {
+      width: Number.isFinite(width) && width > 0 ? width : 100,
+      height: Number.isFinite(height) && height > 0 ? height : 100,
+    };
+  };
+
+  // Helper: Create SVG object element
+  const createSvgObject = async (path: string, x: number, y: number) => {
+    const response = await fetch(path);
+    const svgText = await response.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgText, "image/svg+xml");
+    const root = doc.documentElement;
+
+    if (!(root instanceof SVGSVGElement)) {
+      throw new Error("Asset root is not an SVG element");
     }
 
+    const svg = root.cloneNode(true) as SVGSVGElement;
+    const { width, height } = parseSvgDimensions(svg);
+
+    svg.setAttribute("width", String(width));
+    svg.setAttribute("height", String(height));
+    svg.setAttribute("x", String(Math.round(x - width / 2)));
+    svg.setAttribute("y", String(Math.round(y - height / 2)));
+
+    if (!svg.hasAttribute("viewBox")) {
+      svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    }
+
+    svg.setAttribute("preserveAspectRatio", svg.getAttribute("preserveAspectRatio") || "xMidYMid meet");
+    svg.setAttribute("data-draggable", "true");
+    svg.setAttribute("data-source", path);
+    svg.style.cursor = "move";
+
+    const id = generateItemId();
+    svg.setAttribute("data-id", id);
+
+    return { svg, id };
+  };
+
+  // Helper: Create raster image element
+  const createRasterImage = async (path: string, x: number, y: number) => {
     const preload = new Image();
     const dim = await new Promise<{ w: number; h: number }>((resolve, reject) => {
       preload.onload = () => resolve({ w: preload.naturalWidth, h: preload.naturalHeight });
       preload.onerror = reject;
-      preload.src = asset.path;
+      preload.src = path;
     });
+
     const img = document.createElementNS("http://www.w3.org/2000/svg", "image");
-    img.setAttribute("href", asset.path);
+    img.setAttribute("href", path);
     img.setAttribute("width", String(dim.w));
     img.setAttribute("height", String(dim.h));
     img.setAttribute("x", String(Math.round(x - dim.w / 2)));
     img.setAttribute("y", String(Math.round(y - dim.h / 2)));
     img.setAttribute("preserveAspectRatio", "xMidYMid meet");
     img.setAttribute("data-draggable", "true");
+    img.setAttribute("data-source", path);
     img.style.cursor = "move";
-    scene.appendChild(img);
-    const id = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
+
+    const id = generateItemId();
     img.setAttribute('data-id', id);
+
+    return { img, id };
+  };
+
+  const dropAsset = useCallback(async (asset: Asset, x: number, y: number) => {
+    const { scene } = ensureContainers();
+
+    if (asset.type === "decor") {
+      await setDecor(asset.path);
+      return;
+    }
+
+    if (asset.type === "pantin") {
+      const anchor = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      anchor.setAttribute("transform", `translate(${Math.round(x)}, ${Math.round(y)})`);
+      anchor.setAttribute("data-anchor", "puppet");
+      anchor.setAttribute("data-source", asset.path);
+      anchor.style.cursor = "move";
+
+      const id = generateItemId();
+      anchor.setAttribute("data-id", id);
+
+      scene.appendChild(anchor);
+      setPuppets((prev) => [...prev, { id, src: asset.path, anchor, dropX: x, dropY: y }]);
+      addSceneItem({ id, type: 'puppet', label: asset.name || asset.path.split('/').pop() || 'Puppet', el: anchor });
+      initializeVisibilityForItem(id);
+      return;
+    }
+
+    if (asset.type === "objet") {
+      try {
+        const { svg, id } = await createSvgObject(asset.path, x, y);
+        scene.appendChild(svg);
+        addSceneItem({ id, type: 'image', label: asset.name || asset.path.split('/').pop() || 'Objet', el: svg });
+        initializeVisibilityForItem(id);
+      } catch (error) {
+        console.error("Failed to import SVG asset", error);
+      }
+      return;
+    }
+
+    // Default: raster image
+    const { img, id } = await createRasterImage(asset.path, x, y);
+    scene.appendChild(img);
     addSceneItem({ id, type: 'image', label: asset.name || asset.path.split('/').pop() || 'Image', el: img });
     initializeVisibilityForItem(id);
   }, [addSceneItem, initializeVisibilityForItem, setDecor, setPuppets]);
@@ -210,7 +293,7 @@ export const SvgScene = memo(() => {
       }
 
       // Check if clicked on an image
-      const img = (e.target as Element)?.closest('[data-draggable="true"]') as SVGImageElement | null;
+      const img = (e.target as Element)?.closest('[data-draggable="true"]') as SVGGraphicsElement | null;
       if (img) {
         const imgId = img.getAttribute('data-id');
         if (imgId) {
@@ -291,6 +374,7 @@ export const SvgScene = memo(() => {
           anchor.setAttribute("transform", `translate(${itemData.transform.x}, ${itemData.transform.y})`);
           anchor.setAttribute("data-anchor", "puppet");
           anchor.setAttribute("data-source", itemData.source);
+          anchor.setAttribute("data-id", itemData.id);
           anchor.style.cursor = "move";
           scene.appendChild(anchor);
 
@@ -322,38 +406,78 @@ export const SvgScene = memo(() => {
             window.dispatchEvent(new CustomEvent("animation:refresh"));
           }, 150);
         } else {
-          // Create image
-          const img = document.createElementNS("http://www.w3.org/2000/svg", "image");
-          img.setAttribute("href", itemData.source);
+          const isSvgAsset = itemData.source.toLowerCase().endsWith(".svg");
+          if (isSvgAsset) {
+            try {
+              const response = await fetch(itemData.source);
+              const svgText = await response.text();
+              const parser = new DOMParser();
+              const doc = parser.parseFromString(svgText, "image/svg+xml");
+              const root = doc.documentElement;
+              if (!(root instanceof SVGSVGElement)) {
+                throw new Error("Asset root is not an SVG element");
+              }
+              const svg = root.cloneNode(true) as SVGSVGElement;
+              const { width, height } = parseSvgDimensions(svg);
 
-          // Load image to get dimensions
-          const preload = new Image();
-          await new Promise((resolve) => {
-            preload.onload = resolve;
-            preload.onerror = resolve;
-            preload.src = itemData.source;
-          });
+              svg.setAttribute("width", String(width));
+              svg.setAttribute("height", String(height));
+              svg.setAttribute("x", String(itemData.transform.x));
+              svg.setAttribute("y", String(itemData.transform.y));
+              if (!svg.hasAttribute("viewBox")) {
+                svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+              }
+              svg.setAttribute("preserveAspectRatio", svg.getAttribute("preserveAspectRatio") || "xMidYMid meet");
+              svg.setAttribute("data-draggable", "true");
+              svg.setAttribute("data-id", itemData.id);
+              svg.setAttribute("data-source", itemData.source);
+              svg.style.cursor = "move";
 
-          const w = preload.naturalWidth || 100;
-          const h = preload.naturalHeight || 100;
+              const rotation = itemData.transform.rotation || 0;
+              const scaleX = itemData.transform.scaleX || 1;
+              const scaleY = itemData.transform.scaleY || 1;
+              setImageTransform(svg, rotation, scaleX, scaleY);
 
-          img.setAttribute("width", String(w));
-          img.setAttribute("height", String(h));
-          img.setAttribute("x", String(itemData.transform.x));
-          img.setAttribute("y", String(itemData.transform.y));
-          img.setAttribute("preserveAspectRatio", "xMidYMid meet");
-          img.setAttribute("data-draggable", "true");
-          img.setAttribute("data-id", itemData.id);
-          img.style.cursor = "move";
+              scene.appendChild(svg);
+              addSceneItem({ id: itemData.id, type: "image", label: itemData.label, el: svg });
+            } catch (error) {
+              console.error("Failed to load SVG object", error);
+            }
+          } else {
+            // Create image
+            const img = document.createElementNS("http://www.w3.org/2000/svg", "image");
+            img.setAttribute("href", itemData.source);
 
-          const rotation = itemData.transform.rotation || 0;
-          const scaleX = itemData.transform.scaleX || 1;
-          const scaleY = itemData.transform.scaleY || 1;
+            // Load image to get dimensions
+            const preload = new Image();
+            await new Promise((resolve) => {
+              preload.onload = resolve;
+              preload.onerror = resolve;
+              preload.src = itemData.source;
+            });
 
-          setImageTransform(img, rotation, scaleX, scaleY);
+            const w = preload.naturalWidth || 100;
+            const h = preload.naturalHeight || 100;
 
-          scene.appendChild(img);
-          addSceneItem({ id: itemData.id, type: "image", label: itemData.label, el: img });
+            img.setAttribute("width", String(w));
+            img.setAttribute("height", String(h));
+            img.setAttribute("x", String(itemData.transform.x));
+            img.setAttribute("y", String(itemData.transform.y));
+            img.setAttribute("preserveAspectRatio", "xMidYMid meet");
+            img.setAttribute("data-draggable", "true");
+            img.setAttribute("data-id", itemData.id);
+            img.setAttribute("data-source", itemData.source);
+            img.style.cursor = "move";
+
+            const rotation = itemData.transform.rotation || 0;
+            const scaleX = itemData.transform.scaleX || 1;
+            const scaleY = itemData.transform.scaleY || 1;
+
+            setImageTransform(img, rotation, scaleX, scaleY);
+
+            scene.appendChild(img);
+            addSceneItem({ id: itemData.id, type: "image", label: itemData.label, el: img });
+          }
         }
       }
 
@@ -515,7 +639,7 @@ export const SvgScene = memo(() => {
         addKeyframe(state.sceneItemId, state.limb.id, 'rotation', currentFrame, newRotationDeg);
       }
 
-      window.dispatchEvent(new CustomEvent('item:transformed'));
+      window.dispatchEvent(new CustomEvent('item:transformed', { detail: { id: state.sceneItemId, final: false } }));
     };
 
     const onMouseUp = () => {
@@ -527,7 +651,7 @@ export const SvgScene = memo(() => {
         if (state.sceneItemId) {
           addKeyframe(state.sceneItemId, state.limb.id, 'rotation', currentFrame, state.lastRotationDeg);
         }
-        window.dispatchEvent(new CustomEvent('item:transformed'));
+        window.dispatchEvent(new CustomEvent('item:transformed', { detail: { id: state.sceneItemId, final: true } }));
       }
       rotationStateRef.current = null;
     };
