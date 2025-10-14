@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useState, memo, useCallback } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { Tabs } from "radix-ui";
+import {
+  BackpackIcon,
+  ImageIcon,
+  PersonIcon,
+} from "@radix-ui/react-icons";
 import { FloatingPanel } from "./FloatingPanel";
 import { AssetItem, Asset } from "./AssetItem";
 import { useUi } from "../context/UiContext";
@@ -12,13 +18,22 @@ type ManifestEntry = {
 const mapCategoryToType = (c: ManifestEntry["category"]): Asset["type"] =>
   c === "pantins" ? "pantin" : c === "objets" ? "objet" : "decor";
 
+type CategoryValue = ManifestEntry["category"];
+
+const CATEGORY_TABS: Array<{
+  value: CategoryValue;
+  label: string;
+  Icon: typeof PersonIcon;
+}> = [
+  { value: "pantins", label: "Pantins", Icon: PersonIcon },
+  { value: "objets", label: "Objets", Icon: BackpackIcon },
+  { value: "decors", label: "Décors", Icon: ImageIcon },
+];
+
 export const Library = memo(() => {
   const { setShowLibrary } = useUi();
   const [assets, setAssets] = useState<Asset[]>([]);
-  const [category, setCategory] = useState<
-    "all" | "pantins" | "objets" | "decors"
-  >("all");
-  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState<CategoryValue>("pantins");
 
   useEffect(() => {
     let cancelled = false;
@@ -43,30 +58,18 @@ export const Library = memo(() => {
     };
   }, []);
 
-  const filteredAssets = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return assets.filter((a) => {
-      if (category !== "all") {
-        const catType = mapCategoryToType(category as any);
-        if (a.type !== catType) return false;
-      }
-      if (!q) return true;
-      return (
-        a.name.toLowerCase().includes(q) || a.path.toLowerCase().includes(q)
-      );
-    });
-  }, [assets, category, query]);
-
-  const handleQueryChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setQuery(e.target.value);
-    },
-    [],
+  const assetsByCategory = useMemo<Record<CategoryValue, Asset[]>>(
+    () => ({
+      pantins: assets.filter((a) => a.type === "pantin"),
+      objets: assets.filter((a) => a.type === "objet"),
+      decors: assets.filter((a) => a.type === "decor"),
+    }),
+    [assets],
   );
 
   const handleCategoryChange = useCallback(
-    (cat: "all" | "pantins" | "objets" | "decors") => {
-      setCategory(cat);
+    (value: string) => {
+      setCategory(value as CategoryValue);
     },
     [],
   );
@@ -81,45 +84,34 @@ export const Library = memo(() => {
       onClose={() => setShowLibrary(false)}
     >
       <div className="library-content">
-        <div className="library-search">
-          <input
-            type="text"
-            placeholder="Rechercher..."
-            value={query}
-            onChange={handleQueryChange}
-          />
-        </div>
-        <div className="library-categories">
-          <button
-            className={`category-btn ${category === "all" ? "active" : ""}`}
-            onClick={() => handleCategoryChange("all")}
-          >
-            Tous
-          </button>
-          <button
-            className={`category-btn ${category === "pantins" ? "active" : ""}`}
-            onClick={() => handleCategoryChange("pantins")}
-          >
-            Pantins
-          </button>
-          <button
-            className={`category-btn ${category === "objets" ? "active" : ""}`}
-            onClick={() => handleCategoryChange("objets")}
-          >
-            Objets
-          </button>
-          <button
-            className={`category-btn ${category === "decors" ? "active" : ""}`}
-            onClick={() => handleCategoryChange("decors")}
-          >
-            Décors
-          </button>
-        </div>
-        <div className="library-assets">
-          {filteredAssets.map((asset) => (
-            <AssetItem key={`${asset.path}`} asset={asset} />
+        <Tabs.Root
+          value={category}
+          onValueChange={handleCategoryChange}
+          className="library-tabs"
+        >
+          <Tabs.List className="library-categories">
+            {CATEGORY_TABS.map(({ value, label, Icon }) => (
+              <Tabs.Trigger
+                key={value}
+                value={value}
+                className={`category-btn ${category === value ? "active" : ""}`}
+                aria-label={label}
+                title={label}
+              >
+                <Icon aria-hidden />
+              </Tabs.Trigger>
+            ))}
+          </Tabs.List>
+          {CATEGORY_TABS.map(({ value }) => (
+            <Tabs.Content key={value} value={value}>
+              <div className="library-assets">
+                {assetsByCategory[value].map((asset) => (
+                  <AssetItem key={`${asset.path}`} asset={asset} />
+                ))}
+              </div>
+            </Tabs.Content>
           ))}
-        </div>
+        </Tabs.Root>
       </div>
     </FloatingPanel>
   );

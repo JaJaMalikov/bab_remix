@@ -859,35 +859,21 @@ body {
 
 }
 
-.library-search input {
-  width: 100%;
-  padding: 8px;
-  background-color: #1e1e1e;
-  border: 1px solid #3a3a3a;
-  border-radius: 4px;
-  color: #e0e0e0;
-  font-size: 13px;
-}
-
-.library-search input:focus {
-  outline: none;
-  border-color: #5a9fd4;
-}
 
 .library-categories {
   display: flex;
+  align-content: center;
   gap: 6px;
   flex-wrap: wrap;
 }
 
 .category-btn {
-  padding: 6px 12px;
+  padding: 6px 6px;
   background-color: #1e1e1e;
   border: 1px solid #3a3a3a;
   border-radius: 4px;
   color: #b0b0b0;
   cursor: pointer;
-  font-size: 12px;
   transition: all 0.2s;
 }
 
