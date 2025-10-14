@@ -1,4 +1,7 @@
 import React, { ReactNode, useCallback } from "react";
+import * as Collapsible from "@radix-ui/react-collapsible";
+import * as Toolbar from "@radix-ui/react-toolbar";
+import { ChevronDownIcon, Cross2Icon } from "@radix-ui/react-icons";
 import { useDraggable, Position } from "../hooks/useDraggable";
 import { useResizable } from "../hooks/useResizable";
 import { useLocalStorage } from "../hooks/useLocalStorage";
@@ -38,10 +41,12 @@ export const FloatingPanel = ({
     false,
   );
 
-  // Toggle minimized state
-  const toggleMinimize = useCallback(() => {
-    setIsMinimized((prev) => !prev);
-  }, [setIsMinimized]);
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      setIsMinimized(!open);
+    },
+    [setIsMinimized],
+  );
 
   const handlePanelMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -56,80 +61,68 @@ export const FloatingPanel = ({
   );
 
   return (
-    <div
-      className={`floating-panel ${isDragging || isResizing ? "dragging" : ""} ${isMinimized ? "minimized" : ""}`}
-      style={{
-        position: "absolute",
-        left: `${position.x}px`,
-        top: `${position.y}px`,
-        width: `${size.width}px`,
-        height: isMinimized ? "auto" : `${size.height}px`,
-      }}
-      onMouseDown={handlePanelMouseDown}
+    <Collapsible.Root
+      open={!isMinimized}
+      onOpenChange={handleOpenChange}
+      asChild
     >
-      <div className="panel-header drag-handle">
-        <h3>{title}</h3>
-        <div className="panel-controls">
-          <button
-            className="panel-btn minimize-btn"
-            onClick={toggleMinimize}
-            title={isMinimized ? "Maximize" : "Minimize"}
+      <div
+        className={`floating-panel ${
+          isDragging || isResizing ? "dragging" : ""
+        } ${isMinimized ? "minimized" : ""}`}
+        data-state={isMinimized ? "closed" : "open"}
+        style={{
+          position: "absolute",
+          left: `${position.x}px`,
+          top: `${position.y}px`,
+          width: `${size.width}px`,
+          height: isMinimized ? "auto" : `${size.height}px`,
+        }}
+        onMouseDown={handlePanelMouseDown}
+      >
+        <div className="panel-header drag-handle">
+          <h3>{title}</h3>
+          <Toolbar.Root
+            className="panel-controls"
+            aria-label={`${title} controls`}
           >
-            {isMinimized ? (
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 12 12"
-                fill="currentColor"
+            <Collapsible.Trigger asChild>
+              <Toolbar.Button
+                className="panel-btn minimize-btn"
+                data-state={isMinimized ? "closed" : "open"}
+                title={isMinimized ? "Expand panel" : "Collapse panel"}
               >
-                <path d="M6 3l4 4H2z" />
-              </svg>
-            ) : (
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 12 12"
-                fill="currentColor"
+                <ChevronDownIcon aria-hidden />
+                <span className="sr-only">
+                  {isMinimized ? "Expand panel" : "Collapse panel"}
+                </span>
+              </Toolbar.Button>
+            </Collapsible.Trigger>
+            {onClose && (
+              <Toolbar.Button
+                className="panel-btn close-btn"
+                onClick={onClose}
+                title="Close panel"
               >
-                <rect x="2" y="5" width="8" height="2" />
-              </svg>
+                <Cross2Icon aria-hidden />
+                <span className="sr-only">Close panel</span>
+              </Toolbar.Button>
             )}
-          </button>
-          {onClose && (
-            <button
-              className="panel-btn close-btn"
-              onClick={onClose}
-              title="Close"
-            >
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 12 12"
-                fill="currentColor"
-              >
-                <path
-                  d="M2 2l8 8M10 2l-8 8"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  fill="none"
-                />
-              </svg>
-            </button>
-          )}
+          </Toolbar.Root>
         </div>
+        <Collapsible.Content forceMount className="panel-collapsible">
+          <div className="panel-body">
+            <div className="panel-content">{children}</div>
+            {resizable && (
+              <div
+                className="panel-resizer"
+                onMouseDown={onResizeMouseDown}
+                title="Resize"
+              />
+            )}
+          </div>
+        </Collapsible.Content>
       </div>
-      {!isMinimized && (
-        <>
-          <div className="panel-content">{children}</div>
-          {resizable && (
-            <div
-              className="panel-resizer"
-              onMouseDown={onResizeMouseDown}
-              title="Resize"
-            />
-          )}
-        </>
-      )}
-    </div>
+    </Collapsible.Root>
   );
 };

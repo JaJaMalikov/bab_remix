@@ -1,4 +1,12 @@
-import { memo, useState, useRef, useEffect, useCallback } from "react";
+import { memo, useCallback } from "react";
+import * as Menubar from "@radix-ui/react-menubar";
+import * as Toolbar from "@radix-ui/react-toolbar";
+import {
+  CheckIcon,
+  DownloadIcon,
+  EnterFullScreenIcon,
+  UploadIcon,
+} from "@radix-ui/react-icons";
 import { useUi } from "../context/UiContext";
 import { useAnimation } from "../context/AnimationContext";
 import {
@@ -22,19 +30,6 @@ export const MenuBar = memo(() => {
   } = useUi();
 
   const { tracks, duration } = useAnimation();
-  const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpenMenu(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   const handleSave = useCallback(() => {
     const svgEl = document.querySelector("svg[data-scene]");
     const bgEl = svgEl?.querySelector("image") as SVGImageElement | null;
@@ -52,7 +47,6 @@ export const MenuBar = memo(() => {
       .replace(/[:.]/g, "-")
       .slice(0, -5);
     saveProjectToFile(projectData, `animation-${timestamp}.bab.json`);
-    setOpenMenu(null);
   }, [sceneItems, tracks, duration]);
 
   const handleLoad = useCallback(async () => {
@@ -68,127 +62,151 @@ export const MenuBar = memo(() => {
       window.dispatchEvent(
         new CustomEvent("project:load", { detail: projectData }),
       );
-      setOpenMenu(null);
     } catch (error) {
       console.error("Failed to load project:", error);
       alert("Failed to load project file");
     }
   }, [sceneItems]);
 
-  const toggleMenu = (menu: string) => {
-    setOpenMenu(openMenu === menu ? null : menu);
-  };
-
   return (
-    <div className="menubar" ref={menuRef}>
+    <div className="menubar">
       <div className="menubar-left">
         <div className="app-title">BaB</div>
 
-        <div className="menu-bar">
-          <div className="menu-item">
-            <button onClick={() => toggleMenu("file")} className="menu-trigger">
-              File
-            </button>
-            {openMenu === "file" && (
-              <div className="dropdown-menu">
-                <button onClick={handleSave}>
+        <Menubar.Root className="menu-bar" aria-label="Application menu">
+          <Menubar.Menu>
+            <Menubar.Trigger className="menu-trigger">File</Menubar.Trigger>
+            <Menubar.Portal>
+              <Menubar.Content
+                className="dropdown-menu"
+                sideOffset={6}
+                align="start"
+                aria-label="File menu"
+              >
+                <Menubar.Item
+                  className="dropdown-item"
+                  onSelect={handleSave}
+                >
+                  <DownloadIcon className="menu-icon" aria-hidden />
                   <span>Save Project</span>
                   <span className="menu-shortcut">Ctrl+S</span>
-                </button>
-                <button onClick={handleLoad}>
-                  <span>Open Project</span>
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="menu-item">
-            <button onClick={() => toggleMenu("view")} className="menu-trigger">
-              View
-            </button>
-            {openMenu === "view" && (
-              <div className="dropdown-menu">
-                <button
-                  onClick={() => {
-                    setShowLibrary(!showLibrary);
-                    setOpenMenu(null);
-                  }}
+                </Menubar.Item>
+                <Menubar.Item
+                  className="dropdown-item"
+                  onSelect={handleLoad}
                 >
-                  <span className="menu-check">{showLibrary ? "✓" : ""}</span>
+                  <UploadIcon className="menu-icon" aria-hidden />
+                  <span>Open Project</span>
+                </Menubar.Item>
+              </Menubar.Content>
+            </Menubar.Portal>
+          </Menubar.Menu>
+
+          <Menubar.Menu>
+            <Menubar.Trigger className="menu-trigger">View</Menubar.Trigger>
+            <Menubar.Portal>
+              <Menubar.Content
+                className="dropdown-menu"
+                sideOffset={6}
+                align="start"
+                aria-label="View menu"
+              >
+                <Menubar.CheckboxItem
+                  className="dropdown-item"
+                  checked={showLibrary}
+                  onCheckedChange={(checked) => setShowLibrary(Boolean(checked))}
+                >
+                  <span className="menu-check">
+                    <Menubar.ItemIndicator forceMount>
+                      <CheckIcon aria-hidden />
+                    </Menubar.ItemIndicator>
+                  </span>
                   <span>Library</span>
                   <span className="menu-shortcut">Ctrl+L</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setShowInspector(!showInspector);
-                    setOpenMenu(null);
-                  }}
+                </Menubar.CheckboxItem>
+                <Menubar.CheckboxItem
+                  className="dropdown-item"
+                  checked={showInspector}
+                  onCheckedChange={(checked) =>
+                    setShowInspector(Boolean(checked))
+                  }
                 >
-                  <span className="menu-check">{showInspector ? "✓" : ""}</span>
+                  <span className="menu-check">
+                    <Menubar.ItemIndicator forceMount>
+                      <CheckIcon aria-hidden />
+                    </Menubar.ItemIndicator>
+                  </span>
                   <span>Inspector</span>
                   <span className="menu-shortcut">Ctrl+I</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setShowLayers(!showLayers);
-                    setOpenMenu(null);
-                  }}
+                </Menubar.CheckboxItem>
+                <Menubar.CheckboxItem
+                  className="dropdown-item"
+                  checked={showLayers}
+                  onCheckedChange={(checked) => setShowLayers(Boolean(checked))}
                 >
-                  <span className="menu-check">{showLayers ? "✓" : ""}</span>
+                  <span className="menu-check">
+                    <Menubar.ItemIndicator forceMount>
+                      <CheckIcon aria-hidden />
+                    </Menubar.ItemIndicator>
+                  </span>
                   <span>Layers</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setShowTimeline(!showTimeline);
-                    setOpenMenu(null);
-                  }}
+                </Menubar.CheckboxItem>
+                <Menubar.CheckboxItem
+                  className="dropdown-item"
+                  checked={showTimeline}
+                  onCheckedChange={(checked) =>
+                    setShowTimeline(Boolean(checked))
+                  }
                 >
-                  <span className="menu-check">{showTimeline ? "✓" : ""}</span>
+                  <span className="menu-check">
+                    <Menubar.ItemIndicator forceMount>
+                      <CheckIcon aria-hidden />
+                    </Menubar.ItemIndicator>
+                  </span>
                   <span>Timeline</span>
                   <span className="menu-shortcut">Ctrl+G</span>
-                </button>
-                <div className="menu-separator" />
-                <button
-                  onClick={() => {
-                    fitInView?.();
-                    setOpenMenu(null);
-                  }}
+                </Menubar.CheckboxItem>
+                <Menubar.Separator className="menu-separator" />
+                <Menubar.Item
+                  className="dropdown-item"
+                  onSelect={() => fitInView?.()}
                 >
-                  <span className="menu-check"></span>
+                  <EnterFullScreenIcon className="menu-icon" aria-hidden />
                   <span>Fit in View</span>
                   <span className="menu-shortcut">Ctrl+0</span>
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+                </Menubar.Item>
+              </Menubar.Content>
+            </Menubar.Portal>
+          </Menubar.Menu>
+        </Menubar.Root>
       </div>
 
-      <div className="menubar-right">
-        <button
+      <Toolbar.Root className="menubar-actions" aria-label="Quick actions">
+        <Toolbar.Button
           className="icon-btn"
           onClick={fitInView}
           title="Fit in View (Ctrl+0)"
         >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M1 1h6v2H3v4H1V1zm14 0h-6v2h4v4h2V1zM1 15h6v-2H3v-4H1v6zm14 0h-6v-2h4v-4h2v6z" />
-          </svg>
-        </button>
-        <button
+          <EnterFullScreenIcon aria-hidden />
+          <span className="sr-only">Fit in View</span>
+        </Toolbar.Button>
+        <Toolbar.Button
           className="icon-btn"
           onClick={handleSave}
           title="Save Project (Ctrl+S)"
         >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M13 1H3c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2zM4 3h8v4H4V3zm8 10H4V9h8v4z" />
-          </svg>
-        </button>
-        <button className="icon-btn" onClick={handleLoad} title="Open Project">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M14 5h-4L8 3H2c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2z" />
-          </svg>
-        </button>
-      </div>
+          <DownloadIcon aria-hidden />
+          <span className="sr-only">Save Project</span>
+        </Toolbar.Button>
+        <Toolbar.Button
+          className="icon-btn"
+          onClick={handleLoad}
+          title="Open Project"
+        >
+          <UploadIcon aria-hidden />
+          <span className="sr-only">Open Project</span>
+        </Toolbar.Button>
+      </Toolbar.Root>
     </div>
   );
 });

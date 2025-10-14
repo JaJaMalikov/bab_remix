@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { act, render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { Library } from "../../src/components/Library";
 import * as UiContext from "../../src/context/UiContext";
 import { vi } from "vitest";
@@ -54,9 +54,26 @@ describe("Library", () => {
   it("should render the library and fetch assets", async () => {
     render(<Library />);
     expect(screen.getByText("Library")).toBeInTheDocument();
+
     await waitFor(() => {
       expect(screen.getByText("Puppet 1")).toBeInTheDocument();
+    });
+
+    const objetsTab = screen.getByRole("tab", { name: "Objets" });
+    await act(async () => {
+      objetsTab.focus();
+      fireEvent.keyDown(objetsTab, { key: "Enter" });
+    });
+    await waitFor(() => {
       expect(screen.getByText("Object 1")).toBeInTheDocument();
+    });
+
+    const decorsTab = screen.getByRole("tab", { name: "Décors" });
+    await act(async () => {
+      decorsTab.focus();
+      fireEvent.keyDown(decorsTab, { key: "Enter" });
+    });
+    await waitFor(() => {
       expect(screen.getByText("Decor 1")).toBeInTheDocument();
     });
   });
@@ -67,24 +84,39 @@ describe("Library", () => {
       expect(screen.getByText("Puppet 1")).toBeInTheDocument(),
     );
 
-    fireEvent.click(screen.getByText("Objets"));
+    const objetsTab = screen.getByRole("tab", { name: "Objets" });
+    await act(async () => {
+      objetsTab.focus();
+      fireEvent.keyDown(objetsTab, { key: "Enter" });
+    });
 
     expect(screen.queryByText("Puppet 1")).not.toBeInTheDocument();
     expect(screen.getByText("Object 1")).toBeInTheDocument();
     expect(screen.queryByText("Decor 1")).not.toBeInTheDocument();
   });
 
-  it("should filter assets by search query", async () => {
+  it("should restore puppet assets when returning to the Pantins tab", async () => {
     render(<Library />);
     await waitFor(() =>
       expect(screen.getByText("Puppet 1")).toBeInTheDocument(),
     );
 
-    const searchInput = screen.getByPlaceholderText("Rechercher...");
-    fireEvent.change(searchInput, { target: { value: "Puppet" } });
+    const objetsTab = screen.getByRole("tab", { name: "Objets" });
+    await act(async () => {
+      objetsTab.focus();
+      fireEvent.keyDown(objetsTab, { key: "Enter" });
+    });
+    await waitFor(() =>
+      expect(screen.getByText("Object 1")).toBeInTheDocument(),
+    );
 
-    expect(screen.getByText("Puppet 1")).toBeInTheDocument();
-    expect(screen.queryByText("Object 1")).not.toBeInTheDocument();
-    expect(screen.queryByText("Decor 1")).not.toBeInTheDocument();
+    const pantinsTab = screen.getByRole("tab", { name: "Pantins" });
+    await act(async () => {
+      pantinsTab.focus();
+      fireEvent.keyDown(pantinsTab, { key: "Enter" });
+    });
+    await waitFor(() =>
+      expect(screen.getByText("Puppet 1")).toBeInTheDocument(),
+    );
   });
 });

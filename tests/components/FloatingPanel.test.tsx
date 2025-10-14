@@ -48,17 +48,25 @@ describe("FloatingPanel", () => {
       </FloatingPanel>,
     );
 
-    const minimizeButton = screen.getByTitle("Minimize");
-    fireEvent.click(minimizeButton);
+    const collapseButton = screen.getByTitle("Collapse panel");
+    fireEvent.click(collapseButton);
 
-    // After minimizing, the content should not be visible
-    expect(screen.queryByText("Panel Content")).not.toBeInTheDocument();
+    // After collapsing, the trigger and collapsible should report the closed state
+    const collapsedTrigger = screen.getByTitle("Expand panel");
+    expect(collapsedTrigger).toHaveAttribute("data-state", "closed");
 
-    const maximizeButton = screen.getByTitle("Maximize");
-    fireEvent.click(maximizeButton);
+    const collapsedRegion = screen
+      .getByText("Panel Content")
+      .closest(".panel-collapsible") as HTMLElement;
+    expect(collapsedRegion).toHaveAttribute("data-state", "closed");
 
-    // After maximizing, the content should be visible again
-    expect(screen.getByText("Panel Content")).toBeInTheDocument();
+    fireEvent.click(collapsedTrigger);
+
+    // After expanding, the content should be visible again
+    const expandedRegion = screen
+      .getByText("Panel Content")
+      .closest(".panel-collapsible") as HTMLElement;
+    expect(expandedRegion).toHaveAttribute("data-state", "open");
   });
 
   it("should call onClose when the close button is clicked", () => {
@@ -73,7 +81,7 @@ describe("FloatingPanel", () => {
       </FloatingPanel>,
     );
 
-    const closeButton = screen.getByTitle("Close");
+    const closeButton = screen.getByTitle("Close panel");
     fireEvent.click(closeButton);
 
     expect(onClose).toHaveBeenCalled();

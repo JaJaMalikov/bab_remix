@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { Tabs } from "radix-ui";
+import * as Tabs from "@radix-ui/react-tabs";
+import * as ScrollArea from "@radix-ui/react-scroll-area";
 import {
   BackpackIcon,
   ImageIcon,
@@ -94,7 +95,7 @@ export const Library = memo(() => {
               <Tabs.Trigger
                 key={value}
                 value={value}
-                className={`category-btn ${category === value ? "active" : ""}`}
+                className="category-btn"
                 aria-label={label}
                 title={label}
               >
@@ -104,11 +105,20 @@ export const Library = memo(() => {
           </Tabs.List>
           {CATEGORY_TABS.map(({ value }) => (
             <Tabs.Content key={value} value={value}>
-              <div className="library-assets">
-                {assetsByCategory[value].map((asset) => (
-                  <AssetItem key={`${asset.path}`} asset={asset} />
-                ))}
-              </div>
+              <ScrollArea.Root className="library-scroll-area">
+                <ScrollArea.Viewport className="library-assets">
+                  {assetsByCategory[value].map((asset) => (
+                    <AssetItem key={`${asset.path}`} asset={asset} />
+                  ))}
+                </ScrollArea.Viewport>
+                <ScrollArea.Scrollbar
+                  className="scrollbar"
+                  orientation="vertical"
+                >
+                  <ScrollArea.Thumb className="scrollbar-thumb" />
+                </ScrollArea.Scrollbar>
+                <ScrollArea.Corner className="scrollbar-corner" />
+              </ScrollArea.Root>
             </Tabs.Content>
           ))}
         </Tabs.Root>

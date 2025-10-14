@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { act, render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MenuBar } from "../../src/components/MenuBar";
 import * as UiContext from "../../src/context/UiContext";
 import * as AnimationContext from "../../src/context/AnimationContext";
@@ -56,20 +56,42 @@ describe("MenuBar", () => {
     expect(screen.getByText("View")).toBeInTheDocument();
   });
 
-  it("should open and close the file menu", () => {
+  it("should open and close the file menu", async () => {
     render(<MenuBar />);
-    const fileMenuButton = screen.getByText("File");
-    fireEvent.click(fileMenuButton);
-    expect(screen.getByText("Save Project")).toBeInTheDocument();
-    fireEvent.click(fileMenuButton);
-    expect(screen.queryByText("Save Project")).not.toBeInTheDocument();
+    const fileMenuButton = screen.getByRole("menuitem", { name: "File" });
+    await act(async () => {
+      fileMenuButton.focus();
+      fireEvent.keyDown(fileMenuButton, { key: "ArrowDown" });
+    });
+
+    expect(
+      await screen.findByRole("menuitem", { name: /save project/i }),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.keyDown(document, { key: "Escape" });
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("menuitem", { name: /save project/i }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   it("should call save function on save button click", async () => {
     render(<MenuBar />);
-    fireEvent.click(screen.getByText("File"));
-    const saveButton = await screen.findByText("Save Project");
-    fireEvent.click(saveButton);
+    const fileTrigger = screen.getByRole("menuitem", { name: "File" });
+    await act(async () => {
+      fileTrigger.focus();
+      fireEvent.keyDown(fileTrigger, { key: "ArrowDown" });
+    });
+    const saveButton = await screen.findByRole("menuitem", {
+      name: /save project/i,
+    });
+    await act(async () => {
+      fireEvent.click(saveButton);
+    });
     await waitFor(() =>
       expect(projectSerializer.serializeProject).toHaveBeenCalled(),
     );
@@ -80,9 +102,17 @@ describe("MenuBar", () => {
 
   it("should call load function on load button click", async () => {
     render(<MenuBar />);
-    fireEvent.click(screen.getByText("File"));
-    const openButton = await screen.findByText("Open Project");
-    fireEvent.click(openButton);
+    const fileTrigger = screen.getByRole("menuitem", { name: "File" });
+    await act(async () => {
+      fileTrigger.focus();
+      fireEvent.keyDown(fileTrigger, { key: "ArrowDown" });
+    });
+    const openButton = await screen.findByRole("menuitem", {
+      name: /open project/i,
+    });
+    await act(async () => {
+      fireEvent.click(openButton);
+    });
     await waitFor(() =>
       expect(projectSerializer.loadProjectFromFile).toHaveBeenCalled(),
     );
@@ -90,16 +120,31 @@ describe("MenuBar", () => {
 
   it("should toggle view panels", async () => {
     render(<MenuBar />);
-    fireEvent.click(screen.getByText("View"));
+    const viewTrigger = screen.getByRole("menuitem", { name: "View" });
+    await act(async () => {
+      viewTrigger.focus();
+      fireEvent.keyDown(viewTrigger, { key: "ArrowDown" });
+    });
 
-    const libraryButton = await screen.findByText("Library");
-    fireEvent.click(libraryButton);
+    const libraryButton = await screen.findByRole("menuitemcheckbox", {
+      name: /library/i,
+    });
+    await act(async () => {
+      fireEvent.click(libraryButton);
+    });
     expect(mockUi.setShowLibrary).toHaveBeenCalledWith(false);
 
     // Re-open menu
-    fireEvent.click(screen.getByText("View"));
-    const inspectorButton = await screen.findByText("Inspector");
-    fireEvent.click(inspectorButton);
+    await act(async () => {
+      viewTrigger.focus();
+      fireEvent.keyDown(viewTrigger, { key: "ArrowDown" });
+    });
+    const inspectorButton = await screen.findByRole("menuitemcheckbox", {
+      name: /inspector/i,
+    });
+    await act(async () => {
+      fireEvent.click(inspectorButton);
+    });
     expect(mockUi.setShowInspector).toHaveBeenCalledWith(false);
   });
 });
