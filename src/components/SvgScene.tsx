@@ -679,7 +679,7 @@ export const SvgScene = memo(() => {
   ]);
 
   return (
-    <div className="scene-canvas" style={{ position: "relative" }}>
+    <div className="scene-canvas" style={{ position: "relative" }} data-testid="scene-canvas">
       <svg ref={svgRef} width="100%" height="100%" onWheel={onWheel} data-scene="true" />
       {/* React portals of pantins injected into anchors */}
       {puppets.map((p) =>

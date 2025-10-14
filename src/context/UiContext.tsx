@@ -81,6 +81,41 @@ const Ctx = createContext<UiState | null>(null);
 
 const NUMBERED_LABEL_SUFFIX = / \(\d+\)$/;
 
+const LAYOUT_STORAGE_KEY = 'ui:layout';
+
+type LayoutState = {
+  showTimeline: boolean;
+  timelineHeight: number;
+  showLibrary: boolean;
+  showInspector: boolean;
+  showLayers: boolean;
+  showToolbar: boolean;
+  showTracks: boolean;
+};
+
+type LayoutStateSetters = {
+  [K in keyof LayoutState]: Dispatch<SetStateAction<LayoutState[K]>>;
+};
+
+type BooleanLayoutKey = {
+  [K in keyof LayoutState]: LayoutState[K] extends boolean ? K : never;
+}[keyof LayoutState];
+
+type NumberLayoutKey = {
+  [K in keyof LayoutState]: LayoutState[K] extends number ? K : never;
+}[keyof LayoutState];
+
+const booleanLayoutKeys: BooleanLayoutKey[] = [
+  'showTimeline',
+  'showLibrary',
+  'showInspector',
+  'showLayers',
+  'showToolbar',
+  'showTracks',
+];
+
+const numberLayoutKeys: NumberLayoutKey[] = ['timelineHeight'];
+
 const deriveUniqueLabel = (existing: SceneItem[], desiredLabel: string) => {
   const normalizedBase = desiredLabel.replace(NUMBERED_LABEL_SUFFIX, "");
   const candidates = new Set(existing.map((item) => item.label));
@@ -113,6 +148,48 @@ export const UiProvider = ({ children }: UiProviderProps) => {
   const [, setHelpersVersion] = useState(0);
   const fitInViewRef = useRef<UiState['fitInView']>(undefined);
   const importAssetRef = useRef<UiState['importAsset']>(undefined);
+
+  const layoutSetters = useMemo<LayoutStateSetters>(
+    () => ({
+      showTimeline: setShowTimeline,
+      timelineHeight: setTimelineHeight,
+      showLibrary: setShowLibrary,
+      showInspector: setShowInspector,
+      showLayers: setShowLayers,
+      showToolbar: setShowToolbar,
+      showTracks: setShowTracks,
+    }),
+    [
+      setShowTimeline,
+      setTimelineHeight,
+      setShowLibrary,
+      setShowInspector,
+      setShowLayers,
+      setShowToolbar,
+      setShowTracks,
+    ],
+  );
+
+  const layoutValues = useMemo<LayoutState>(
+    () => ({
+      showTimeline,
+      timelineHeight,
+      showLibrary,
+      showInspector,
+      showLayers,
+      showToolbar,
+      showTracks,
+    }),
+    [
+      showTimeline,
+      timelineHeight,
+      showLibrary,
+      showInspector,
+      showLayers,
+      showToolbar,
+      showTracks,
+    ],
+  );
 
   const addSceneItem = useCallback<UiState['addSceneItem']>((item) => {
     setSceneItems((prev) => {
@@ -201,33 +278,33 @@ export const UiProvider = ({ children }: UiProviderProps) => {
   // load persisted UI layout
   useEffect(() => {
     try {
-      const raw = localStorage.getItem('ui:layout');
-      if (raw) {
-        const v = JSON.parse(raw) as any;
-        if (typeof v?.showTimeline === 'boolean') setShowTimeline(v.showTimeline);
-        if (typeof v?.timelineHeight === 'number') setTimelineHeight(v.timelineHeight);
-        if (typeof v?.showLibrary === 'boolean') setShowLibrary(v.showLibrary);
-        if (typeof v?.showInspector === 'boolean') setShowInspector(v.showInspector);
-        if (typeof v?.showLayers === 'boolean') setShowLayers(v.showLayers);
-        if (typeof v?.showToolbar === 'boolean') setShowToolbar(v.showToolbar);
-        if (typeof v?.showTracks === 'boolean') setShowTracks(v.showTracks);
+      const raw = localStorage.getItem(LAYOUT_STORAGE_KEY);
+      if (!raw) {
+        return;
       }
+
+      const parsed = JSON.parse(raw) as Partial<Record<keyof LayoutState, unknown>>;
+
+      booleanLayoutKeys.forEach((key) => {
+        const candidate = parsed[key];
+        if (typeof candidate === 'boolean') {
+          layoutSetters[key](candidate);
+        }
+      });
+
+      numberLayoutKeys.forEach((key) => {
+        const candidate = parsed[key];
+        if (typeof candidate === 'number') {
+          layoutSetters[key](candidate);
+        }
+      });
     } catch {}
-  }, []);
+  }, [layoutSetters]);
   useEffect(() => {
     try {
-      const v = {
-        showTimeline,
-        timelineHeight,
-        showLibrary,
-        showInspector,
-        showLayers,
-        showToolbar,
-        showTracks,
-      };
-      localStorage.setItem('ui:layout', JSON.stringify(v));
+      localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(layoutValues));
     } catch {}
-  }, [showTimeline, timelineHeight, showLibrary, showInspector, showLayers, showToolbar, showTracks]);
+  }, [layoutValues]);
 
   const value = useMemo(
     () => ({
