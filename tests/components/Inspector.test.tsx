@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { Inspector } from '../../src/components/Inspector';
 import * as UiContext from '../../src/context/UiContext';
 import * as AnimationContext from '../../src/context/AnimationContext';
@@ -57,14 +57,18 @@ describe('Inspector', () => {
 
   it('should display the list of scene items', () => {
     render(<Inspector />);
-    expect(screen.getByText(/Puppet 1/)).toBeInTheDocument();
-    expect(screen.getByText(/Image 1/)).toBeInTheDocument();
+    // Use a more specific selector for the list item button
+    const sceneItemsList = screen.getByText(/Scene Items/).parentElement.nextElementSibling;
+    expect(within(sceneItemsList).getByRole('button', { name: /Puppet 1/ })).toBeInTheDocument();
+    expect(within(sceneItemsList).getByRole('button', { name: /Image 1/ })).toBeInTheDocument();
   });
 
   it('should display properties for the selected item', () => {
     render(<Inspector />);
-    expect(screen.getByLabelText('Name')).toBeInTheDocument();
-    // The name is not in an input, but a div, so we can't use getByDisplayValue
-    expect(screen.getByText('Puppet 1')).toBeInTheDocument();
+    // The "Name" is not a form control, so we can't use getByLabelText.
+    // We can find the "Properties" group and then find the text within it.
+    const propertiesGroup = screen.getByText('Properties').parentElement;
+    expect(within(propertiesGroup).getByText('Name')).toBeInTheDocument();
+    expect(within(propertiesGroup).getByText('Puppet 1')).toBeInTheDocument();
   });
 });

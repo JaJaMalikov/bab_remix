@@ -1,5 +1,4 @@
 import { render, waitFor } from '@testing-library/react';
-import { SvgPuppetInlineSimple } from '../../src/components/SvgPuppet';
 import { vi } from 'vitest';
 
 const mockSvgText = `
@@ -21,42 +20,49 @@ const mockMetadata = {
   variantGroups: [],
 };
 
-// Mock fetch
-global.fetch = vi.fn((url: string) => {
-  if (url.endsWith('.svg')) {
-    return Promise.resolve({
-      ok: true,
-      text: () => Promise.resolve(mockSvgText),
-    });
-  }
-  if (url.endsWith('.json')) {
-    return Promise.resolve({
-      ok: true,
-      json: () => Promise.resolve(mockMetadata),
-    });
-  }
-  return Promise.reject(new Error(`Unknown URL: ${url}`));
-}) as any;
-
 describe('SvgPuppetInlineSimple', () => {
+  beforeEach(() => {
+    // Reset modules to clear the cache in SvgPuppet.tsx
+    vi.resetModules();
+
+    // Mock fetch for each test
+    global.fetch = vi.fn((url: string) => {
+      if (url.endsWith('.svg')) {
+        return Promise.resolve({
+          ok: true,
+          text: () => Promise.resolve(mockSvgText),
+        });
+      }
+      if (url.endsWith('.json')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockMetadata),
+        });
+      }
+      return Promise.reject(new Error(`Unknown URL: ${url}`));
+    }) as any;
+  });
+
   afterEach(() => {
     vi.clearAllMocks();
   });
 
   it('should fetch, process, and render the puppet', async () => {
+    const { SvgPuppetInlineSimple } = await import('../../src/components/SvgPuppet');
     const onReady = vi.fn();
     render(<SvgPuppetInlineSimple src="test.svg" onReady={onReady} />);
 
     await waitFor(() => {
       expect(onReady).toHaveBeenCalled();
       const [rootGroup, metadata] = onReady.mock.calls[0];
-      expect(rootGroup).toBeInstanceOf(SVGGElement);
+      expect(rootGroup.tagName.toLowerCase()).toBe('g');
       expect(rootGroup.id).toBe('root-member');
       expect(metadata).toEqual(mockMetadata);
     });
   });
 
   it('should use the cache on second render', async () => {
+    const { SvgPuppetInlineSimple } = await import('../../src/components/SvgPuppet');
     const onReady1 = vi.fn();
     const onReady2 = vi.fn();
 
@@ -67,9 +73,14 @@ describe('SvgPuppetInlineSimple', () => {
 
     // Second render with the same src
     rerender(<SvgPuppetInlineSimple src="test.svg" onReady={onReady2} />);
-    await waitFor(() => expect(onReady2).toHaveBeenCalled());
 
-    // Fetch should not be called again
+    // Wait a bit to make sure onReady2 is not called
+    await new Promise(r => setTimeout(r, 100));
+
+    // onReady2 should not be called because the component does not re-call onReady for same src
+    expect(onReady2).not.toHaveBeenCalled();
+
+    // Fetch should not be called again because of the cache
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 });

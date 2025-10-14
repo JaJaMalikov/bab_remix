@@ -24,6 +24,8 @@ describe('SvgScene', () => {
       currentFrame: 0,
       addKeyframe: vi.fn(),
       snapshotKeyframes: vi.fn(),
+      tracks: [], // This was missing
+      getValueAtFrame: vi.fn(), // This was also used by the hook
     } as any);
   });
 
