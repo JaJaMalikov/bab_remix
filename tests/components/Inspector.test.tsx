@@ -3,6 +3,7 @@ import { Inspector } from "../../src/components/Inspector";
 import * as UiContext from "../../src/context/UiContext";
 import * as AnimationContext from "../../src/context/AnimationContext";
 import { vi } from "vitest";
+import "@testing-library/jest-dom";
 
 // Mock FloatingPanel to simplify the test
 vi.mock("../../src/components/FloatingPanel", () => ({
@@ -91,10 +92,10 @@ describe("Inspector", () => {
     expect(sceneItemsList).toBeInTheDocument();
     if (sceneItemsList) {
       expect(
-        within(sceneItemsList).getByRole("button", { name: /Puppet 1/ }),
+        within(sceneItemsList as HTMLElement).getByRole("button", { name: /Puppet 1/ }),
       ).toBeInTheDocument();
       expect(
-        within(sceneItemsList).getByRole("button", { name: /Image 1/ }),
+        within(sceneItemsList as HTMLElement).getByRole("button", { name: /Image 1/ }),
       ).toBeInTheDocument();
     }
   });
