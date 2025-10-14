@@ -23,7 +23,10 @@ interface ErrorBoundaryState {
  * Elle intercepte les exceptions d'exécution et fournit un retour utilisateur convivial
  * plutôt que de casser toute l'interface.
  */
-export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+export class ErrorBoundary extends Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
   public state: ErrorBoundaryState = { hasError: false };
 
   static getDerivedStateFromError(): ErrorBoundaryState {
@@ -32,7 +35,6 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     if (import.meta.env.DEV) {
-      // eslint-disable-next-line no-console
       console.error("Error boundary intercepted exception", error, info);
     }
   }
@@ -56,7 +58,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     return (
       <div role="alert" className="error-boundary">
         <h2>Une erreur est survenue</h2>
-        {message ? <p>{message}</p> : <p>Merci de recharger le module ou de réessayer.</p>}
+        {message ? (
+          <p>{message}</p>
+        ) : (
+          <p>Merci de recharger le module ou de réessayer.</p>
+        )}
         <button type="button" onClick={this.handleRetry}>
           Réessayer
         </button>

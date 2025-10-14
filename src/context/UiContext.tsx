@@ -8,6 +8,10 @@ import {
   useState,
 } from "react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
+import {
+  readFromLocalStorage,
+  writeToLocalStorage,
+} from "../hooks/useLocalStorage";
 
 export interface PuppetMetadata {
   id: string;
@@ -26,7 +30,7 @@ export interface PuppetMetadata {
 
 export interface SceneItem {
   id: string;
-  type: 'puppet' | 'image';
+  type: "puppet" | "image";
   label: string;
   el: Element;
   metadata?: PuppetMetadata;
@@ -73,15 +77,27 @@ export interface UiState {
   // Scene helpers injected by SvgScene
   fitInView?: () => void;
   setFitInView: (fn: (() => void) | undefined) => void;
-  importAsset?: (asset: { name: string; type: 'pantin' | 'objet' | 'decor'; path: string }) => void;
-  setImportAsset: (fn: ((asset: { name: string; type: 'pantin' | 'objet' | 'decor'; path: string }) => void) | undefined) => void;
+  importAsset?: (asset: {
+    name: string;
+    type: "pantin" | "objet" | "decor";
+    path: string;
+  }) => void;
+  setImportAsset: (
+    fn:
+      | ((asset: {
+          name: string;
+          type: "pantin" | "objet" | "decor";
+          path: string;
+        }) => void)
+      | undefined,
+  ) => void;
 }
 
 const Ctx = createContext<UiState | null>(null);
 
 const NUMBERED_LABEL_SUFFIX = / \(\d+\)$/;
 
-const LAYOUT_STORAGE_KEY = 'ui:layout';
+const LAYOUT_STORAGE_KEY = "ui:layout";
 
 type LayoutState = {
   showTimeline: boolean;
@@ -106,15 +122,15 @@ type NumberLayoutKey = {
 }[keyof LayoutState];
 
 const booleanLayoutKeys: BooleanLayoutKey[] = [
-  'showTimeline',
-  'showLibrary',
-  'showInspector',
-  'showLayers',
-  'showToolbar',
-  'showTracks',
+  "showTimeline",
+  "showLibrary",
+  "showInspector",
+  "showLayers",
+  "showToolbar",
+  "showTracks",
 ];
 
-const numberLayoutKeys: NumberLayoutKey[] = ['timelineHeight'];
+const numberLayoutKeys: NumberLayoutKey[] = ["timelineHeight"];
 
 const deriveUniqueLabel = (existing: SceneItem[], desiredLabel: string) => {
   const normalizedBase = desiredLabel.replace(NUMBERED_LABEL_SUFFIX, "");
@@ -133,7 +149,9 @@ const deriveUniqueLabel = (existing: SceneItem[], desiredLabel: string) => {
 type UiProviderProps = { children: ReactNode };
 
 export const UiProvider = ({ children }: UiProviderProps) => {
-  const [selectedPuppet, setSelectedPuppet] = useState<SVGGElement | null>(null);
+  const [selectedPuppet, setSelectedPuppet] = useState<SVGGElement | null>(
+    null,
+  );
   const [selectedLimb, setSelectedLimb] = useState<string>("");
   const [angle, setAngle] = useState<number>(0);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -146,8 +164,8 @@ export const UiProvider = ({ children }: UiProviderProps) => {
   const [showTracks, setShowTracks] = useState<boolean>(false);
   const [sceneItems, setSceneItems] = useState<SceneItem[]>([]);
   const [, setHelpersVersion] = useState(0);
-  const fitInViewRef = useRef<UiState['fitInView']>(undefined);
-  const importAssetRef = useRef<UiState['importAsset']>(undefined);
+  const fitInViewRef = useRef<UiState["fitInView"]>(undefined);
+  const importAssetRef = useRef<UiState["importAsset"]>(undefined);
 
   const layoutSetters = useMemo<LayoutStateSetters>(
     () => ({
@@ -191,7 +209,7 @@ export const UiProvider = ({ children }: UiProviderProps) => {
     ],
   );
 
-  const addSceneItem = useCallback<UiState['addSceneItem']>((item) => {
+  const addSceneItem = useCallback<UiState["addSceneItem"]>((item) => {
     setSceneItems((prev) => {
       const existing = prev.filter((i) => i.id !== item.id);
       const nextLabel = deriveUniqueLabel(existing, item.label);
@@ -199,13 +217,18 @@ export const UiProvider = ({ children }: UiProviderProps) => {
     });
   }, []);
 
-  const removeSceneItem = useCallback<UiState['removeSceneItem']>((id) => {
+  const removeSceneItem = useCallback<UiState["removeSceneItem"]>((id) => {
     setSceneItems((prev) => prev.filter((i) => i.id !== id));
   }, []);
 
-  const updateSceneItemLabel = useCallback<UiState['updateSceneItemLabel']>((id, label) => {
-    setSceneItems((prev) => prev.map((i) => (i.id === id ? { ...i, label } : i)));
-  }, []);
+  const updateSceneItemLabel = useCallback<UiState["updateSceneItemLabel"]>(
+    (id, label) => {
+      setSceneItems((prev) =>
+        prev.map((i) => (i.id === id ? { ...i, label } : i)),
+      );
+    },
+    [],
+  );
 
   const reorderSceneItem = useCallback((id: string, direction: 1 | -1) => {
     setSceneItems((prev) => {
@@ -214,7 +237,10 @@ export const UiProvider = ({ children }: UiProviderProps) => {
         return prev;
       }
 
-      const targetIndex = Math.min(Math.max(index + direction, 0), prev.length - 1);
+      const targetIndex = Math.min(
+        Math.max(index + direction, 0),
+        prev.length - 1,
+      );
       if (targetIndex === index) {
         return prev;
       }
@@ -246,64 +272,71 @@ export const UiProvider = ({ children }: UiProviderProps) => {
     });
   }, []);
 
-  const bringForward = useCallback<UiState['bringForward']>((id) => {
-    reorderSceneItem(id, 1);
-  }, [reorderSceneItem]);
+  const bringForward = useCallback<UiState["bringForward"]>(
+    (id) => {
+      reorderSceneItem(id, 1);
+    },
+    [reorderSceneItem],
+  );
 
-  const sendBackward = useCallback<UiState['sendBackward']>((id) => {
-    reorderSceneItem(id, -1);
-  }, [reorderSceneItem]);
+  const sendBackward = useCallback<UiState["sendBackward"]>(
+    (id) => {
+      reorderSceneItem(id, -1);
+    },
+    [reorderSceneItem],
+  );
 
-  const setFitInView = useCallback<UiState['setFitInView']>((fn) => {
-    const next = fn ?? undefined;
-    if (fitInViewRef.current === next) {
-      return;
-    }
-    fitInViewRef.current = next;
-    setHelpersVersion((version) => version + 1);
-  }, [setHelpersVersion]);
+  const setFitInView = useCallback<UiState["setFitInView"]>(
+    (fn) => {
+      const next = fn ?? undefined;
+      if (fitInViewRef.current === next) {
+        return;
+      }
+      fitInViewRef.current = next;
+      setHelpersVersion((version) => version + 1);
+    },
+    [setHelpersVersion],
+  );
 
-  const setImportAsset = useCallback<UiState['setImportAsset']>((fn) => {
-    const next = fn ?? undefined;
-    if (importAssetRef.current === next) {
-      return;
-    }
-    importAssetRef.current = next;
-    setHelpersVersion((version) => version + 1);
-  }, [setHelpersVersion]);
+  const setImportAsset = useCallback<UiState["setImportAsset"]>(
+    (fn) => {
+      const next = fn ?? undefined;
+      if (importAssetRef.current === next) {
+        return;
+      }
+      importAssetRef.current = next;
+      setHelpersVersion((version) => version + 1);
+    },
+    [setHelpersVersion],
+  );
 
   const fitInView = fitInViewRef.current;
   const importAsset = importAssetRef.current;
 
   // load persisted UI layout
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(LAYOUT_STORAGE_KEY);
-      if (!raw) {
-        return;
+    const parsed = readFromLocalStorage<
+      Partial<Record<keyof LayoutState, unknown>>
+    >(LAYOUT_STORAGE_KEY, {});
+
+    booleanLayoutKeys.forEach((key) => {
+      const candidate = parsed[key];
+      if (typeof candidate === "boolean") {
+        layoutSetters[key](candidate);
       }
+    });
 
-      const parsed = JSON.parse(raw) as Partial<Record<keyof LayoutState, unknown>>;
-
-      booleanLayoutKeys.forEach((key) => {
-        const candidate = parsed[key];
-        if (typeof candidate === 'boolean') {
-          layoutSetters[key](candidate);
-        }
-      });
-
-      numberLayoutKeys.forEach((key) => {
-        const candidate = parsed[key];
-        if (typeof candidate === 'number') {
-          layoutSetters[key](candidate);
-        }
-      });
-    } catch {}
+    numberLayoutKeys.forEach((key) => {
+      const candidate = parsed[key];
+      if (typeof candidate === "number") {
+        layoutSetters[key](candidate);
+      }
+    });
   }, [layoutSetters]);
+
+  // Persist layout changes
   useEffect(() => {
-    try {
-      localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(layoutValues));
-    } catch {}
+    writeToLocalStorage(LAYOUT_STORAGE_KEY, layoutValues);
   }, [layoutValues]);
 
   const value = useMemo(

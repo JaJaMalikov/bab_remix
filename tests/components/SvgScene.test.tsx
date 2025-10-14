@@ -1,12 +1,12 @@
-import { render, screen } from '@testing-library/react';
-import { SvgScene } from '../../src/components/SvgScene';
-import * as UiContext from '../../src/context/UiContext';
-import * as AnimationContext from '../../src/context/AnimationContext';
-import { vi } from 'vitest';
+import { render, screen } from "@testing-library/react";
+import { SvgScene } from "../../src/components/SvgScene";
+import * as UiContext from "../../src/context/UiContext";
+import * as AnimationContext from "../../src/context/AnimationContext";
+import { vi } from "vitest";
 
-describe('SvgScene', () => {
+describe("SvgScene", () => {
   beforeEach(() => {
-    vi.spyOn(UiContext, 'useUi').mockReturnValue({
+    vi.spyOn(UiContext, "useUi").mockReturnValue({
       selectedPuppet: null,
       selectedLimb: null,
       angle: 0,
@@ -20,7 +20,7 @@ describe('SvgScene', () => {
       setImportAsset: vi.fn(),
     } as any);
 
-    vi.spyOn(AnimationContext, 'useAnimation').mockReturnValue({
+    vi.spyOn(AnimationContext, "useAnimation").mockReturnValue({
       currentFrame: 0,
       addKeyframe: vi.fn(),
       snapshotKeyframes: vi.fn(),
@@ -33,8 +33,8 @@ describe('SvgScene', () => {
     vi.restoreAllMocks();
   });
 
-  it('should render without crashing', () => {
+  it("should render without crashing", () => {
     render(<SvgScene />);
-    expect(screen.getByTestId('scene-canvas')).toBeInTheDocument();
+    expect(screen.getByTestId("scene-canvas")).toBeInTheDocument();
   });
 });

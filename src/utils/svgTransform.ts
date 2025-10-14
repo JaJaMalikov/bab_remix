@@ -5,11 +5,16 @@
  * so we just need to use style.transform directly.
  */
 
+import { parseNumber } from "./numbers";
+
 /**
  * Set rotation on SVG element using CSS transform
  * The transform-origin is already in the element's style from the SVG source
  */
-export function setRotationWithOrigin(element: SVGElement, degrees: number): void {
+export function setRotationWithOrigin(
+  element: SVGElement,
+  degrees: number,
+): void {
   element.style.transform = `rotate(${degrees}deg)`;
 }
 
@@ -22,6 +27,50 @@ export function getRotationFromTransform(element: SVGElement): number {
   if (!rm) return 0;
   const v = parseFloat(rm[1] || "0");
   return Number.isFinite(v) ? v : 0;
+}
+
+/**
+ * Consolidated transform attribute parser
+ * Parses translate, rotate, and scale from a transform attribute string
+ */
+export interface ParsedTransform {
+  translate: { x: number; y: number } | null;
+  rotate: number | null;
+  scale: { x: number; y: number } | null;
+}
+
+export function parseTransformAttribute(element: Element): ParsedTransform {
+  const transform = element.getAttribute("transform") || "";
+
+  // Parse translate(x, y) or translate(x y)
+  const translateMatch = transform.match(
+    /translate\(([-+\d.]+)[,\s]+([-+\d.]+)\)/,
+  );
+  const translate = translateMatch
+    ? {
+        x: parseNumber(translateMatch[1], 0),
+        y: parseNumber(translateMatch[2], 0),
+      }
+    : null;
+
+  // Parse rotate(angle) or rotate(angle cx cy)
+  const rotateMatch = transform.match(/rotate\(([-+\d.]+)/);
+  const rotate = rotateMatch ? parseNumber(rotateMatch[1], 0) : null;
+
+  // Parse scale(x) or scale(x y) or scale(x, y)
+  const scaleMatch = transform.match(
+    /scale\(([-+\d.]+)(?:[,\s]+([-+\d.]+))?\)/,
+  );
+  const scale = scaleMatch
+    ? {
+        x: parseNumber(scaleMatch[1], 1),
+        y: scaleMatch[2]
+          ? parseNumber(scaleMatch[2], 1)
+          : parseNumber(scaleMatch[1], 1),
+      }
+    : null;
+
+  return { translate, rotate, scale };
 }
 
 const toNumber = (value: string | null): number | null => {
@@ -40,10 +89,13 @@ export const resolveDimensions = (
   let width = toNumber(element.getAttribute("width"));
   let height = toNumber(element.getAttribute("height"));
 
-  if ((width === null || height === null || width === 0 || height === 0)) {
+  if (width === null || height === null || width === 0 || height === 0) {
     const viewBox = element.getAttribute("viewBox");
     if (viewBox) {
-      const parts = viewBox.trim().split(/[\s,]+/).map((v) => parseFloat(v));
+      const parts = viewBox
+        .trim()
+        .split(/[\s,]+/)
+        .map((v) => parseFloat(v));
       if (parts.length === 4 && parts.every((n) => Number.isFinite(n))) {
         const [, , vbWidth, vbHeight] = parts;
         width = width === null || width === 0 ? vbWidth : width;
@@ -78,21 +130,12 @@ export const resolveDimensions = (
 export const readGraphicTransform = (
   element: SVGGraphicsElement,
 ): { rotation: number; scaleX: number; scaleY: number } => {
-  const transformAttr = element.getAttribute("transform") || "";
-  const rotMatch = transformAttr.match(/rotate\(([-+\d.]+)/);
-  const scaleMatch = transformAttr.match(/scale\(([-+\d.]+)(?:[,\s]+([-\d.]+))?\)/);
-
-  const rotation = rotMatch ? parseFloat(rotMatch[1] || "0") : 0;
-  const scaleX = scaleMatch ? parseFloat(scaleMatch[1] || "1") : 1;
-  const scaleY =
-    scaleMatch && scaleMatch[2] !== undefined
-      ? parseFloat(scaleMatch[2] || "1")
-      : scaleX;
+  const parsed = parseTransformAttribute(element);
 
   return {
-    rotation: Number.isFinite(rotation) ? rotation : 0,
-    scaleX: Number.isFinite(scaleX) ? scaleX : 1,
-    scaleY: Number.isFinite(scaleY) ? scaleY : 1,
+    rotation: parsed.rotate ?? 0,
+    scaleX: parsed.scale?.x ?? 1,
+    scaleY: parsed.scale?.y ?? 1,
   };
 };
 
@@ -102,26 +145,27 @@ export const readGraphicTransform = (
  */
 export function readItemTransform(
   element: Element,
-  type: 'puppet' | 'image'
+  type: "puppet" | "image",
 ): { x: number; y: number; rotation: number; scaleX: number; scaleY: number } {
-  if (type === 'puppet') {
-    const transformAttr = element.getAttribute('transform') || '';
-    const match = transformAttr.match(/translate\(([-\d.]+)[,\s]+([-\d.]+)\)/);
-    return match
-      ? { x: parseFloat(match[1] || '0'), y: parseFloat(match[2] || '0'), rotation: 0, scaleX: 1, scaleY: 1 }
-      : { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 };
+  const parsed = parseTransformAttribute(element);
+
+  if (type === "puppet") {
+    return {
+      x: parsed.translate?.x ?? 0,
+      y: parsed.translate?.y ?? 0,
+      rotation: 0,
+      scaleX: 1,
+      scaleY: 1,
+    };
   } else {
-    const x = parseFloat(element.getAttribute('x') || '0');
-    const y = parseFloat(element.getAttribute('y') || '0');
-    const transformAttr = element.getAttribute('transform') || '';
-    const rotMatch = transformAttr.match(/rotate\(([-\d.]+)/);
-    const scaleMatch = transformAttr.match(/scale\(([-\d.]+)(?:[,\s]+([-\d.]+))?\)/);
+    const x = parseNumber(element.getAttribute("x"), 0);
+    const y = parseNumber(element.getAttribute("y"), 0);
     return {
       x,
       y,
-      rotation: rotMatch ? parseFloat(rotMatch[1] || '0') : 0,
-      scaleX: scaleMatch ? parseFloat(scaleMatch[1] || '1') : 1,
-      scaleY: scaleMatch?.[2] ? parseFloat(scaleMatch[2]) : (scaleMatch ? parseFloat(scaleMatch[1] || '1') : 1),
+      rotation: parsed.rotate ?? 0,
+      scaleX: parsed.scale?.x ?? 1,
+      scaleY: parsed.scale?.y ?? 1,
     };
   }
 }

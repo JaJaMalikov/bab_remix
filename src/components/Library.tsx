@@ -15,7 +15,9 @@ const mapCategoryToType = (c: ManifestEntry["category"]): Asset["type"] =>
 export const Library = memo(() => {
   const { setShowLibrary } = useUi();
   const [assets, setAssets] = useState<Asset[]>([]);
-  const [category, setCategory] = useState<"all" | "pantins" | "objets" | "decors">("all");
+  const [category, setCategory] = useState<
+    "all" | "pantins" | "objets" | "decors"
+  >("all");
   const [query, setQuery] = useState("");
 
   useEffect(() => {
@@ -49,17 +51,25 @@ export const Library = memo(() => {
         if (a.type !== catType) return false;
       }
       if (!q) return true;
-      return a.name.toLowerCase().includes(q) || a.path.toLowerCase().includes(q);
+      return (
+        a.name.toLowerCase().includes(q) || a.path.toLowerCase().includes(q)
+      );
     });
   }, [assets, category, query]);
 
-  const handleQueryChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setQuery(e.target.value);
-  }, []);
+  const handleQueryChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setQuery(e.target.value);
+    },
+    [],
+  );
 
-  const handleCategoryChange = useCallback((cat: "all" | "pantins" | "objets" | "decors") => {
-    setCategory(cat);
-  }, []);
+  const handleCategoryChange = useCallback(
+    (cat: "all" | "pantins" | "objets" | "decors") => {
+      setCategory(cat);
+    },
+    [],
+  );
 
   return (
     <FloatingPanel
@@ -80,10 +90,30 @@ export const Library = memo(() => {
           />
         </div>
         <div className="library-categories">
-          <button className={`category-btn ${category === 'all' ? "active" : ""}`} onClick={() => handleCategoryChange('all')}>Tous</button>
-          <button className={`category-btn ${category === 'pantins' ? "active" : ""}`} onClick={() => handleCategoryChange('pantins')}>Pantins</button>
-          <button className={`category-btn ${category === 'objets' ? "active" : ""}`} onClick={() => handleCategoryChange('objets')}>Objets</button>
-          <button className={`category-btn ${category === 'decors' ? "active" : ""}`} onClick={() => handleCategoryChange('decors')}>Décors</button>
+          <button
+            className={`category-btn ${category === "all" ? "active" : ""}`}
+            onClick={() => handleCategoryChange("all")}
+          >
+            Tous
+          </button>
+          <button
+            className={`category-btn ${category === "pantins" ? "active" : ""}`}
+            onClick={() => handleCategoryChange("pantins")}
+          >
+            Pantins
+          </button>
+          <button
+            className={`category-btn ${category === "objets" ? "active" : ""}`}
+            onClick={() => handleCategoryChange("objets")}
+          >
+            Objets
+          </button>
+          <button
+            className={`category-btn ${category === "decors" ? "active" : ""}`}
+            onClick={() => handleCategoryChange("decors")}
+          >
+            Décors
+          </button>
         </div>
         <div className="library-assets">
           {filteredAssets.map((asset) => (

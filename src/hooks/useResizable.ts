@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useWindowDrag } from "./useWindowDrag";
+import { readFromLocalStorage, writeToLocalStorage } from "./useLocalStorage";
 
 export interface Size {
   width: number;
@@ -23,23 +24,26 @@ export const useResizable = (initialSize: Size, options: Options = {}) => {
   const sizeRef = useRef(size);
   sizeRef.current = size;
 
-  const resizeStartRef = useRef<{ startX: number; startY: number; w0: number; h0: number } | null>(null);
+  const resizeStartRef = useRef<{
+    startX: number;
+    startY: number;
+    w0: number;
+    h0: number;
+  } | null>(null);
   const { storageKey } = options;
 
   // Load size from storage on mount or when storageKey changes.
   useEffect(() => {
     if (!storageKey) return;
-    try {
-      const raw = localStorage.getItem(`${storageKey}:size`);
-      if (raw) {
-        const v = JSON.parse(raw) as { width?: number; height?: number };
-        // Use functional update to avoid depending on size state
-        setSize(currentSize => ({
-            width: typeof v?.width === 'number' ? v.width : currentSize.width,
-            height: typeof v?.height === 'number' ? v.height : currentSize.height,
-        }));
-      }
-    } catch {}
+    const v = readFromLocalStorage<{ width?: number; height?: number }>(
+      `${storageKey}:size`,
+      {},
+    );
+    // Use functional update to avoid depending on size state
+    setSize((currentSize) => ({
+      width: typeof v?.width === "number" ? v.width : currentSize.width,
+      height: typeof v?.height === "number" ? v.height : currentSize.height,
+    }));
   }, [storageKey]);
 
   const onResizeMouseDown = useCallback((e: ReactMouseEvent) => {
@@ -62,15 +66,16 @@ export const useResizable = (initialSize: Size, options: Options = {}) => {
     setSize({ width: nw, height: nh });
   }, []);
 
-  const handleMouseUp = useCallback((_event: MouseEvent) => {
-    setIsResizing(false);
-    resizeStartRef.current = null;
-    if (storageKey) {
-      try {
-        localStorage.setItem(`${storageKey}:size`, JSON.stringify(sizeRef.current));
-      } catch {}
-    }
-  }, [storageKey]);
+  const handleMouseUp = useCallback(
+    (_event: MouseEvent) => {
+      setIsResizing(false);
+      resizeStartRef.current = null;
+      if (storageKey) {
+        writeToLocalStorage(`${storageKey}:size`, sizeRef.current);
+      }
+    },
+    [storageKey],
+  );
 
   useWindowDrag(isResizing, handleMouseMove, handleMouseUp);
 

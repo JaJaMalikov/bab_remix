@@ -1,4 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
+import { readFromLocalStorage, writeToLocalStorage } from "./useLocalStorage";
+import { useWindowDrag } from "./useWindowDrag";
 
 export interface Position {
   x: number;
@@ -16,7 +18,10 @@ type Options = {
  * This refactored version ensures that callbacks are stable and not recreated on every drag movement,
  * improving performance and following best practices.
  */
-export const useDraggable = (initialPosition: Position, options: Options = {}) => {
+export const useDraggable = (
+  initialPosition: Position,
+  options: Options = {},
+) => {
   const [position, setPosition] = useState<Position>(initialPosition);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -33,16 +38,11 @@ export const useDraggable = (initialPosition: Position, options: Options = {}) =
   // Load position from storage on mount or when storageKey changes.
   useEffect(() => {
     if (!storageKey) return;
-    try {
-      const raw = localStorage.getItem(storageKey);
-      if (raw) {
-        const p = JSON.parse(raw) as Position;
-        if (typeof p?.x === 'number' && typeof p?.y === 'number') {
-          setPosition(p);
-        }
-      }
-    } catch {}
-  }, [storageKey]);
+    const p = readFromLocalStorage(storageKey, initialPosition);
+    if (typeof p?.x === "number" && typeof p?.y === "number") {
+      setPosition(p);
+    }
+  }, [storageKey, initialPosition]);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -55,7 +55,7 @@ export const useDraggable = (initialPosition: Position, options: Options = {}) =
         };
       }
     },
-    [] // Now stable, no dependencies
+    [], // Now stable, no dependencies
   );
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
@@ -81,14 +81,18 @@ export const useDraggable = (initialPosition: Position, options: Options = {}) =
       }
 
       // Snap to right edge
-      if (x + panelW > windowWidth - snapThreshold &&
-          x + panelW < windowWidth + snapThreshold) {
+      if (
+        x + panelW > windowWidth - snapThreshold &&
+        x + panelW < windowWidth + snapThreshold
+      ) {
         x = windowWidth - panelW;
       }
 
       // Snap to bottom edge
-      if (y + panelH > windowHeight - snapThreshold &&
-          y + panelH < windowHeight + snapThreshold) {
+      if (
+        y + panelH > windowHeight - snapThreshold &&
+        y + panelH < windowHeight + snapThreshold
+      ) {
         y = windowHeight - panelH;
       }
 
@@ -100,22 +104,12 @@ export const useDraggable = (initialPosition: Position, options: Options = {}) =
     setIsDragging(false);
     dragStartPos.current = null;
     if (storageKey) {
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(positionRef.current));
-      } catch {}
+      writeToLocalStorage(storageKey, positionRef.current);
     }
   }, [storageKey]); // Now only depends on storageKey
 
-  useEffect(() => {
-    if (isDragging) {
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("mouseup", handleMouseUp);
-      return () => {
-        document.removeEventListener("mousemove", handleMouseMove);
-        document.removeEventListener("mouseup", handleMouseUp);
-      };
-    }
-  }, [isDragging, handleMouseMove, handleMouseUp]);
+  // Use useWindowDrag hook to manage window event listeners
+  useWindowDrag(isDragging, handleMouseMove, handleMouseUp);
 
   return {
     position,

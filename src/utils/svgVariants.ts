@@ -90,7 +90,9 @@ export const applyVariantSelection = (
     if (!variant.name) return;
 
     const selector = `[data-variant-groupe="${group.group}"][data-variant-name="${variant.name}"]`;
-    const variantElement = puppetRoot.querySelector(selector) as SVGGElement | null;
+    const variantElement = puppetRoot.querySelector(
+      selector,
+    ) as SVGGElement | null;
     if (!variantElement) return;
 
     const shouldShow = variant.name === selectedVariantName;

@@ -1,10 +1,10 @@
-import { render, screen } from '@testing-library/react';
-import { Timeline } from '../../src/components/Timeline';
-import * as UiContext from '../../src/context/UiContext';
-import * as AnimationContext from '../../src/context/AnimationContext';
-import { vi } from 'vitest';
+import { render, screen } from "@testing-library/react";
+import { Timeline } from "../../src/components/Timeline";
+import * as UiContext from "../../src/context/UiContext";
+import * as AnimationContext from "../../src/context/AnimationContext";
+import { vi } from "vitest";
 
-describe('Timeline', () => {
+describe("Timeline", () => {
   const mockUi = {
     timelineHeight: 100,
     setTimelineHeight: vi.fn(),
@@ -25,17 +25,19 @@ describe('Timeline', () => {
   };
 
   beforeEach(() => {
-    vi.spyOn(UiContext, 'useUi').mockReturnValue(mockUi as any);
-    vi.spyOn(AnimationContext, 'useAnimation').mockReturnValue(mockAnimation as any);
+    vi.spyOn(UiContext, "useUi").mockReturnValue(mockUi as any);
+    vi.spyOn(AnimationContext, "useAnimation").mockReturnValue(
+      mockAnimation as any,
+    );
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it('should render the timeline without crashing', () => {
+  it("should render the timeline without crashing", () => {
     render(<Timeline />);
-    expect(screen.getByText('Pistes')).toBeInTheDocument();
-    expect(screen.getByText('Élément')).toBeInTheDocument();
+    expect(screen.getByText("Pistes")).toBeInTheDocument();
+    expect(screen.getByText("Élément")).toBeInTheDocument();
   });
 });

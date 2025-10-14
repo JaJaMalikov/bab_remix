@@ -1,10 +1,10 @@
-import { memo, useCallback } from 'react';
-import { useUi } from '../context/UiContext';
-import type { UiState } from '../context/UiContext';
+import { memo, useCallback } from "react";
+import { useUi } from "../context/UiContext";
+import type { UiState } from "../context/UiContext";
 
 // Define the props for the component, using the type from UiState
 interface LayerItemProps {
-  item: UiState['sceneItems'][0];
+  item: UiState["sceneItems"][0];
 }
 
 /**
@@ -30,12 +30,26 @@ export const LayerItem = memo(({ item }: LayerItemProps) => {
   }, [setSelectedPuppet, item.el]);
 
   return (
-    <div className="layer-item" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+    <div
+      className="layer-item"
+      style={{ display: "flex", alignItems: "center", gap: 8 }}
+    >
+      <div
+        style={{
+          flex: 1,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
         {item.label}
       </div>
-      <button onClick={handleSendBackward} title="Send backward">↓</button>
-      <button onClick={handleBringForward} title="Bring forward">↑</button>
+      <button onClick={handleSendBackward} title="Send backward">
+        ↓
+      </button>
+      <button onClick={handleBringForward} title="Bring forward">
+        ↑
+      </button>
       {item.el instanceof SVGGElement && (
         <button onClick={handleSelect}>Select</button>
       )}

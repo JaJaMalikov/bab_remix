@@ -21,7 +21,9 @@ export const useVerticalResize = ({
   maxHeight,
 }: VerticalResizeArgs) => {
   const [isResizing, setIsResizing] = useState(false);
-  const resizeStartRef = useRef<{ startY: number; startH: number } | null>(null);
+  const resizeStartRef = useRef<{ startY: number; startH: number } | null>(
+    null,
+  );
 
   const onResizeMouseDown = useCallback(
     (e: ReactMouseEvent) => {
@@ -33,7 +35,7 @@ export const useVerticalResize = ({
         startH: height,
       };
     },
-    [height]
+    [height],
   );
 
   const handleMouseMove = useCallback(
@@ -45,7 +47,7 @@ export const useVerticalResize = ({
       // Apply maxHeight if it's provided
       setHeight(maxHeight ? Math.min(maxHeight, newHeight) : newHeight);
     },
-    [setHeight, minHeight, maxHeight]
+    [setHeight, minHeight, maxHeight],
   );
 
   const handleMouseUp = useCallback((_event: MouseEvent) => {

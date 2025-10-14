@@ -1,7 +1,5 @@
-import { useRef, useCallback } from 'react';
-import type { WheelEvent, RefObject } from 'react';
-
-
+import { useRef, useCallback } from "react";
+import type { WheelEvent, RefObject } from "react";
 
 interface PanZoomHookArgs {
   svgRef: RefObject<SVGSVGElement | null>;
@@ -36,15 +34,15 @@ export const useScenePanZoom = ({
       y = (y - vs.ty) / vs.scale;
       return { x, y };
     },
-    [svgRef, viewSizeRef]
+    [svgRef, viewSizeRef],
   );
 
   const applyViewTransform = useCallback(() => {
     if (!viewportRef.current) return;
     const { scale, tx, ty } = viewStateRef.current;
     viewportRef.current.setAttribute(
-      'transform',
-      `translate(${Math.round(tx)} ${Math.round(ty)}) scale(${scale})`
+      "transform",
+      `translate(${Math.round(tx)} ${Math.round(ty)}) scale(${scale})`,
     );
   }, [viewportRef]);
 
@@ -78,7 +76,7 @@ export const useScenePanZoom = ({
       vs.ty -= e.deltaY;
       applyViewTransform();
     },
-    [toSceneCoords, viewSizeRef, applyViewTransform]
+    [toSceneCoords, viewSizeRef, applyViewTransform],
   );
 
   return { onWheel, doFitInView, toSceneCoords };

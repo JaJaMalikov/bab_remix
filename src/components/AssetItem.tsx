@@ -1,6 +1,6 @@
-import { memo, useCallback } from 'react';
-import type { DragEvent } from 'react';
-import { useUi } from '../context/UiContext';
+import { memo, useCallback } from "react";
+import type { DragEvent } from "react";
+import { useUi } from "../context/UiContext";
 
 // The Asset interface is defined here as it's the shape of this component's prop.
 export interface Asset {
@@ -20,10 +20,13 @@ interface AssetItemProps {
 export const AssetItem = memo(({ asset }: AssetItemProps) => {
   const { importAsset } = useUi();
 
-  const handleDragStart = useCallback((e: DragEvent) => {
-    e.dataTransfer.setData("application/json", JSON.stringify(asset));
-    e.dataTransfer.effectAllowed = "copy";
-  }, [asset]);
+  const handleDragStart = useCallback(
+    (e: DragEvent) => {
+      e.dataTransfer.setData("application/json", JSON.stringify(asset));
+      e.dataTransfer.effectAllowed = "copy";
+    },
+    [asset],
+  );
 
   const handleDoubleClick = useCallback(() => {
     importAsset?.(asset);

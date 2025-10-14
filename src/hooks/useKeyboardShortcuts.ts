@@ -3,7 +3,8 @@ import { useUi } from "../context/UiContext";
 import { useAnimation } from "../context/AnimationContext";
 
 export function useKeyboardShortcuts() {
-  const { setShowLibrary, setShowInspector, setShowTimeline, fitInView } = useUi();
+  const { setShowLibrary, setShowInspector, setShowTimeline, fitInView } =
+    useUi();
 
   const { setPlaying, setCurrentFrame, duration } = useAnimation();
 
@@ -11,7 +12,11 @@ export function useKeyboardShortcuts() {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if user is typing in an input
       const target = e.target as HTMLElement;
-      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      ) {
         return;
       }
 
@@ -46,7 +51,9 @@ export function useKeyboardShortcuts() {
           break;
         case "ArrowRight":
           e.preventDefault();
-          setCurrentFrame((prev) => Math.min(prev + 1, Math.max(duration - 1, 0)));
+          setCurrentFrame((prev) =>
+            Math.min(prev + 1, Math.max(duration - 1, 0)),
+          );
           break;
         case "ArrowLeft":
           e.preventDefault();
@@ -65,5 +72,13 @@ export function useKeyboardShortcuts() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [setShowLibrary, setShowInspector, setShowTimeline, fitInView, setPlaying, setCurrentFrame, duration]);
+  }, [
+    setShowLibrary,
+    setShowInspector,
+    setShowTimeline,
+    fitInView,
+    setPlaying,
+    setCurrentFrame,
+    duration,
+  ]);
 }

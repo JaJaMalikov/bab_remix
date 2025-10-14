@@ -15,15 +15,31 @@ export const PlaybackMini = memo(() => {
   }, [setPlaying, setCurrentFrame]);
 
   return (
-    <FloatingPanel title="Playback" initialPosition={{ x: 20, y: window.innerHeight - 160 }} width={200} height={100} storageKey="pos:panel:playback">
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <button type="button" onClick={handleTogglePlay} aria-label={playing ? "Mettre en pause" : "Lancer la lecture"}>
+    <FloatingPanel
+      title="Playback"
+      initialPosition={{ x: 20, y: window.innerHeight - 160 }}
+      width={200}
+      height={100}
+      storageKey="pos:panel:playback"
+    >
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <button
+          type="button"
+          onClick={handleTogglePlay}
+          aria-label={playing ? "Mettre en pause" : "Lancer la lecture"}
+        >
           {playing ? "⏸ Pause" : "▶ Play"}
         </button>
-        <button type="button" onClick={handleStop} aria-label="Arrêter la lecture">
+        <button
+          type="button"
+          onClick={handleStop}
+          aria-label="Arrêter la lecture"
+        >
           ⏹ Stop
         </button>
-        <div style={{ marginLeft: 8, fontSize: '12px' }}>Frame: {currentFrame}</div>
+        <div style={{ marginLeft: 8, fontSize: "12px" }}>
+          Frame: {currentFrame}
+        </div>
       </div>
     </FloatingPanel>
   );

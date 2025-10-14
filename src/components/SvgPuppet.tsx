@@ -45,7 +45,10 @@ const cssEscape = (value: string) => {
   return value.replace(/([.*+?^${}()|[\]\\])/g, "\\$1");
 };
 
-const applyMetadataToGroup = (group: SVGGElement, metadata: PuppetMetadata | null | undefined) => {
+const applyMetadataToGroup = (
+  group: SVGGElement,
+  metadata: PuppetMetadata | null | undefined,
+) => {
   if (!metadata) return;
 
   const behindElements: SVGGElement[] = [];
@@ -70,11 +73,12 @@ const applyMetadataToGroup = (group: SVGGElement, metadata: PuppetMetadata | nul
   }
 };
 
-
 const fallbackReorderBehindElements = (group: SVGGElement) => {
   // Reorder behind elements
   const behind = Array.from(
-    group.querySelectorAll('[data-isbehindparent="true"]') as NodeListOf<SVGGElement>,
+    group.querySelectorAll(
+      '[data-isbehindparent="true"]',
+    ) as NodeListOf<SVGGElement>,
   );
   for (let i = behind.length - 1; i >= 0; i--) {
     const el = behind[i]!;
@@ -91,7 +95,10 @@ const fallbackReorderBehindElements = (group: SVGGElement) => {
  * @param metadata Optional pre-parsed metadata describing the puppet.
  * @returns A processed SVGGElement or null if parsing fails.
  */
-function processSvgText(svgText: string, metadata?: PuppetMetadata | null): SVGGElement | null {
+function processSvgText(
+  svgText: string,
+  metadata?: PuppetMetadata | null,
+): SVGGElement | null {
   const parser = new DOMParser();
   const doc = parser.parseFromString(svgText, "image/svg+xml");
   const svgRoot = doc.documentElement as unknown as SVGSVGElement;
@@ -99,11 +106,15 @@ function processSvgText(svgText: string, metadata?: PuppetMetadata | null): SVGG
   // Find the root member (contains the entire puppet hierarchy)
   let rootMember: SVGGElement | null = null;
   if (metadata?.rootMemberId) {
-    rootMember = svgRoot.querySelector(`#${cssEscape(metadata.rootMemberId)}`) as SVGGElement | null;
+    rootMember = svgRoot.querySelector(
+      `#${cssEscape(metadata.rootMemberId)}`,
+    ) as SVGGElement | null;
   }
   if (!rootMember) {
     // Find first element with data-membre="true"
-    rootMember = svgRoot.querySelector('[data-membre="true"]') as SVGGElement | null;
+    rootMember = svgRoot.querySelector(
+      '[data-membre="true"]',
+    ) as SVGGElement | null;
   }
   if (!rootMember) return null;
 
@@ -179,7 +190,10 @@ export function SvgPuppetInlineSimple({
   useEffect(() => {
     let cancelled = false;
 
-    const injectPuppet = (puppetG: SVGGElement, metadata?: PuppetMetadata | null) => {
+    const injectPuppet = (
+      puppetG: SVGGElement,
+      metadata?: PuppetMetadata | null,
+    ) => {
       const host = ref.current;
       if (!host) return;
 
@@ -192,7 +206,7 @@ export function SvgPuppetInlineSimple({
       host.appendChild(puppetG);
       injectedRef.current = puppetG;
       onReadyRef.current?.(puppetG, metadata);
-    }
+    };
 
     async function run() {
       const metadataUrl = toMetadataUrl(src);
@@ -200,7 +214,9 @@ export function SvgPuppetInlineSimple({
       // 1. Check cache first
       if (puppetCache.has(src)) {
         const cachedG = puppetCache.get(src)!;
-        const metadata = metadataUrl ? metadataCache.get(metadataUrl) ?? null : null;
+        const metadata = metadataUrl
+          ? (metadataCache.get(metadataUrl) ?? null)
+          : null;
         if (!cancelled) {
           injectPuppet(cachedG.cloneNode(true) as SVGGElement, metadata);
         }
@@ -248,7 +264,11 @@ export function SvgPuppetInlineSimple({
 
   if (as === "svg") {
     return (
-      <svg ref={ref as unknown as RefObject<SVGSVGElement>} className={className} style={style}>
+      <svg
+        ref={ref as unknown as RefObject<SVGSVGElement>}
+        className={className}
+        style={style}
+      >
         {/* pantin injecté ici */}
       </svg>
     );

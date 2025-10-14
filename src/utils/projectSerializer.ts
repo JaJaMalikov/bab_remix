@@ -20,7 +20,9 @@ const parseAnchorTranslation = (anchor: SVGGElement | null) => {
 
 const findAnchorById = (svg: SVGSVGElement | null, puppetId: string | null) => {
   if (!svg || !puppetId) return null;
-  return svg.querySelector(`[data-anchor="puppet"][data-id="${CSS.escape(puppetId)}"]`) as SVGGElement | null;
+  return svg.querySelector(
+    `[data-anchor="puppet"][data-id="${CSS.escape(puppetId)}"]`,
+  ) as SVGGElement | null;
 };
 
 export interface ProjectData {
@@ -53,7 +55,12 @@ export interface ProjectData {
  * Serialize current project state to JSON
  */
 export function serializeProject(params: {
-  sceneItems: Array<{ id: string; type: "puppet" | "image"; label: string; el: Element }>;
+  sceneItems: Array<{
+    id: string;
+    type: "puppet" | "image";
+    label: string;
+    el: Element;
+  }>;
   tracks: AnimationTrack[];
   duration: number;
   background: string | null;
@@ -62,14 +69,19 @@ export function serializeProject(params: {
 
   const items = sceneItems.map((item) => {
     const el = item.el;
-    let transform: ProjectData["scene"]["items"][0]["transform"] = { x: 0, y: 0 };
+    const transform: ProjectData["scene"]["items"][0]["transform"] = {
+      x: 0,
+      y: 0,
+    };
     let source = "";
     let memberTransforms: Record<string, { rotation: number }> | undefined;
 
     if (item.type === "puppet") {
       // Get puppet position from transform attribute
       const transformAttr = el.getAttribute("transform") || "";
-      const match = transformAttr.match(/translate\(([-\d.]+)[,\s]+([-\d.]+)\)/);
+      const match = transformAttr.match(
+        /translate\(([-\d.]+)[,\s]+([-\d.]+)\)/,
+      );
       if (match) {
         transform.x = parseFloat(match[1] || "0");
         transform.y = parseFloat(match[2] || "0");
@@ -92,7 +104,9 @@ export function serializeProject(params: {
           const transformStyle = memberEl.style.transform || "";
           const rotMatch = transformStyle.match(/rotate\(([-\d.]+)deg\)/);
           if (rotMatch && memberId) {
-            memberTransforms![memberId] = { rotation: parseFloat(rotMatch[1] || "0") };
+            memberTransforms![memberId] = {
+              rotation: parseFloat(rotMatch[1] || "0"),
+            };
           }
         });
       }
@@ -105,7 +119,10 @@ export function serializeProject(params: {
       let sceneY = localY;
 
       if (graphicEl.getAttribute("data-attached-mode") === "embedded") {
-        const anchor = findAnchorById(graphicEl.ownerSVGElement, graphicEl.getAttribute("data-attached-to-puppet"));
+        const anchor = findAnchorById(
+          graphicEl.ownerSVGElement,
+          graphicEl.getAttribute("data-attached-to-puppet"),
+        );
         const { tx, ty } = parseAnchorTranslation(anchor);
         sceneX = localX + tx;
         sceneY = localY + ty;
@@ -116,11 +133,15 @@ export function serializeProject(params: {
 
       const transformAttr = graphicEl.getAttribute("transform") || "";
       const rotMatch = transformAttr.match(/rotate\(([-\d.]+)/);
-      const scaleMatch = transformAttr.match(/scale\(([-\d.]+)(?:[,\s]+([-\d.]+))?\)/);
+      const scaleMatch = transformAttr.match(
+        /scale\(([-\d.]+)(?:[,\s]+([-\d.]+))?\)/,
+      );
       if (rotMatch) transform.rotation = parseFloat(rotMatch[1] || "0");
       if (scaleMatch) {
         transform.scaleX = parseFloat(scaleMatch[1] || "1");
-        transform.scaleY = scaleMatch[2] ? parseFloat(scaleMatch[2]) : transform.scaleX;
+        transform.scaleY = scaleMatch[2]
+          ? parseFloat(scaleMatch[2])
+          : transform.scaleX;
       }
 
       source = el.getAttribute("data-source") || el.getAttribute("href") || "";
@@ -152,7 +173,10 @@ export function serializeProject(params: {
 /**
  * Save project to file (download as JSON)
  */
-export function saveProjectToFile(projectData: ProjectData, filename: string = "animation.bab.json") {
+export function saveProjectToFile(
+  projectData: ProjectData,
+  filename: string = "animation.bab.json",
+) {
   const json = JSON.stringify(projectData, null, 2);
   const blob = new Blob([json], { type: "application/json" });
   const url = URL.createObjectURL(blob);

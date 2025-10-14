@@ -1,11 +1,16 @@
-import React, { useRef, useEffect, useCallback } from 'react';
-import { readGraphicTransform, setImageTransform } from '../utils/svgTransform';
+import React, { useRef, useEffect, useCallback } from "react";
+import {
+  readGraphicTransform,
+  setImageTransform,
+  parseTransformAttribute,
+} from "../utils/svgTransform";
+import { parseNumber } from "../utils/numbers";
 
 // The state of a drag operation
 type DraggingRef =
   | null
   | {
-      type: 'puppet';
+      type: "puppet";
       el: SVGGElement;
       startX: number;
       startY: number;
@@ -14,7 +19,7 @@ type DraggingRef =
       itemId: string | null;
     }
   | {
-      type: 'graphic';
+      type: "graphic";
       el: SVGGraphicsElement;
       startX: number;
       startY: number;
@@ -33,7 +38,7 @@ type Coords = { x: number; y: number };
  */
 export const useSceneDrag = (
   svgRef: React.RefObject<SVGSVGElement | null>,
-  toSceneCoords: (clientX: number, clientY: number) => Coords
+  toSceneCoords: (clientX: number, clientY: number) => Coords,
 ) => {
   const draggingRef = useRef<DraggingRef>(null);
   const dragMovedRef = useRef(false);
@@ -46,11 +51,8 @@ export const useSceneDrag = (
         return { tx: m.e || 0, ty: m.f || 0 };
       }
     } catch {}
-    const t = el.getAttribute('transform') || '';
-    const mm = t.match(/translate\(([^,\s)]+)[ ,]([^\s)]+)\)/);
-    const tx = mm ? parseFloat(mm[1]) : 0;
-    const ty = mm ? parseFloat(mm[2]) : 0;
-    return { tx: isFinite(tx) ? tx : 0, ty: isFinite(ty) ? ty : 0 };
+    const parsed = parseTransformAttribute(el);
+    return { tx: parsed.translate?.x ?? 0, ty: parsed.translate?.y ?? 0 };
   }, []);
 
   useEffect(() => {
@@ -63,11 +65,14 @@ export const useSceneDrag = (
       let anchor: SVGGElement | null = null;
       let img: SVGGraphicsElement | null = null;
       for (const n of path) {
-        if (n instanceof SVGGElement && n.hasAttribute('data-anchor')) {
+        if (n instanceof SVGGElement && n.hasAttribute("data-anchor")) {
           anchor = n as SVGGElement;
           break;
         }
-        if (n instanceof SVGGraphicsElement && n.hasAttribute('data-draggable')) {
+        if (
+          n instanceof SVGGraphicsElement &&
+          n.hasAttribute("data-draggable")
+        ) {
           img = n as SVGGraphicsElement;
           break;
         }
@@ -80,26 +85,26 @@ export const useSceneDrag = (
       if (anchor) {
         const { tx, ty } = getTranslate(anchor);
         draggingRef.current = {
-          type: 'puppet',
+          type: "puppet",
           el: anchor,
           startX: pt.x,
           startY: pt.y,
           tx0: tx,
           ty0: ty,
-          itemId: anchor.getAttribute('data-id'),
+          itemId: anchor.getAttribute("data-id"),
         };
         e.preventDefault();
       } else if (img) {
-        const x0 = parseFloat(img.getAttribute('x') || '0');
-        const y0 = parseFloat(img.getAttribute('y') || '0');
+        const x0 = parseNumber(img.getAttribute("x"), 0);
+        const y0 = parseNumber(img.getAttribute("y"), 0);
         draggingRef.current = {
-          type: 'graphic',
+          type: "graphic",
           el: img,
           startX: pt.x,
           startY: pt.y,
-          x0: isFinite(x0) ? x0 : 0,
-          y0: isFinite(y0) ? y0 : 0,
-          itemId: img.getAttribute('data-id'),
+          x0,
+          y0,
+          itemId: img.getAttribute("data-id"),
         };
         e.preventDefault();
       }
@@ -115,48 +120,65 @@ export const useSceneDrag = (
       const dy = pt.y - drag.startY;
       dragMovedRef.current = true;
 
-      if (drag.type === 'puppet') {
+      if (drag.type === "puppet") {
         const tx = Math.round(drag.tx0 + dx);
         const ty = Math.round(drag.ty0 + dy);
-        drag.el.setAttribute('transform', `translate(${tx}, ${ty})`);
-        window.dispatchEvent(new CustomEvent('attachment:update', { detail: { anchor: drag.el } }));
-      } else if (drag.type === 'graphic') {
+        drag.el.setAttribute("transform", `translate(${tx}, ${ty})`);
+        window.dispatchEvent(
+          new CustomEvent("attachment:update", { detail: { anchor: drag.el } }),
+        );
+      } else if (drag.type === "graphic") {
         const x = Math.round(drag.x0 + dx);
         const y = Math.round(drag.y0 + dy);
-        drag.el.setAttribute('x', String(x));
-        drag.el.setAttribute('y', String(y));
+        drag.el.setAttribute("x", String(x));
+        drag.el.setAttribute("y", String(y));
 
-        const transformAttr = drag.el.getAttribute('transform') || '';
-        if (/\brotate\(/.test(transformAttr) || /\bscale\(/.test(transformAttr)) {
+        const transformAttr = drag.el.getAttribute("transform") || "";
+        if (
+          /\brotate\(/.test(transformAttr) ||
+          /\bscale\(/.test(transformAttr)
+        ) {
           const { rotation, scaleX, scaleY } = readGraphicTransform(drag.el);
           setImageTransform(drag.el, rotation, scaleX, scaleY);
         }
       }
 
       // Notify Inspector of transform change
-      window.dispatchEvent(new CustomEvent('item:transformed', { detail: { id: drag.itemId, final: false } }));
+      window.dispatchEvent(
+        new CustomEvent("item:transformed", {
+          detail: { id: drag.itemId, final: false },
+        }),
+      );
     };
 
     const onMouseUp = () => {
       if (draggingRef.current) {
         const drag = draggingRef.current;
         // Final notification when drag completes
-        window.dispatchEvent(new CustomEvent('item:transformed', { detail: { id: drag.itemId, final: true } }));
-        if (drag.type === 'puppet') {
-          window.dispatchEvent(new CustomEvent('attachment:update', { detail: { anchor: drag.el } }));
+        window.dispatchEvent(
+          new CustomEvent("item:transformed", {
+            detail: { id: drag.itemId, final: true },
+          }),
+        );
+        if (drag.type === "puppet") {
+          window.dispatchEvent(
+            new CustomEvent("attachment:update", {
+              detail: { anchor: drag.el },
+            }),
+          );
         }
       }
       draggingRef.current = null;
     };
 
-    svg.addEventListener('mousedown', onMouseDown);
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+    svg.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
 
     return () => {
-      svg.removeEventListener('mousedown', onMouseDown);
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
+      svg.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
     };
   }, [svgRef, toSceneCoords, getTranslate]);
 
