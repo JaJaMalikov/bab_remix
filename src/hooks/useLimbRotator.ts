@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useWindowDrag } from './useWindowDrag';
 import { getRotationFromTransform, setRotationWithOrigin } from '../utils/svgTransform';
 import type { SceneItem } from '../context/UiContext';
-import { AnimationProperty, Frame } from '../context/AnimationContext';
+import { AnimationProperty } from '../context/AnimationContext';
 
 const parseTransformOrigin = (limb: SVGGElement): { local: { x: number; y: number }; screen: { x: number; y: number } } | null => {
   try {
@@ -51,7 +51,7 @@ interface LimbRotatorArgs {
   setUiSelectedPuppet: (puppet: SVGGElement | null) => void;
   setUiSelectedLimb: (limbId: string) => void;
   setUiAngle: (angle: number) => void;
-  addKeyframe: (targetId: string, targetMemberId: string | null, property: AnimationProperty, frame: Frame, value: any) => void;
+  addKeyframe: (targetId: string, targetMemberId: string | null, property: AnimationProperty, frame: number, value: any) => void;
   currentFrame: number;
   ensureInitialSnapshot: () => void;
 }

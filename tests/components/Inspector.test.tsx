@@ -1,5 +1,7 @@
-import { render, screen, within } from "../test-utils";
+import { render, screen, within } from "@testing-library/react";
 import { Inspector } from "../../src/components/Inspector";
+import * as UiContext from "../../src/context/UiContext";
+import * as AnimationContext from "../../src/context/AnimationContext";
 import { vi } from "vitest";
 
 // Mock FloatingPanel to simplify the test
@@ -28,35 +30,91 @@ describe("Inspector", () => {
     },
   ];
 
+  const createUiMock = (overrides: Record<string, unknown> = {}) => ({
+    sceneItems: [],
+    selectedItemId: null,
+    setSelectedItemId: vi.fn(),
+    selectedLimb: "",
+    setSelectedLimb: vi.fn(),
+    angle: 0,
+    setAngle: vi.fn(),
+    removeSceneItem: vi.fn(),
+    setShowInspector: vi.fn(),
+    ...overrides,
+  });
+
+  const createAnimationMock = (overrides: Record<string, unknown> = {}) => ({
+    currentFrame: 0,
+    addKeyframe: vi.fn(),
+    getTrack: vi.fn(),
+    removeAllTracksForTarget: vi.fn(),
+    getValueAtFrame: vi.fn(),
+    snapshotKeyframes: vi.fn(),
+    ...overrides,
+  });
+
+  let useUiSpy: ReturnType<typeof vi.spyOn>;
+  let useAnimationSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    useUiSpy = vi.spyOn(UiContext, "useUi");
+    useAnimationSpy = vi.spyOn(AnimationContext, "useAnimation");
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("should render the inspector with the correct title", () => {
-    render(<Inspector />, {
-      uiContextProps: { sceneItems: testSceneItems, selectedItemId: "1" },
+    const uiMock = createUiMock({
+      sceneItems: testSceneItems,
+      selectedItemId: "1",
     });
+    useUiSpy.mockReturnValue(uiMock as never);
+    useAnimationSpy.mockReturnValue(createAnimationMock() as never);
+
+    render(<Inspector />);
     expect(screen.getByTestId("floating-panel")).toBeInTheDocument();
     expect(screen.getByText("Inspector")).toBeInTheDocument();
   });
 
   it("should display the list of scene items", () => {
-    render(<Inspector />, {
-      uiContextProps: { sceneItems: testSceneItems, selectedItemId: "1" },
+    const uiMock = createUiMock({
+      sceneItems: testSceneItems,
+      selectedItemId: "1",
     });
+    useUiSpy.mockReturnValue(uiMock as never);
+    useAnimationSpy.mockReturnValue(createAnimationMock() as never);
+
+    render(<Inspector />);
     const sceneItemsList = screen.getByText(/Scene Items/).parentElement?.nextElementSibling;
     expect(sceneItemsList).toBeInTheDocument();
     if (sceneItemsList) {
-        expect(within(sceneItemsList).getByRole("button", { name: /Puppet 1/ })).toBeInTheDocument();
-        expect(within(sceneItemsList).getByRole("button", { name: /Image 1/ })).toBeInTheDocument();
+      expect(
+        within(sceneItemsList).getByRole("button", { name: /Puppet 1/ }),
+      ).toBeInTheDocument();
+      expect(
+        within(sceneItemsList).getByRole("button", { name: /Image 1/ }),
+      ).toBeInTheDocument();
     }
   });
 
   it("should display properties for the selected item", () => {
-    render(<Inspector />, {
-      uiContextProps: { sceneItems: testSceneItems, selectedItemId: "1" },
+    const uiMock = createUiMock({
+      sceneItems: testSceneItems,
+      selectedItemId: "1",
     });
+    useUiSpy.mockReturnValue(uiMock as never);
+    useAnimationSpy.mockReturnValue(createAnimationMock() as never);
+
+    render(<Inspector />);
     const propertiesGroup = screen.getByText("Properties").parentElement;
     expect(propertiesGroup).toBeInTheDocument();
     if (propertiesGroup) {
-        expect(within(propertiesGroup).getByText("Name")).toBeInTheDocument();
-        expect(within(propertiesGroup).getByText("Puppet 1")).toBeInTheDocument();
+      expect(within(propertiesGroup).getByText("Name")).toBeInTheDocument();
+      expect(
+        within(propertiesGroup).getByText("Puppet 1"),
+      ).toBeInTheDocument();
     }
   });
 });

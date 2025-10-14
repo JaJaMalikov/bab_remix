@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useAnimation } from "../context/AnimationContext";
 import { useUi } from "../context/UiContext";
 import type { SceneItem } from "../context/UiContext";
+
 import {
   setRotationWithOrigin,
   setImageTransform,
@@ -179,7 +180,9 @@ export const useAnimationPlayback = () => {
             const puppetRoot = item.el.firstChild as SVGGElement | null;
             if (puppetRoot) {
               const group = item.metadata?.variantGroups.find(g => g.group === track.targetMemberId);
-              applyVariantSelection(puppetRoot, group, value);
+              if (group) {
+                applyVariantSelection(puppetRoot, group, value);
+              }
             }
           }
           break;
@@ -192,19 +195,21 @@ export const useAnimationPlayback = () => {
             } else {
               const [puppetId, memberId] = value.split(':');
               const puppetEntry = puppetAnchors.get(puppetId);
-              const puppetRoot = puppetEntry?.anchor.firstChild as SVGGElement | null;
-              const member = puppetRoot ? findMemberOrVariant(puppetRoot, memberId) : null;
-              if (member) {
-                const currentPuppet = imageEl.getAttribute('data-attached-to-puppet');
-                const currentMember = imageEl.getAttribute('data-attached-to-member');
-                if (currentPuppet !== puppetId || currentMember !== memberId) {
-                  if (imageEl.getAttribute("data-attached-mode") === "embedded") releaseAttachmentFromMember(imageEl);
-                  const embedded = embedAttachmentIntoMember({ element: imageEl, member, anchor: puppetEntry.anchor });
-                  if (embedded) {
-                    imageEl.setAttribute('data-attached-to-puppet', puppetId);
-                    imageEl.setAttribute('data-attached-to-member', memberId);
-                    imageEl.removeAttribute('data-attachment-offset-cx');
-                    imageEl.removeAttribute('data-attachment-offset-cy');
+              if (puppetEntry) {
+                const puppetRoot = puppetEntry.anchor.firstChild as SVGGElement | null;
+                const member = puppetRoot ? findMemberOrVariant(puppetRoot, memberId) : null;
+                if (member) {
+                  const currentPuppet = imageEl.getAttribute('data-attached-to-puppet');
+                  const currentMember = imageEl.getAttribute('data-attached-to-member');
+                  if (currentPuppet !== puppetId || currentMember !== memberId) {
+                    if (imageEl.getAttribute("data-attached-mode") === "embedded") releaseAttachmentFromMember(imageEl);
+                    const embedded = embedAttachmentIntoMember({ element: imageEl, member, anchor: puppetEntry.anchor });
+                    if (embedded) {
+                      imageEl.setAttribute('data-attached-to-puppet', puppetId);
+                      imageEl.setAttribute('data-attached-to-member', memberId);
+                      imageEl.removeAttribute('data-attachment-offset-cx');
+                      imageEl.removeAttribute('data-attachment-offset-cy');
+                    }
                   }
                 }
               }

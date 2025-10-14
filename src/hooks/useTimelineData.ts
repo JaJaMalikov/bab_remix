@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { SceneItem } from '../context/UiContext';
-import type { Track } from '../context/AnimationContext';
+import type { AnimationTrack, Keyframe } from '../context/AnimationContext';
 
 // Helper
 const clamp = (value: number, min: number, max: number) =>
@@ -22,7 +22,7 @@ export type ItemTrackData = {
 
 export const useTimelineData = (
   sceneItems: SceneItem[],
-  tracks: Track[],
+  tracks: AnimationTrack[],
   frameDivisor: number,
 ): ItemTrackData[] => {
   return useMemo(() => {
@@ -55,43 +55,27 @@ export const useTimelineData = (
       const entry = map.get(track.targetId);
       if (!entry) return;
 
+      const processKeyframes = (kf: Keyframe, setter: (frame: number, value: number) => void) => {
+        const frame = clamp(kf.frame, 0, frameDivisor);
+        const numericValue =
+          typeof kf.value === 'number'
+            ? kf.value
+            : parseFloat(String(kf.value));
+        if (!Number.isNaN(numericValue)) {
+          setter(frame, numericValue);
+        }
+      };
+
       if (track.property === 'x' && track.targetMemberId === null) {
-        track.keyframes.forEach((kf) => {
-          const frame = clamp(kf.frame, 0, frameDivisor);
-          const numericValue =
-            typeof kf.value === 'number'
-              ? kf.value
-              : parseFloat(String(kf.value));
-          if (!Number.isNaN(numericValue)) {
-            entry.positionX.set(frame, numericValue);
-          }
-        });
+        track.keyframes.forEach((kf) => processKeyframes(kf, (frame, value) => entry.positionX.set(frame, value)));
       }
 
       if (track.property === 'y' && track.targetMemberId === null) {
-        track.keyframes.forEach((kf) => {
-          const frame = clamp(kf.frame, 0, frameDivisor);
-          const numericValue =
-            typeof kf.value === 'number'
-              ? kf.value
-              : parseFloat(String(kf.value));
-          if (!Number.isNaN(numericValue)) {
-            entry.positionY.set(frame, numericValue);
-          }
-        });
+        track.keyframes.forEach((kf) => processKeyframes(kf, (frame, value) => entry.positionY.set(frame, value)));
       }
 
       if (track.property === 'rotation' && track.targetMemberId === null) {
-        track.keyframes.forEach((kf) => {
-          const frame = clamp(kf.frame, 0, frameDivisor);
-          const numericValue =
-            typeof kf.value === 'number'
-              ? kf.value
-              : parseFloat(String(kf.value));
-          if (!Number.isNaN(numericValue)) {
-            entry.rotation.set(frame, numericValue);
-          }
-        });
+        track.keyframes.forEach((kf) => processKeyframes(kf, (frame, value) => entry.rotation.set(frame, value)));
       }
 
       if (track.property === 'visible' && track.targetMemberId === null) {
