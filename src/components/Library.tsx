@@ -1,5 +1,4 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { Tabs } from "radix-ui";
 import {
   BackpackIcon,
   ImageIcon,
@@ -8,6 +7,9 @@ import {
 import { FloatingPanel } from "./FloatingPanel";
 import { AssetItem, Asset } from "./AssetItem";
 import { useUi } from "../context/UiContext";
+import { Input } from "./ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { ScrollArea } from "./ui/scroll-area";
 
 type ManifestEntry = {
   name: string;
@@ -34,6 +36,7 @@ export const Library = memo(() => {
   const { setShowLibrary } = useUi();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [category, setCategory] = useState<CategoryValue>("pantins");
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -58,14 +61,30 @@ export const Library = memo(() => {
     };
   }, []);
 
-  const assetsByCategory = useMemo<Record<CategoryValue, Asset[]>>(
-    () => ({
+  const normalizedQuery = searchTerm.trim().toLowerCase();
+
+  const assetsByCategory = useMemo<Record<CategoryValue, Asset[]>>(() => {
+    const grouped = {
       pantins: assets.filter((a) => a.type === "pantin"),
       objets: assets.filter((a) => a.type === "objet"),
       decors: assets.filter((a) => a.type === "decor"),
-    }),
-    [assets],
-  );
+    } as const;
+
+    if (!normalizedQuery) {
+      return grouped;
+    }
+
+    const filterByQuery = (items: Asset[]) =>
+      items.filter((asset) =>
+        asset.name.toLowerCase().includes(normalizedQuery),
+      );
+
+    return {
+      pantins: filterByQuery(grouped.pantins),
+      objets: filterByQuery(grouped.objets),
+      decors: filterByQuery(grouped.decors),
+    };
+  }, [assets, normalizedQuery]);
 
   const handleCategoryChange = useCallback(
     (value: string) => {
@@ -83,35 +102,52 @@ export const Library = memo(() => {
       storageKey="pos:panel:library"
       onClose={() => setShowLibrary(false)}
     >
-      <div className="library-content">
-        <Tabs.Root
+      <div className="flex h-full flex-col gap-4">
+        <div className="rounded-xl border border-border/60 bg-background/40 p-3 shadow-inner">
+          <Input
+            type="search"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Rechercher..."
+            aria-label="Rechercher dans la bibliothèque"
+          />
+        </div>
+        <Tabs
           value={category}
           onValueChange={handleCategoryChange}
-          className="library-tabs"
+          className="flex flex-1 flex-col overflow-hidden"
         >
-          <Tabs.List className="library-categories">
+          <TabsList className="grid grid-cols-3 gap-2 rounded-xl border border-border/60 bg-muted/60 p-1">
             {CATEGORY_TABS.map(({ value, label, Icon }) => (
-              <Tabs.Trigger
+              <TabsTrigger
                 key={value}
                 value={value}
-                className={`category-btn ${category === value ? "active" : ""}`}
-                aria-label={label}
-                title={label}
+                className="data-[state=active]:border data-[state=active]:border-border/80"
               >
-                <Icon aria-hidden />
-              </Tabs.Trigger>
+                <Icon aria-hidden className="h-4 w-4" />
+                <span className="text-xs font-semibold uppercase tracking-wide">
+                  {label}
+                </span>
+              </TabsTrigger>
             ))}
-          </Tabs.List>
+          </TabsList>
           {CATEGORY_TABS.map(({ value }) => (
-            <Tabs.Content key={value} value={value}>
-              <div className="library-assets">
-                {assetsByCategory[value].map((asset) => (
-                  <AssetItem key={`${asset.path}`} asset={asset} />
-                ))}
-              </div>
-            </Tabs.Content>
+            <TabsContent
+              key={value}
+              value={value}
+              forceMount
+              className="mt-4 flex-1 overflow-hidden rounded-xl border border-border/60 bg-background/50 p-0"
+            >
+              <ScrollArea className="h-full">
+                <div className="grid grid-cols-2 gap-3 p-3 pr-4 sm:grid-cols-3">
+                  {assetsByCategory[value].map((asset) => (
+                    <AssetItem key={`${asset.path}`} asset={asset} />
+                  ))}
+                </div>
+              </ScrollArea>
+            </TabsContent>
           ))}
-        </Tabs.Root>
+        </Tabs>
       </div>
     </FloatingPanel>
   );

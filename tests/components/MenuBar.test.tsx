@@ -56,18 +56,30 @@ describe("MenuBar", () => {
     expect(screen.getByText("View")).toBeInTheDocument();
   });
 
-  it("should open and close the file menu", () => {
+  const openMenu = async (label: string) => {
+    const trigger = screen.getByRole("menuitem", { name: label });
+    fireEvent.pointerDown(trigger);
+    fireEvent.pointerUp(trigger);
+
+    await waitFor(() =>
+      expect(trigger).toHaveAttribute("data-state", "open"),
+    );
+  };
+
+  it("should open and close the file menu", async () => {
     render(<MenuBar />);
-    const fileMenuButton = screen.getByText("File");
-    fireEvent.click(fileMenuButton);
+    await openMenu("File");
     expect(screen.getByText("Save Project")).toBeInTheDocument();
-    fireEvent.click(fileMenuButton);
-    expect(screen.queryByText("Save Project")).not.toBeInTheDocument();
+
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    await waitFor(() =>
+      expect(screen.queryByText("Save Project")).not.toBeInTheDocument(),
+    );
   });
 
   it("should call save function on save button click", async () => {
     render(<MenuBar />);
-    fireEvent.click(screen.getByText("File"));
+    await openMenu("File");
     const saveButton = await screen.findByText("Save Project");
     fireEvent.click(saveButton);
     await waitFor(() =>
@@ -80,7 +92,7 @@ describe("MenuBar", () => {
 
   it("should call load function on load button click", async () => {
     render(<MenuBar />);
-    fireEvent.click(screen.getByText("File"));
+    await openMenu("File");
     const openButton = await screen.findByText("Open Project");
     fireEvent.click(openButton);
     await waitFor(() =>
@@ -90,14 +102,14 @@ describe("MenuBar", () => {
 
   it("should toggle view panels", async () => {
     render(<MenuBar />);
-    fireEvent.click(screen.getByText("View"));
+    await openMenu("View");
 
     const libraryButton = await screen.findByText("Library");
     fireEvent.click(libraryButton);
     expect(mockUi.setShowLibrary).toHaveBeenCalledWith(false);
 
     // Re-open menu
-    fireEvent.click(screen.getByText("View"));
+    await openMenu("View");
     const inspectorButton = await screen.findByText("Inspector");
     fireEvent.click(inspectorButton);
     expect(mockUi.setShowInspector).toHaveBeenCalledWith(false);

@@ -34,16 +34,22 @@ export const AssetItem = memo(({ asset }: AssetItemProps) => {
 
   return (
     <div
-      className="asset-item"
+      className="group flex cursor-grab flex-col items-center gap-2 rounded-xl border border-border/60 bg-card/50 p-4 text-center shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/70 hover:bg-card hover:shadow-md active:cursor-grabbing"
       draggable
       onDragStart={handleDragStart}
       onDoubleClick={handleDoubleClick}
     >
-      <div className="asset-preview">
-        <img src={asset.path} alt={asset.name} />
+      <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-border/50 bg-background/60 p-2 shadow-inner">
+        <img
+          src={asset.path}
+          alt={asset.name}
+          className="max-h-full max-w-full object-contain"
+        />
       </div>
-      <div className="asset-name">{asset.name}</div>
-      <div className="asset-type">{asset.type}</div>
+      <div className="text-sm font-medium text-foreground">{asset.name}</div>
+      <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        {asset.type}
+      </div>
     </div>
   );
 });
