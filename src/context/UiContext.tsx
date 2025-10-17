@@ -37,8 +37,8 @@ export interface SceneItem {
 }
 
 export interface UiState {
-  selectedPuppet: SVGGElement | null;
-  setSelectedPuppet: (g: SVGGElement | null) => void;
+  selectedPuppet: SVGElement | null;
+  setSelectedPuppet: (g: SVGElement | null) => void;
 
   selectedLimb: string;
   setSelectedLimb: (id: string) => void;
@@ -149,7 +149,7 @@ const deriveUniqueLabel = (existing: SceneItem[], desiredLabel: string) => {
 type UiProviderProps = { children: ReactNode };
 
 export const UiProvider = ({ children }: UiProviderProps) => {
-  const [selectedPuppet, setSelectedPuppet] = useState<SVGGElement | null>(
+  const [selectedPuppet, setSelectedPuppet] = useState<SVGElement | null>(
     null,
   );
   const [selectedLimb, setSelectedLimb] = useState<string>("");
