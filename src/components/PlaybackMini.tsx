@@ -1,5 +1,7 @@
 import { memo, useCallback } from "react";
-import { FloatingPanel } from "./FloatingPanel";
+
+import { Button } from "./ui/button";
+import { Icons } from "./ui/icons";
 import { useAnimation } from "../context/AnimationContext";
 
 export const PlaybackMini = memo(() => {
@@ -15,32 +17,38 @@ export const PlaybackMini = memo(() => {
   }, [setPlaying, setCurrentFrame]);
 
   return (
-    <FloatingPanel
-      title="Playback"
-      initialPosition={{ x: 20, y: window.innerHeight - 160 }}
-      width={200}
-      height={100}
-      storageKey="pos:panel:playback"
-    >
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        <button
+    <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/40 px-4 py-2">
+      <div className="flex items-center gap-2">
+        <Button
           type="button"
+          variant="secondary"
+          size="sm"
           onClick={handleTogglePlay}
           aria-label={playing ? "Mettre en pause" : "Lancer la lecture"}
         >
-          {playing ? "⏸ Pause" : "▶ Play"}
-        </button>
-        <button
+          {playing ? (
+            <span className="flex items-center gap-2">
+              <Icons.pause className="h-4 w-4" /> Pause
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              <Icons.play className="h-4 w-4" /> Play
+            </span>
+          )}
+        </Button>
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
           onClick={handleStop}
           aria-label="Arrêter la lecture"
         >
-          ⏹ Stop
-        </button>
-        <div style={{ marginLeft: 8, fontSize: "12px" }}>
-          Frame: {currentFrame}
-        </div>
+          <Icons.stop className="mr-2 h-4 w-4" /> Stop
+        </Button>
       </div>
-    </FloatingPanel>
+      <div className="text-xs uppercase tracking-wide text-muted-foreground">
+        Frame <span className="ml-1 font-semibold text-foreground">{currentFrame}</span>
+      </div>
+    </div>
   );
 });

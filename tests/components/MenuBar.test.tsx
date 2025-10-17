@@ -1,4 +1,5 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MenuBar } from "../../src/components/MenuBar";
 import * as UiContext from "../../src/context/UiContext";
 import * as AnimationContext from "../../src/context/AnimationContext";
@@ -56,20 +57,31 @@ describe("MenuBar", () => {
     expect(screen.getByText("View")).toBeInTheDocument();
   });
 
-  it("should open and close the file menu", () => {
+  it("should open and close the file menu", async () => {
+    const user = userEvent.setup();
     render(<MenuBar />);
-    const fileMenuButton = screen.getByText("File");
-    fireEvent.click(fileMenuButton);
-    expect(screen.getByText("Save Project")).toBeInTheDocument();
-    fireEvent.click(fileMenuButton);
-    expect(screen.queryByText("Save Project")).not.toBeInTheDocument();
+    const fileMenuButton = screen.getByRole("button", { name: "File" });
+    await user.click(fileMenuButton);
+    const saveMenuItem = await screen.findByRole("menuitem", {
+      name: /Save Project/i,
+    });
+    expect(saveMenuItem).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("menuitem", { name: /Save Project/i }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   it("should call save function on save button click", async () => {
+    const user = userEvent.setup();
     render(<MenuBar />);
-    fireEvent.click(screen.getByText("File"));
-    const saveButton = await screen.findByText("Save Project");
-    fireEvent.click(saveButton);
+    await user.click(screen.getByRole("button", { name: "File" }));
+    const saveButton = await screen.findByRole("menuitem", {
+      name: /Save Project/i,
+    });
+    await user.click(saveButton);
     await waitFor(() =>
       expect(projectSerializer.serializeProject).toHaveBeenCalled(),
     );
@@ -79,27 +91,35 @@ describe("MenuBar", () => {
   });
 
   it("should call load function on load button click", async () => {
+    const user = userEvent.setup();
     render(<MenuBar />);
-    fireEvent.click(screen.getByText("File"));
-    const openButton = await screen.findByText("Open Project");
-    fireEvent.click(openButton);
+    await user.click(screen.getByRole("button", { name: "File" }));
+    const openButton = await screen.findByRole("menuitem", {
+      name: /Open Project/i,
+    });
+    await user.click(openButton);
     await waitFor(() =>
       expect(projectSerializer.loadProjectFromFile).toHaveBeenCalled(),
     );
   });
 
   it("should toggle view panels", async () => {
+    const user = userEvent.setup();
     render(<MenuBar />);
-    fireEvent.click(screen.getByText("View"));
+    await user.click(screen.getByRole("button", { name: "View" }));
 
-    const libraryButton = await screen.findByText("Library");
-    fireEvent.click(libraryButton);
+    const libraryButton = await screen.findByRole("menuitemcheckbox", {
+      name: "Library",
+    });
+    await user.click(libraryButton);
     expect(mockUi.setShowLibrary).toHaveBeenCalledWith(false);
 
     // Re-open menu
-    fireEvent.click(screen.getByText("View"));
-    const inspectorButton = await screen.findByText("Inspector");
-    fireEvent.click(inspectorButton);
+    await user.click(screen.getByRole("button", { name: "View" }));
+    const inspectorButton = await screen.findByRole("menuitemcheckbox", {
+      name: "Inspector",
+    });
+    await user.click(inspectorButton);
     expect(mockUi.setShowInspector).toHaveBeenCalledWith(false);
   });
 });

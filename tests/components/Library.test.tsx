@@ -1,23 +1,7 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { Library } from "../../src/components/Library";
-import * as UiContext from "../../src/context/UiContext";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { LibraryPanel } from "../../src/components/features/library-panel";
 import { vi } from "vitest";
-
-// Mock child components
-vi.mock("../../src/components/FloatingPanel", () => ({
-  FloatingPanel: ({
-    title,
-    children,
-  }: {
-    title: string;
-    children: React.ReactNode;
-  }) => (
-    <div data-testid="floating-panel">
-      <h1>{title}</h1>
-      {children}
-    </div>
-  ),
-}));
 
 vi.mock("../../src/components/AssetItem", () => ({
   AssetItem: ({ asset }: { asset: { name: string } }) => (
@@ -38,53 +22,42 @@ global.fetch = vi.fn(() =>
   }),
 ) as any;
 
-describe("Library", () => {
-  const mockUi = {
-    setShowLibrary: vi.fn(),
-  };
-
-  beforeEach(() => {
-    vi.spyOn(UiContext, "useUi").mockReturnValue(mockUi as any);
-  });
-
+describe("LibraryPanel", () => {
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  it("should render the library and fetch assets", async () => {
-    render(<Library />);
-    expect(screen.getByText("Library")).toBeInTheDocument();
+  it("should render library tabs and assets", async () => {
+    render(<LibraryPanel />);
     await waitFor(() => {
       expect(screen.getByText("Puppet 1")).toBeInTheDocument();
+    });
+    expect(screen.getByRole("tab", { name: /Pantins/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Objets/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Décors/i })).toBeInTheDocument();
+  });
+
+  it("should filter assets when switching category", async () => {
+    const user = userEvent.setup();
+    render(<LibraryPanel />);
+    await waitFor(() =>
+      expect(screen.getByText("Puppet 1")).toBeInTheDocument(),
+    );
+
+    await user.click(screen.getByRole("tab", { name: /Objets/i }));
+    await waitFor(() => {
       expect(screen.getByText("Object 1")).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(screen.queryByText("Puppet 1")).not.toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("tab", { name: /Décors/i }));
+    await waitFor(() => {
       expect(screen.getByText("Decor 1")).toBeInTheDocument();
     });
-  });
-
-  it("should filter assets by category", async () => {
-    render(<Library />);
-    await waitFor(() =>
-      expect(screen.getByText("Puppet 1")).toBeInTheDocument(),
-    );
-
-    fireEvent.click(screen.getByText("Objets"));
-
-    expect(screen.queryByText("Puppet 1")).not.toBeInTheDocument();
-    expect(screen.getByText("Object 1")).toBeInTheDocument();
-    expect(screen.queryByText("Decor 1")).not.toBeInTheDocument();
-  });
-
-  it("should filter assets by search query", async () => {
-    render(<Library />);
-    await waitFor(() =>
-      expect(screen.getByText("Puppet 1")).toBeInTheDocument(),
-    );
-
-    const searchInput = screen.getByPlaceholderText("Rechercher...");
-    fireEvent.change(searchInput, { target: { value: "Puppet" } });
-
-    expect(screen.getByText("Puppet 1")).toBeInTheDocument();
-    expect(screen.queryByText("Object 1")).not.toBeInTheDocument();
-    expect(screen.queryByText("Decor 1")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText("Object 1")).not.toBeInTheDocument();
+    });
   });
 });

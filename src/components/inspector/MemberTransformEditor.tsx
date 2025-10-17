@@ -1,5 +1,8 @@
-import React from 'react';
-import { AnimationProperty } from '../../context/AnimationContext';
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Slider } from "../ui/slider";
+import React from "react";
+import { AnimationProperty } from "../../context/AnimationContext";
 
 interface MemberTransformEditorProps {
   angle: number;
@@ -15,44 +18,42 @@ export const MemberTransformEditor: React.FC<MemberTransformEditorProps> = ({
   hasKeyframe,
 }) => {
   return (
-    <div className="property-group">
-      <h4>Member Transform</h4>
-      <div className="property">
-        <label>Rotation</label>
-        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-          <input
+    <section className="flex flex-col gap-3">
+      <h4 className="text-sm font-semibold text-foreground">Member Transform</h4>
+      <div className="flex items-center justify-between gap-3">
+        <label className="text-xs uppercase tracking-wide text-muted-foreground">
+          Rotation
+        </label>
+        <div className="flex items-center gap-2">
+          <Input
             type="number"
             value={Math.round(angle)}
-            onChange={(e) => onAngleChange(parseFloat(e.target.value) || 0)}
-            style={{ width: 80 }}
+            onChange={(event) =>
+              onAngleChange(parseFloat(event.target.value || "0") || 0)
+            }
+            className="h-8 w-24 text-right"
           />
-          <button
+          <Button
+            type="button"
             onClick={() => onAddKeyframe('rotation', angle)}
             title="Add keyframe"
-            style={{
-              padding: '4px 8px',
-              background: hasKeyframe('rotation') ? '#5a9fd4' : '#3a3a3a',
-              border: 'none',
-              borderRadius: 4,
-              color: '#fff',
-              cursor: 'pointer',
-              fontSize: 12,
-            }}
+            variant={hasKeyframe('rotation') ? 'default' : 'secondary'}
+            size="sm"
+            className="h-8 w-8 px-0"
           >
             ◆
-          </button>
+          </Button>
         </div>
       </div>
-      <div className="property">
-        <input
-          type="range"
-          min="-180"
-          max="180"
-          value={angle}
-          onChange={(e) => onAngleChange(parseFloat(e.target.value))}
-          style={{ width: '100%' }}
+      <div className="rounded-md border border-border bg-muted/20 px-3 py-2">
+        <Slider
+          min={-180}
+          max={180}
+          step={1}
+          value={[angle]}
+          onValueChange={([value]) => onAngleChange(value)}
         />
       </div>
-    </div>
+    </section>
   );
 };

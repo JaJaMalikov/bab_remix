@@ -1,5 +1,6 @@
-import React from 'react';
-import type { SceneItem } from '../../context/UiContext';
+import { Button } from "../ui/button";
+import React from "react";
+import type { SceneItem } from "../../context/UiContext";
 
 interface AttachmentEditorProps {
   selectedItem: SceneItem;
@@ -22,12 +23,12 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({
   const attachedMemberId = imageEl.getAttribute('data-attached-to-member');
 
   return (
-    <div className="property-group">
-      <h4>Attachment</h4>
+    <section className="flex flex-col gap-3">
+      <h4 className="text-sm font-semibold text-foreground">Attachment</h4>
       {isAttached ? (
         <>
-          <div style={{ fontSize: 11, color: '#a0a0a0', marginBottom: 8 }}>
-            Attached to:{' '}
+          <div className="text-xs text-muted-foreground">
+            Attached to:{" "}
             {(() => {
               const puppet = sceneItems.find((p) => p.id === attachedPuppetId);
               if (!puppet) return 'Unknown';
@@ -40,31 +41,26 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({
               return `${puppet.label} › ${memberName}`;
             })()}
           </div>
-          <button
+          <Button
+            type="button"
             onClick={handleDetachFromMember}
-            style={{
-              width: '100%',
-              padding: 8,
-              background: '#ff9800',
-              border: 'none',
-              borderRadius: 4,
-              color: '#fff',
-              cursor: 'pointer',
-              fontWeight: 600,
-            }}
+            variant="destructive"
+            className="w-full"
           >
             Detach from Member
-          </button>
+          </Button>
         </>
       ) : (
         <>
-          <div style={{ fontSize: 11, color: '#a0a0a0', marginBottom: 8 }}>
+          <div className="text-xs text-muted-foreground">
             Select a puppet member to attach this image to
           </div>
           <select
-            onChange={(e) => e.target.value && handleAttachToMember(e.target.value)}
+            onChange={(event) =>
+              event.target.value && handleAttachToMember(event.target.value)
+            }
             defaultValue=""
-            style={{ width: '100%', padding: '6px 8px', fontSize: 11, marginBottom: 8 }}
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
           >
             <option value="">-- Select member --</option>
             {sceneItems
@@ -88,6 +84,6 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({
           </select>
         </>
       )}
-    </div>
+    </section>
   );
 };

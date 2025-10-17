@@ -1,4 +1,6 @@
-import React from 'react';
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import React from "react";
 
 interface TransformInputProps {
   label: string;
@@ -22,31 +24,30 @@ export const TransformInput: React.FC<TransformInputProps> = ({
   const displayValue = isInteger ? Math.round(value) : value.toFixed(2);
 
   return (
-    <div className="property">
-      <label>{label}</label>
-      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-        <input
+    <div className="flex items-center justify-between gap-3">
+      <label className="text-xs uppercase tracking-wide text-muted-foreground">
+        {label}
+      </label>
+      <div className="flex items-center gap-2">
+        <Input
           type="number"
           step={step}
           value={displayValue}
-          onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-          style={{ width: 80 }}
+          onChange={(event) =>
+            onChange(parseFloat(event.target.value || "0") || 0)
+          }
+          className="h-8 w-24 text-right"
         />
-        <button
+        <Button
+          type="button"
           onClick={onAddKeyframe}
           title="Add keyframe"
-          style={{
-            padding: '4px 8px',
-            background: hasKeyframe ? '#5a9fd4' : '#3a3a3a',
-            border: 'none',
-            borderRadius: 4,
-            color: '#fff',
-            cursor: 'pointer',
-            fontSize: 12,
-          }}
+          variant={hasKeyframe ? "default" : "secondary"}
+          size="sm"
+          className="h-8 w-8 px-0"
         >
           ◆
-        </button>
+        </Button>
       </div>
     </div>
   );

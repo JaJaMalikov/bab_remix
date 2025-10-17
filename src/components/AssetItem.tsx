@@ -1,8 +1,8 @@
 import { memo, useCallback } from "react";
 import type { DragEvent } from "react";
+
 import { useUi } from "../context/UiContext";
 
-// The Asset interface is defined here as it's the shape of this component's prop.
 export interface Asset {
   name: string;
   type: "pantin" | "objet" | "decor";
@@ -13,17 +13,13 @@ interface AssetItemProps {
   asset: Asset;
 }
 
-/**
- * A memoized component representing a single item in the Library.
- * It handles its own drag and double-click events.
- */
 export const AssetItem = memo(({ asset }: AssetItemProps) => {
   const { importAsset } = useUi();
 
   const handleDragStart = useCallback(
-    (e: DragEvent) => {
-      e.dataTransfer.setData("application/json", JSON.stringify(asset));
-      e.dataTransfer.effectAllowed = "copy";
+    (event: DragEvent) => {
+      event.dataTransfer.setData("application/json", JSON.stringify(asset));
+      event.dataTransfer.effectAllowed = "copy";
     },
     [asset],
   );
@@ -33,17 +29,26 @@ export const AssetItem = memo(({ asset }: AssetItemProps) => {
   }, [importAsset, asset]);
 
   return (
-    <div
-      className="asset-item"
+    <button
+      type="button"
       draggable
       onDragStart={handleDragStart}
       onDoubleClick={handleDoubleClick}
+      className="group flex cursor-grab flex-col gap-2 rounded-lg border border-transparent bg-muted/40 p-3 text-left transition hover:border-primary/60 hover:bg-muted/60 active:cursor-grabbing"
     >
-      <div className="asset-preview">
-        <img src={asset.path} alt={asset.name} />
+      <div className="relative aspect-square overflow-hidden rounded-md border border-border bg-background/60">
+        <img
+          src={asset.path}
+          alt={asset.name}
+          className="h-full w-full object-contain p-2 text-muted-foreground"
+        />
       </div>
-      <div className="asset-name">{asset.name}</div>
-      <div className="asset-type">{asset.type}</div>
-    </div>
+      <div>
+        <p className="truncate text-sm font-medium text-foreground">{asset.name}</p>
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+          {asset.type}
+        </p>
+      </div>
+    </button>
   );
 });

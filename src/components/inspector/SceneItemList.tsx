@@ -15,49 +15,42 @@ export const SceneItemList: React.FC<SceneItemListProps> = ({
   onDeselectAll,
 }) => {
   return (
-    <div className="property-group">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <h4 style={{ margin: 0 }}>Scene Items ({items.length})</h4>
+    <section className="flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-semibold text-foreground">
+          Scene Items ({items.length})
+        </h4>
         {selectedId && (
           <button
+            type="button"
             onClick={onDeselectAll}
-            style={{
-              padding: "4px 8px",
-              background: "#3a3a3a",
-              border: "1px solid #5a5a5a",
-              borderRadius: 4,
-              color: "#e0e0e0",
-              cursor: "pointer",
-              fontSize: 10,
-            }}
+            className="rounded-md border border-border bg-muted px-2 py-1 text-[11px] uppercase tracking-wide text-muted-foreground transition hover:border-primary/60 hover:text-foreground"
           >
             Deselect
           </button>
         )}
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 120, overflowY: "auto" }}>
-        {items.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => onSelectItem(item.id)}
-            style={{
-              padding: "6px 8px",
-              background: item.id === selectedId ? "#5a9fd4" : "#1e1e1e",
-              border: "1px solid #3a3a3a",
-              borderRadius: 4,
-              color: item.id === selectedId ? "#fff" : "#e0e0e0",
-              cursor: "pointer",
-              textAlign: "left",
-              fontSize: 12,
-            }}
-          >
-            {item.type === "puppet" ? "🎭" : "🖼️"} {item.label}
-          </button>
-        ))}
+      <div className="flex max-h-36 flex-col gap-2 overflow-y-auto">
+        {items.map((item) => {
+          const selected = item.id === selectedId;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onSelectItem(item.id)}
+              className={`flex items-center gap-2 rounded-md border px-3 py-2 text-left text-sm transition ${selected ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted/40 text-foreground hover:border-primary/40"}`}
+            >
+              <span aria-hidden>{item.type === "puppet" ? "🎭" : "🖼️"}</span>
+              <span className="truncate">{item.label}</span>
+            </button>
+          );
+        })}
         {items.length === 0 && (
-          <div style={{ color: "#808080", fontSize: 12, padding: 8 }}>No items in scene</div>
+          <div className="rounded-md border border-dashed border-border px-3 py-2 text-center text-xs text-muted-foreground">
+            No items in scene
+          </div>
         )}
       </div>
-    </div>
+    </section>
   );
 };

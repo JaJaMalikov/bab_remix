@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 interface MemberEditorProps {
   limbList: { id: string; name: string }[];
@@ -14,38 +14,25 @@ export const MemberEditor: React.FC<MemberEditorProps> = ({
   if (limbList.length === 0) return null;
 
   return (
-    <div className="property-group">
-      <h4>Members ({limbList.length})</h4>
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 4,
-          maxHeight: 150,
-          overflowY: 'auto',
-        }}
-      >
-        {limbList.map((limb) => (
-          <button
-            key={limb.id}
-            onClick={() => onSelectLimb(limb.id)}
-            style={{
-              padding: '6px 8px',
-              background: limb.id === selectedLimb ? '#5a9fd4' : '#1e1e1e',
-              border: '1px solid #3a3a3a',
-              borderRadius: 4,
-              color: limb.id === selectedLimb ? '#fff' : '#e0e0e0',
-              cursor: 'pointer',
-              textAlign: 'left',
-              fontSize: 11,
-              display: 'flex',
-              justifyContent: 'space-between',
-            }}
-          >
-            <span>{limb.name}</span>
-          </button>
-        ))}
+    <section className="flex flex-col gap-3">
+      <h4 className="text-sm font-semibold text-foreground">
+        Members ({limbList.length})
+      </h4>
+      <div className="flex max-h-40 flex-col gap-2 overflow-y-auto">
+        {limbList.map((limb) => {
+          const selected = limb.id === selectedLimb;
+          return (
+            <button
+              key={limb.id}
+              type="button"
+              onClick={() => onSelectLimb(limb.id)}
+              className={`flex items-center justify-between rounded-md border px-3 py-2 text-sm transition ${selected ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted/40 text-foreground hover:border-primary/40"}`}
+            >
+              <span className="truncate">{limb.name}</span>
+            </button>
+          );
+        })}
       </div>
-    </div>
+    </section>
   );
 };

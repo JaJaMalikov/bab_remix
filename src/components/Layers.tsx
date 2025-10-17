@@ -1,31 +1,25 @@
 import { memo } from "react";
-import { FloatingPanel } from "./FloatingPanel";
 import { useUi } from "../context/UiContext";
 import { LayerItem } from "./LayerItem";
 
 export const Layers = memo(() => {
-  const { sceneItems, setShowLayers } = useUi();
+  const { sceneItems } = useUi();
 
   return (
-    <FloatingPanel
-      title="Layers"
-      initialPosition={{ x: 20, y: 20 }}
-      width={240}
-      height={300}
-      storageKey="pos:panel:layers"
-      onClose={() => setShowLayers(false)}
-    >
-      <div
-        className="layers-content"
-        style={{ display: "flex", flexDirection: "column", gap: 8 }}
-      >
+    <div className="flex flex-col gap-3">
+      <header className="text-sm font-semibold text-foreground">
+        Layers
+      </header>
+      <div className="flex flex-col gap-2">
         {sceneItems.length === 0 && (
-          <div style={{ color: "#999" }}>No items in scene</div>
+          <div className="rounded-md border border-dashed border-border bg-muted/20 p-4 text-center text-sm text-muted-foreground">
+            No items in scene
+          </div>
         )}
         {sceneItems.map((item) => (
           <LayerItem key={item.id} item={item} />
         ))}
       </div>
-    </FloatingPanel>
+    </div>
   );
 });

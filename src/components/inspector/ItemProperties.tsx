@@ -1,6 +1,8 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import type { SceneItem } from '../../context/UiContext';
-import { useUi } from '../../context/UiContext';
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import React, { useState, useCallback, useEffect } from "react";
+import type { SceneItem } from "../../context/UiContext";
+import { useUi } from "../../context/UiContext";
 
 interface ItemPropertiesProps {
   item: SceneItem;
@@ -28,43 +30,47 @@ export const ItemProperties: React.FC<ItemPropertiesProps> = ({ item }) => {
   }, [item.id, labelInput, updateSceneItemLabel]);
 
   return (
-    <div className="property-group">
-      <h4>Properties</h4>
-      <div className="property">
-        <label>Type</label>
-        <div>
-          {item.type === 'puppet'
-            ? 'Puppet'
+    <section className="flex flex-col gap-3">
+      <h4 className="text-sm font-semibold text-foreground">Properties</h4>
+      <div className="flex flex-col gap-1 rounded-md border border-border bg-muted/30 p-3">
+        <span className="text-xs uppercase tracking-wide text-muted-foreground">
+          Type
+        </span>
+        <span className="text-sm font-medium text-foreground">
+          {item.type === "puppet"
+            ? "Puppet"
             : item.el instanceof SVGImageElement
-            ? 'Image'
-            : 'Object'}
-        </div>
+              ? "Image"
+              : "Object"}
+        </span>
       </div>
-      <div className="property">
-        <label>Name</label>
+      <div className="flex flex-col gap-1 rounded-md border border-border bg-muted/30 p-3">
+        <span className="text-xs uppercase tracking-wide text-muted-foreground">
+          Name
+        </span>
         {isEditing ? (
-          <div style={{ display: 'flex', gap: 4 }}>
-            <input
+          <div className="flex items-center gap-2">
+            <Input
               type="text"
               value={labelInput}
-              onChange={(e) => setLabelInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSaveLabel()}
+              onChange={(event) => setLabelInput(event.target.value)}
+              onKeyDown={(event) => event.key === "Enter" && handleSaveLabel()}
               autoFocus
-              style={{ flex: 1, padding: '4px 6px', fontSize: 11 }}
             />
-            <button onClick={handleSaveLabel} style={{ padding: '4px 8px', fontSize: 10 }}>
+            <Button type="button" size="sm" onClick={handleSaveLabel}>
               ✓
-            </button>
+            </Button>
           </div>
         ) : (
-          <div
+          <button
+            type="button"
             onClick={handleStartEdit}
-            style={{ cursor: 'pointer', textDecoration: 'underline dotted' }}
+            className="self-start text-sm font-medium text-foreground underline decoration-dotted underline-offset-4"
           >
             {item.label}
-          </div>
+          </button>
         )}
       </div>
-    </div>
+    </section>
   );
 };

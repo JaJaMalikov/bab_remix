@@ -1,4 +1,6 @@
 import { memo, useCallback } from "react";
+
+import { Button } from "./ui/button";
 import { useUi } from "../context/UiContext";
 import type { UiState } from "../context/UiContext";
 
@@ -30,29 +32,42 @@ export const LayerItem = memo(({ item }: LayerItemProps) => {
   }, [setSelectedPuppet, item.el]);
 
   return (
-    <div
-      className="layer-item"
-      style={{ display: "flex", alignItems: "center", gap: 8 }}
-    >
-      <div
-        style={{
-          flex: 1,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-      >
+    <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-foreground">
+      <span className="flex-1 truncate" title={item.label}>
         {item.label}
+      </span>
+      <div className="flex items-center gap-1">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={handleSendBackward}
+          title="Send backward"
+        >
+          ↓
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={handleBringForward}
+          title="Bring forward"
+        >
+          ↑
+        </Button>
+        {item.el instanceof SVGGElement && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleSelect}
+          >
+            Select
+          </Button>
+        )}
       </div>
-      <button onClick={handleSendBackward} title="Send backward">
-        ↓
-      </button>
-      <button onClick={handleBringForward} title="Bring forward">
-        ↑
-      </button>
-      {item.el instanceof SVGGElement && (
-        <button onClick={handleSelect}>Select</button>
-      )}
     </div>
   );
 });

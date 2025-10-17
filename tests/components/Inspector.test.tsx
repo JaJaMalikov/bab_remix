@@ -5,16 +5,6 @@ import * as AnimationContext from "../../src/context/AnimationContext";
 import { vi } from "vitest";
 import "@testing-library/jest-dom";
 
-// Mock FloatingPanel to simplify the test
-vi.mock("../../src/components/FloatingPanel", () => ({
-  FloatingPanel: ({ title, children }: { title: string; children: React.ReactNode; }) => (
-    <div data-testid="floating-panel">
-      <h1>{title}</h1>
-      {children}
-    </div>
-  ),
-}));
-
 describe("Inspector", () => {
   const testSceneItems = [
     {
@@ -66,7 +56,7 @@ describe("Inspector", () => {
     vi.restoreAllMocks();
   });
 
-  it("should render the inspector with the correct title", () => {
+  it("should render the inspector sections", () => {
     const uiMock = createUiMock({
       sceneItems: testSceneItems,
       selectedItemId: "1",
@@ -75,8 +65,9 @@ describe("Inspector", () => {
     useAnimationSpy.mockReturnValue(createAnimationMock() as never);
 
     render(<Inspector />);
-    expect(screen.getByTestId("floating-panel")).toBeInTheDocument();
-    expect(screen.getByText("Inspector")).toBeInTheDocument();
+    expect(screen.getByText(/Scene Items/i)).toBeInTheDocument();
+    expect(screen.getByText("Properties")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Delete Item/i })).toBeInTheDocument();
   });
 
   it("should display the list of scene items", () => {

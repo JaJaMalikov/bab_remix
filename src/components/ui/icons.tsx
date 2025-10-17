@@ -1,0 +1,31 @@
+import {
+  BackpackIcon,
+  Crosshair1Icon,
+  DownloadIcon,
+  ImageIcon,
+  LayersIcon,
+  MixerHorizontalIcon,
+  PauseIcon,
+  PersonIcon,
+  PlayIcon,
+  StopIcon,
+  UploadIcon,
+  SymbolIcon,
+  ViewVerticalIcon,
+} from "@radix-ui/react-icons";
+
+export const Icons = {
+  library: BackpackIcon,
+  inspector: MixerHorizontalIcon,
+  layers: LayersIcon,
+  timeline: ViewVerticalIcon,
+  puppet: PersonIcon,
+  decor: ImageIcon,
+  asset: SymbolIcon,
+  pause: PauseIcon,
+  play: PlayIcon,
+  stop: StopIcon,
+  fit: Crosshair1Icon,
+  save: DownloadIcon,
+  open: UploadIcon,
+};

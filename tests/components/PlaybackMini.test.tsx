@@ -3,22 +3,6 @@ import { PlaybackMini } from "../../src/components/PlaybackMini";
 import * as AnimationContext from "../../src/context/AnimationContext";
 import { vi } from "vitest";
 
-// Mock FloatingPanel to simplify the test
-vi.mock("../../src/components/FloatingPanel", () => ({
-  FloatingPanel: ({
-    title,
-    children,
-  }: {
-    title: string;
-    children: React.ReactNode;
-  }) => (
-    <div data-testid="floating-panel">
-      <h1>{title}</h1>
-      {children}
-    </div>
-  ),
-}));
-
 describe("PlaybackMini", () => {
   const mockAnimation = {
     playing: false,
@@ -39,21 +23,25 @@ describe("PlaybackMini", () => {
 
   it("should render the playback controls", () => {
     render(<PlaybackMini />);
-    expect(screen.getByText("Playback")).toBeInTheDocument();
-    expect(screen.getByText("▶ Play")).toBeInTheDocument();
-    expect(screen.getByText("⏹ Stop")).toBeInTheDocument();
-    expect(screen.getByText("Frame: 42")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Lancer la lecture/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Arrêter la lecture/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Frame/i)).toBeInTheDocument();
+    expect(screen.getByText("42")).toBeInTheDocument();
   });
 
   it("should call setPlaying when play/pause button is clicked", () => {
     render(<PlaybackMini />);
-    fireEvent.click(screen.getByText("▶ Play"));
+    fireEvent.click(screen.getByRole("button", { name: /Lancer la lecture/i }));
     expect(mockAnimation.setPlaying).toHaveBeenCalled();
   });
 
   it("should call setPlaying and setCurrentFrame when stop button is clicked", () => {
     render(<PlaybackMini />);
-    fireEvent.click(screen.getByText("⏹ Stop"));
+    fireEvent.click(screen.getByRole("button", { name: /Arrêter la lecture/i }));
     expect(mockAnimation.setPlaying).toHaveBeenCalledWith(false);
     expect(mockAnimation.setCurrentFrame).toHaveBeenCalledWith(0);
   });

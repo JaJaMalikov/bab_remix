@@ -1,5 +1,4 @@
 import { SvgScene } from "./components/SvgScene";
-import { Library } from "./components/Library";
 import { Inspector } from "./components/Inspector";
 import { Timeline } from "./components/Timeline";
 import { UiProvider, useUi } from "./context/UiContext";
@@ -9,56 +8,84 @@ import { Layers } from "./components/Layers";
 import { PlaybackMini } from "./components/PlaybackMini";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { AppLayout } from "./components/layout/app-layout";
+import { SidePanel } from "./components/layout/side-panel";
+import { LibraryPanel } from "./components/features/library-panel";
 
 export default function App() {
   return (
     <UiProvider>
       <AnimationProvider>
-        <AppLayout />
+        <RootShell />
       </AnimationProvider>
     </UiProvider>
   );
 }
 
-function AppLayout() {
+function RootShell() {
   const { showLibrary, showInspector, showLayers, showTimeline } = useUi();
   useKeyboardShortcuts();
 
-  return (
-    <div className="app">
-      <MenuBar />
+  const activePanel = showLibrary
+    ? "library"
+    : showInspector
+      ? "inspector"
+      : showLayers
+        ? "layers"
+        : null;
 
-      {showLibrary && (
-        <ErrorBoundary message="La bibliothèque des assets ne peut pas être affichée.">
-          <Library />
-        </ErrorBoundary>
-      )}
-      {showInspector && (
-        <ErrorBoundary message="L'inspecteur a rencontré un problème inattendu.">
-          <Inspector />
-        </ErrorBoundary>
-      )}
-      {showLayers && (
-        <ErrorBoundary message="Les calques n'ont pas pu être chargés.">
-          <Layers />
-        </ErrorBoundary>
-      )}
+  const panelContent = (() => {
+    switch (activePanel) {
+      case "library":
+        return <LibraryPanel />;
+      case "inspector":
+        return <Inspector />;
+      case "layers":
+        return <Layers />;
+      default:
+        return null;
+    }
+  })();
 
-      <div className="main-content">
-        <ErrorBoundary message="La scène SVG est temporairement indisponible.">
-          <SvgScene />
-        </ErrorBoundary>
-      </div>
+  const sidePanel = panelContent ? (
+    <SidePanel
+      title={
+        activePanel === "library"
+          ? "Library"
+          : activePanel === "inspector"
+            ? "Inspector"
+            : "Layers"
+      }
+    >
+      {panelContent}
+    </SidePanel>
+  ) : undefined;
 
+  const timelineArea = (
+    <div className="border-t border-border bg-muted/20">
       {showTimeline ? (
         <ErrorBoundary message="La timeline ne peut pas être rendue.">
           <Timeline />
         </ErrorBoundary>
       ) : (
-        <ErrorBoundary message="Le module de lecture a rencontré une erreur.">
-          <PlaybackMini />
-        </ErrorBoundary>
+        <div className="px-6 py-3">
+          <ErrorBoundary message="Le module de lecture a rencontré une erreur.">
+            <PlaybackMini />
+          </ErrorBoundary>
+        </div>
       )}
     </div>
+  );
+
+  return (
+    <AppLayout
+      menubar={<MenuBar />}
+      sidePanel={sidePanel}
+      timeline={timelineArea}
+    >
+      <ErrorBoundary message="La scène SVG est temporairement indisponible.">
+        <SvgScene />
+      </ErrorBoundary>
+    </AppLayout>
   );
 }

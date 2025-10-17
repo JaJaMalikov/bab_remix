@@ -3,8 +3,13 @@ import { useUi } from "../context/UiContext";
 import { useAnimation } from "../context/AnimationContext";
 
 export function useKeyboardShortcuts() {
-  const { setShowLibrary, setShowInspector, setShowTimeline, fitInView } =
-    useUi();
+  const {
+    setShowLibrary,
+    setShowInspector,
+    setShowTimeline,
+    setShowLayers,
+    fitInView,
+  } = useUi();
 
   const { setPlaying, setCurrentFrame, duration } = useAnimation();
 
@@ -25,15 +30,40 @@ export function useKeyboardShortcuts() {
         switch (e.key.toLowerCase()) {
           case "l":
             e.preventDefault();
-            setShowLibrary((prev) => !prev);
+            setShowLibrary((prev) => {
+              const next = !prev;
+              if (next) {
+                setShowInspector(false);
+                setShowLayers(false);
+              }
+              return next;
+            });
             break;
           case "i":
             e.preventDefault();
-            setShowInspector((prev) => !prev);
+            setShowInspector((prev) => {
+              const next = !prev;
+              if (next) {
+                setShowLibrary(false);
+                setShowLayers(false);
+              }
+              return next;
+            });
+            break;
+          case "t":
+            e.preventDefault();
+            setShowTimeline((prev) => !prev);
             break;
           case "g":
             e.preventDefault();
-            setShowTimeline((prev) => !prev);
+            setShowLayers((prev) => {
+              const next = !prev;
+              if (next) {
+                setShowLibrary(false);
+                setShowInspector(false);
+              }
+              return next;
+            });
             break;
           case "0":
             e.preventDefault();
@@ -76,6 +106,7 @@ export function useKeyboardShortcuts() {
     setShowLibrary,
     setShowInspector,
     setShowTimeline,
+    setShowLayers,
     fitInView,
     setPlaying,
     setCurrentFrame,

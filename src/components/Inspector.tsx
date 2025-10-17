@@ -7,7 +7,6 @@ import React, {
 } from "react";
 import { useUi } from "../context/UiContext";
 import { useAnimation, AnimationProperty } from "../context/AnimationContext";
-import { FloatingPanel } from "./FloatingPanel";
 import { SceneItemList } from "./inspector/SceneItemList";
 import { ItemProperties } from "./inspector/ItemProperties";
 import { TransformEditor } from "./inspector/TransformEditor";
@@ -42,7 +41,6 @@ function InspectorComponent() {
     angle,
     setAngle,
     removeSceneItem,
-    setShowInspector,
   } = useUi();
 
   const {
@@ -571,85 +569,66 @@ function InspectorComponent() {
   );
 
   return (
-    <FloatingPanel
-      title="Inspector"
-      initialPosition={{ x: window.innerWidth - 320, y: 20 }}
-      width={300}
-      height={600}
-      storageKey="pos:panel:inspector"
-      onClose={() => setShowInspector(false)}
-    >
-      <div className="inspector-content">
-        <SceneItemList
-          items={sceneItems}
-          selectedId={selectedItemId}
-          onSelectItem={handleSelectItem}
-          onDeselectAll={handleDeselectAll}
-        />
+    <div className="flex flex-col gap-6">
+      <SceneItemList
+        items={sceneItems}
+        selectedId={selectedItemId}
+        onSelectItem={handleSelectItem}
+        onDeselectAll={handleDeselectAll}
+      />
 
-        {/* Selected Item Properties */}
-        {selectedItem && (
-          <>
-            <ItemProperties item={selectedItem} />
+      {selectedItem ? (
+        <>
+          <ItemProperties item={selectedItem} />
 
-            <TransformEditor
-              selectedItem={selectedItem}
-              transform={transform}
-              handlePositionChange={handlePositionChange}
-              handleRotationChange={handleRotationChange}
-              handleScaleChange={handleScaleChange}
-              handleAddKeyframe={handleAddKeyframe}
+          <TransformEditor
+            selectedItem={selectedItem}
+            transform={transform}
+            handlePositionChange={handlePositionChange}
+            handleRotationChange={handleRotationChange}
+            handleScaleChange={handleScaleChange}
+            handleAddKeyframe={handleAddKeyframe}
+            hasKeyframe={hasKeyframe}
+          />
+
+          <AttachmentEditor
+            selectedItem={selectedItem}
+            sceneItems={sceneItems}
+            handleAttachToMember={handleAttachToMember}
+            handleDetachFromMember={handleDetachFromMember}
+          />
+
+          <VariantEditor
+            selectedItem={selectedItem}
+            getCurrentVariant={getCurrentVariant}
+            handleVariantChange={handleVariantChange}
+          />
+
+          {selectedItem.type === "puppet" && (
+            <MemberEditor
+              limbList={limbList}
+              selectedLimb={selectedLimb}
+              onSelectLimb={handleSelectLimb}
+            />
+          )}
+
+          {selectedLimb && selectedItem.type === "puppet" && (
+            <MemberTransformEditor
+              angle={angle}
+              onAngleChange={handleAngleChange}
+              onAddKeyframe={handleAddKeyframe}
               hasKeyframe={hasKeyframe}
             />
+          )}
 
-            <AttachmentEditor
-              selectedItem={selectedItem}
-              sceneItems={sceneItems}
-              handleAttachToMember={handleAttachToMember}
-              handleDetachFromMember={handleDetachFromMember}
-            />
-
-            <DeleteItemButton onClick={handleDeleteItem} />
-
-            <VariantEditor
-              selectedItem={selectedItem}
-              getCurrentVariant={getCurrentVariant}
-              handleVariantChange={handleVariantChange}
-            />
-
-            {selectedItem.type === "puppet" && (
-              <MemberEditor
-                limbList={limbList}
-                selectedLimb={selectedLimb}
-                onSelectLimb={handleSelectLimb}
-              />
-            )}
-
-            {selectedLimb && selectedItem.type === "puppet" && (
-              <MemberTransformEditor
-                angle={angle}
-                onAngleChange={handleAngleChange}
-                onAddKeyframe={handleAddKeyframe}
-                hasKeyframe={hasKeyframe}
-              />
-            )}
-          </>
-        )}
-
-        {!selectedItem && (
-          <div
-            style={{
-              color: "#808080",
-              fontSize: 12,
-              padding: 16,
-              textAlign: "center",
-            }}
-          >
-            Select an item from the list above
-          </div>
-        )}
-      </div>
-    </FloatingPanel>
+          <DeleteItemButton onClick={handleDeleteItem} />
+        </>
+      ) : (
+        <div className="rounded-md border border-dashed border-border bg-muted/20 p-6 text-center text-sm text-muted-foreground">
+          Select an item from the list above
+        </div>
+      )}
+    </div>
   );
 }
 

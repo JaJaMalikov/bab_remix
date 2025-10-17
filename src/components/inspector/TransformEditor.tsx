@@ -1,7 +1,8 @@
-import React from 'react';
-import type { SceneItem } from '../../context/UiContext';
-import { AnimationProperty } from '../../context/AnimationContext';
-import { TransformInput } from './TransformInput';
+import React from "react";
+import type { SceneItem } from "../../context/UiContext";
+import { AnimationProperty } from "../../context/AnimationContext";
+import { TransformInput } from "./TransformInput";
+import { Slider } from "../ui/slider";
 
 interface TransformEditorProps {
   selectedItem: SceneItem;
@@ -23,8 +24,8 @@ export const TransformEditor: React.FC<TransformEditorProps> = ({
   hasKeyframe,
 }) => {
   return (
-    <div className="property-group">
-      <h4>Transform</h4>
+    <section className="flex flex-col gap-3">
+      <h4 className="text-sm font-semibold text-foreground">Transform</h4>
       <TransformInput
         label="Position X"
         value={transform.x}
@@ -49,14 +50,13 @@ export const TransformEditor: React.FC<TransformEditorProps> = ({
             onAddKeyframe={() => handleAddKeyframe('rotation', transform.rotation)}
             hasKeyframe={hasKeyframe('rotation')}
           />
-          <div className="property">
-            <input
-              type="range"
-              min="-180"
-              max="180"
-              value={transform.rotation}
-              onChange={(e) => handleRotationChange(parseFloat(e.target.value))}
-              style={{ width: '100%' }}
+          <div className="rounded-md border border-border bg-muted/20 px-3 py-2">
+            <Slider
+              min={-180}
+              max={180}
+              step={1}
+              value={[transform.rotation]}
+              onValueChange={([value]) => handleRotationChange(value)}
             />
           </div>
           <TransformInput
@@ -79,6 +79,6 @@ export const TransformEditor: React.FC<TransformEditorProps> = ({
           />
         </>
       )}
-    </div>
+    </section>
   );
 };

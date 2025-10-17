@@ -1,4 +1,5 @@
-import React from 'react';
+import { Button } from "../ui/button";
+import React from "react";
 
 interface DeleteItemButtonProps {
   onClick: () => void;
@@ -6,22 +7,15 @@ interface DeleteItemButtonProps {
 
 export const DeleteItemButton: React.FC<DeleteItemButtonProps> = ({ onClick }) => {
   return (
-    <div className="property-group">
-      <button
+    <section>
+      <Button
+        type="button"
         onClick={onClick}
-        style={{
-          width: '100%',
-          padding: 8,
-          background: '#ff6b6b',
-          border: 'none',
-          borderRadius: 4,
-          color: '#fff',
-          cursor: 'pointer',
-          fontWeight: 600,
-        }}
+        variant="destructive"
+        className="w-full"
       >
         Delete Item
-      </button>
-    </div>
+      </Button>
+    </section>
   );
 };
