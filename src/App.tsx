@@ -49,11 +49,9 @@ function RootShell() {
   const sidePanel = panelContent ? (
     <SidePanel
       title={
-        activePanel === "inspector"
-          ? "Inspector"
-          : activePanel === "layers"
-            ? "Layers"
-            : undefined
+        activePanel === "layers"
+          ? "Layers"
+          : undefined
       }
     >
       {panelContent}

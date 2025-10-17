@@ -1,4 +1,3 @@
-import { Button } from "../ui/button";
 import React from "react";
 
 interface DeleteItemButtonProps {
@@ -7,15 +6,12 @@ interface DeleteItemButtonProps {
 
 export const DeleteItemButton: React.FC<DeleteItemButtonProps> = ({ onClick }) => {
   return (
-    <section>
-      <Button
-        type="button"
-        onClick={onClick}
-        variant="destructive"
-        className="w-full"
-      >
-        Delete Item
-      </Button>
-    </section>
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full rounded border border-destructive bg-destructive px-3 py-2 text-xs font-medium text-destructive-foreground hover:bg-destructive/90"
+    >
+      Delete Item
+    </button>
   );
 };

@@ -21,11 +21,10 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
   }
 
   return (
-    <section className="flex flex-col gap-3">
-      <h4 className="text-sm font-semibold text-foreground">Variants</h4>
+    <div className="flex flex-col gap-1.5">
       {selectedItem.metadata.variantGroups.map((group) => (
-        <div key={group.group} className="flex flex-col gap-2 rounded-md border border-border bg-muted/30 p-3">
-          <span className="text-xs uppercase tracking-wide text-muted-foreground">
+        <div key={group.group} className="flex items-center gap-2">
+          <span className="text-[10px] font-medium uppercase text-muted-foreground">
             {group.group}
           </span>
           <select
@@ -37,7 +36,7 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
             onChange={(event) =>
               handleVariantChange(group.group, event.target.value)
             }
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+            className="flex-1 rounded border border-border bg-background px-2 py-1 text-xs text-foreground"
           >
             {group.variants.map((variant) => (
               <option key={variant.name || "unknown"} value={variant.name || ""}>
@@ -47,6 +46,6 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
           </select>
         </div>
       ))}
-    </section>
+    </div>
   );
 };

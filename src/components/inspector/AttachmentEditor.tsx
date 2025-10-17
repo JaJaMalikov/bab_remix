@@ -1,4 +1,3 @@
-import { Button } from "../ui/button";
 import React from "react";
 import type { SceneItem } from "../../context/UiContext";
 
@@ -23,44 +22,42 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({
   const attachedMemberId = imageEl.getAttribute('data-attached-to-member');
 
   return (
-    <section className="flex flex-col gap-3">
-      <h4 className="text-sm font-semibold text-foreground">Attachment</h4>
+    <div className="flex flex-col gap-1.5">
       {isAttached ? (
         <>
-          <div className="text-xs text-muted-foreground">
-            Attached to:{" "}
-            {(() => {
-              const puppet = sceneItems.find((p) => p.id === attachedPuppetId);
-              if (!puppet) return 'Unknown';
-              const puppetRoot = (puppet.el as SVGGElement).firstChild as SVGGElement | null;
-              if (!puppetRoot) return 'Unknown';
-              const member = puppetRoot.querySelector(
-                `#${CSS.escape(attachedMemberId || '')}`,
-              ) as SVGGElement | null;
-              const memberName = member?.id || attachedMemberId;
-              return `${puppet.label} › ${memberName}`;
-            })()}
+          <div className="flex items-center gap-2 rounded border border-border bg-muted/30 px-2 py-1">
+            <span className="text-[10px] font-medium uppercase text-muted-foreground">Attached</span>
+            <span className="flex-1 text-xs text-foreground">
+              {(() => {
+                const puppet = sceneItems.find((p) => p.id === attachedPuppetId);
+                if (!puppet) return 'Unknown';
+                const puppetRoot = (puppet.el as SVGGElement).firstChild as SVGGElement | null;
+                if (!puppetRoot) return 'Unknown';
+                const member = puppetRoot.querySelector(
+                  `#${CSS.escape(attachedMemberId || '')}`,
+                ) as SVGGElement | null;
+                const memberName = member?.id || attachedMemberId;
+                return `${puppet.label} › ${memberName}`;
+              })()}
+            </span>
           </div>
-          <Button
+          <button
             type="button"
             onClick={handleDetachFromMember}
-            variant="destructive"
-            className="w-full"
+            className="rounded border border-destructive bg-destructive px-2 py-1 text-xs font-medium text-destructive-foreground hover:bg-destructive/90"
           >
-            Detach from Member
-          </Button>
+            Detach
+          </button>
         </>
       ) : (
-        <>
-          <div className="text-xs text-muted-foreground">
-            Select a puppet member to attach this image to
-          </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-medium uppercase text-muted-foreground">Attach to</span>
           <select
             onChange={(event) =>
               event.target.value && handleAttachToMember(event.target.value)
             }
             defaultValue=""
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+            className="w-36 rounded border border-border bg-background px-2 py-1 text-xs text-foreground"
           >
             <option value="">-- Select member --</option>
             {sceneItems
@@ -82,8 +79,8 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({
               .flat()
               .filter(Boolean)}
           </select>
-        </>
+        </div>
       )}
-    </section>
+    </div>
   );
 };

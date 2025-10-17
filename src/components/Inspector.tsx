@@ -11,7 +11,6 @@ import { SceneItemList } from "./inspector/SceneItemList";
 import { ItemProperties } from "./inspector/ItemProperties";
 import { TransformEditor } from "./inspector/TransformEditor";
 import { AttachmentEditor } from "./inspector/AttachmentEditor";
-import { DeleteItemButton } from "./inspector/DeleteItemButton";
 import { VariantEditor } from "./inspector/VariantEditor";
 import { MemberEditor } from "./inspector/MemberEditor";
 import { MemberTransformEditor } from "./inspector/MemberTransformEditor";
@@ -46,7 +45,6 @@ function InspectorComponent() {
   const {
     currentFrame,
     addKeyframe,
-    getTrack,
     removeAllTracksForTarget,
     getValueAtFrame,
     snapshotKeyframes,
@@ -218,16 +216,17 @@ function InspectorComponent() {
     setSelectedLimb("");
   }, [setSelectedItemId, setSelectedLimb]);
 
-  const handleDeleteItem = useCallback(() => {
-    if (!selectedItemId) return;
-    const item = sceneItems.find((i) => i.id === selectedItemId);
+  const handleDeleteItem = useCallback((id: string) => {
+    const item = sceneItems.find((i) => i.id === id);
     if (item?.el.parentNode) {
       item.el.parentNode.removeChild(item.el);
     }
-    removeSceneItem(selectedItemId);
-    removeAllTracksForTarget(selectedItemId); // Remove animation tracks
-    setSelectedItemId(null);
-    setSelectedLimb("");
+    removeSceneItem(id);
+    removeAllTracksForTarget(id); // Remove animation tracks
+    if (selectedItemId === id) {
+      setSelectedItemId(null);
+      setSelectedLimb("");
+    }
   }, [
     selectedItemId,
     sceneItems,
@@ -292,33 +291,6 @@ function InspectorComponent() {
       currentFrame,
       ensureInitialSnapshot,
     ],
-  );
-
-  // Add keyframe handler
-  const handleAddKeyframe = useCallback(
-    (property: AnimationProperty, value: number) => {
-      if (!selectedItemId) return;
-      const targetMemberId = selectedLimb || null;
-      addKeyframe(
-        selectedItemId,
-        targetMemberId,
-        property,
-        currentFrame,
-        value,
-      );
-    },
-    [selectedItemId, selectedLimb, currentFrame, addKeyframe],
-  );
-
-  // Check if property has keyframe at current frame
-  const hasKeyframe = useCallback(
-    (property: AnimationProperty): boolean => {
-      if (!selectedItemId) return false;
-      const targetMemberId = selectedLimb || null;
-      const track = getTrack(selectedItemId, targetMemberId, property);
-      return track?.keyframes.some((kf) => kf.frame === currentFrame) || false;
-    },
-    [selectedItemId, selectedLimb, currentFrame, getTrack],
   );
 
   // Handle position change
@@ -569,12 +541,13 @@ function InspectorComponent() {
   );
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex h-full flex-col gap-3 overflow-y-auto">
       <SceneItemList
         items={sceneItems}
         selectedId={selectedItemId}
         onSelectItem={handleSelectItem}
         onDeselectAll={handleDeselectAll}
+        onDeleteItem={handleDeleteItem}
       />
 
       {selectedItem ? (
@@ -587,8 +560,6 @@ function InspectorComponent() {
             handlePositionChange={handlePositionChange}
             handleRotationChange={handleRotationChange}
             handleScaleChange={handleScaleChange}
-            handleAddKeyframe={handleAddKeyframe}
-            hasKeyframe={hasKeyframe}
           />
 
           <AttachmentEditor
@@ -616,15 +587,11 @@ function InspectorComponent() {
             <MemberTransformEditor
               angle={angle}
               onAngleChange={handleAngleChange}
-              onAddKeyframe={handleAddKeyframe}
-              hasKeyframe={hasKeyframe}
             />
           )}
-
-          <DeleteItemButton onClick={handleDeleteItem} />
         </>
       ) : (
-        <div className="rounded-md border border-dashed border-border bg-muted/20 p-6 text-center text-sm text-muted-foreground">
+        <div className="rounded border border-dashed border-border bg-muted/20 p-4 text-center text-xs text-muted-foreground">
           Select an item from the list above
         </div>
       )}

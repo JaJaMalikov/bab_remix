@@ -1,4 +1,3 @@
-import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import React, { useState, useCallback, useEffect } from "react";
 import type { SceneItem } from "../../context/UiContext";
@@ -30,47 +29,37 @@ export const ItemProperties: React.FC<ItemPropertiesProps> = ({ item }) => {
   }, [item.id, labelInput, updateSceneItemLabel]);
 
   return (
-    <section className="flex flex-col gap-3">
-      <h4 className="text-sm font-semibold text-foreground">Properties</h4>
-      <div className="flex flex-col gap-1 rounded-md border border-border bg-muted/30 p-3">
-        <span className="text-xs uppercase tracking-wide text-muted-foreground">
-          Type
-        </span>
-        <span className="text-sm font-medium text-foreground">
-          {item.type === "puppet"
-            ? "Puppet"
-            : item.el instanceof SVGImageElement
-              ? "Image"
-              : "Object"}
-        </span>
-      </div>
-      <div className="flex flex-col gap-1 rounded-md border border-border bg-muted/30 p-3">
-        <span className="text-xs uppercase tracking-wide text-muted-foreground">
-          Name
-        </span>
-        {isEditing ? (
-          <div className="flex items-center gap-2">
-            <Input
-              type="text"
-              value={labelInput}
-              onChange={(event) => setLabelInput(event.target.value)}
-              onKeyDown={(event) => event.key === "Enter" && handleSaveLabel()}
-              autoFocus
-            />
-            <Button type="button" size="sm" onClick={handleSaveLabel}>
-              ✓
-            </Button>
-          </div>
-        ) : (
+    <div className="flex items-center gap-2 rounded border border-border bg-muted/30 p-2">
+      <span className="text-[10px] font-medium uppercase text-muted-foreground">
+        Name
+      </span>
+      {isEditing ? (
+        <div className="flex flex-1 items-center gap-1">
+          <Input
+            type="text"
+            value={labelInput}
+            onChange={(event) => setLabelInput(event.target.value)}
+            onKeyDown={(event) => event.key === "Enter" && handleSaveLabel()}
+            autoFocus
+            className="h-6 flex-1 text-xs"
+          />
           <button
             type="button"
-            onClick={handleStartEdit}
-            className="self-start text-sm font-medium text-foreground underline decoration-dotted underline-offset-4"
+            onClick={handleSaveLabel}
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-border bg-primary text-xs text-primary-foreground hover:bg-primary/90"
           >
-            {item.label}
+            ✓
           </button>
-        )}
-      </div>
-    </section>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={handleStartEdit}
+          className="flex-1 text-left text-xs font-medium text-foreground underline decoration-dotted underline-offset-2"
+        >
+          {item.label}
+        </button>
+      )}
+    </div>
   );
 };
