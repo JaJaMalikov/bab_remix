@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+
 @theme {
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));

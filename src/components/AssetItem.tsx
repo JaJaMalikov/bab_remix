@@ -34,23 +34,18 @@ export const AssetItem = memo(({ asset }: AssetItemProps) => {
       draggable
       onDragStart={handleDragStart}
       onDoubleClick={handleDoubleClick}
-      className="group flex cursor-grab flex-col gap-1.5 rounded-lg border border-transparent bg-muted/40 p-3 text-left transition hover:border-primary/60 hover:bg-muted/60 active:cursor-grabbing"
+      className="flex cursor-grab flex-col gap-1 rounded border border-transparent bg-muted/40 p-2 text-left transition hover:border-primary/60 hover:bg-muted/60 active:cursor-grabbing"
     >
-      <div className="relative aspect-square overflow-hidden rounded-md border border-border bg-background/60">
+      <div className="aspect-square overflow-hidden rounded border border-border bg-background/60">
         <img
           src={asset.path}
           alt={asset.name}
-          className="h-full w-full object-contain p-1.5 text-muted-foreground"
+          className="h-full w-full object-contain p-1"
         />
       </div>
-      <div className="space-y-0.5">
-        <p className="truncate text-xs font-medium text-foreground">
-          {asset.name}
-        </p>
-        <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-          {asset.type}
-        </p>
-      </div>
+      <p className="truncate text-[11px] font-medium text-foreground">
+        {asset.name}
+      </p>
     </button>
   );
 });

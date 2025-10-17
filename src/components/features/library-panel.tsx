@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Asset, AssetItem } from "../AssetItem";
-import { ScrollArea } from "../ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Icons } from "../ui/icons";
 
@@ -71,32 +70,30 @@ export function LibraryPanel() {
   }, []);
 
   return (
-    <div className="flex h-full flex-col gap-3">
-      <Tabs value={category} onValueChange={handleCategoryChange}>
-        <TabsList className="w-full">
-          {CATEGORY_TABS.map(({ value, label, icon: Icon }) => (
-            <TabsTrigger
-              key={value}
-              value={value}
-              className="justify-start"
-            >
-              <Icon className="h-4 w-4" aria-hidden />
-              {label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-        {CATEGORY_TABS.map(({ value }) => (
-          <TabsContent key={value} value={value} className="mt-0 flex-1">
-            <ScrollArea className="h-full">
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(128px,1fr))] gap-3">
-                {assetsByCategory[value].map((asset) => (
-                  <AssetItem key={asset.path} asset={asset} />
-                ))}
-              </div>
-            </ScrollArea>
-          </TabsContent>
+    <Tabs value={category} onValueChange={handleCategoryChange} className="flex h-full flex-col">
+      <TabsList className="w-full shrink-0">
+        {CATEGORY_TABS.map(({ value, label, icon: Icon }) => (
+          <TabsTrigger
+            key={value}
+            value={value}
+            className="justify-center"
+            title={label}
+          >
+            <Icon className="h-4 w-4" aria-hidden />
+          </TabsTrigger>
         ))}
-      </Tabs>
-    </div>
+      </TabsList>
+      {CATEGORY_TABS.map(({ value }) => (
+        <TabsContent key={value} value={value} className="mt-3 flex-1 overflow-hidden">
+          <div className="h-full overflow-y-auto">
+            <div className="grid grid-cols-2 gap-2">
+              {assetsByCategory[value].map((asset) => (
+                <AssetItem key={asset.path} asset={asset} />
+              ))}
+            </div>
+          </div>
+        </TabsContent>
+      ))}
+    </Tabs>
   );
 }
