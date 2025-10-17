@@ -5,18 +5,15 @@ import { Sidebar } from "./sidebar";
 interface AppLayoutProps extends PropsWithChildren {
   sidePanel?: React.ReactNode;
   timeline?: React.ReactNode;
-  menubar: React.ReactNode;
 }
 
 export function AppLayout({
   children,
   sidePanel,
   timeline,
-  menubar,
 }: AppLayoutProps) {
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
-      <header className="border-b border-border bg-muted/40">{menubar}</header>
       <div className="flex min-h-0 flex-1">
         <Sidebar />
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden">

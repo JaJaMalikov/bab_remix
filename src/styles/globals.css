@@ -50,11 +50,11 @@
   }
 
   * {
-    @apply border-border;
+    @apply border-[hsl(var(--border))];
   }
 
   body {
-    @apply bg-background text-foreground min-h-screen overflow-hidden;
+    @apply bg-[hsl(var(--background))] text-[hsl(var(--foreground))] min-h-screen overflow-hidden;
     font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
 
@@ -75,7 +75,7 @@
   }
 
   .timeline {
-    @apply flex flex-col overflow-hidden border-t border-border bg-card text-foreground;
+    @apply flex flex-col overflow-hidden border-t border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--foreground))];
   }
 
   .timeline-resizer {
@@ -84,11 +84,11 @@
 
   .timeline-resizer::after {
     content: "";
-    @apply absolute inset-x-0 top-1/2 mx-auto h-1 w-12 -translate-y-1/2 rounded-full bg-border;
+    @apply absolute inset-x-0 top-1/2 mx-auto h-1 w-12 -translate-y-1/2 rounded-full bg-[hsl(var(--border))];
   }
 
   .timeline-toolbar {
-    @apply flex items-center justify-between border-b border-border bg-muted/40 px-3 py-1.5;
+    @apply flex items-center justify-between border-b border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.4)] px-3 py-1.5;
   }
 
   .timeline-toolbar-left,
@@ -97,11 +97,11 @@
   }
 
   .timeline-icon-button {
-    @apply inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent bg-muted/40 text-sm text-muted-foreground transition hover:border-primary/40 hover:text-primary;
+    @apply inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent bg-[hsl(var(--muted)/0.4)] text-sm text-[hsl(var(--muted-foreground))] transition hover:border-[hsl(var(--primary)/0.4)] hover:text-[hsl(var(--primary))];
   }
 
   .timeline-readout {
-    @apply flex items-center gap-1 rounded-md border border-transparent bg-muted/30 px-2 py-1 text-xs uppercase tracking-wide text-muted-foreground;
+    @apply flex items-center gap-1 rounded-md border border-transparent bg-[hsl(var(--muted)/0.3)] px-2 py-1 text-xs uppercase tracking-wide text-[hsl(var(--muted-foreground))];
   }
 
   .timeline-readout-label {
@@ -109,7 +109,7 @@
   }
 
   .timeline-readout-value {
-    @apply font-semibold text-foreground;
+    @apply font-semibold text-[hsl(var(--foreground))];
   }
 
   .timeline-body {
@@ -117,7 +117,7 @@
   }
 
   .timeline-track-panel {
-    @apply flex min-h-0 w-52 flex-col border-r border-border bg-muted/30;
+    @apply flex min-h-0 w-36 flex-col border-r border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.3)];
   }
 
   .timeline-track-panel-header {
@@ -125,11 +125,11 @@
   }
 
   .timeline-track-toggle-list {
-    @apply flex min-h-0 flex-col gap-1.5 overflow-y-auto p-2.5;
+    @apply flex min-h-0 flex-col gap-1 overflow-y-auto p-1.5;
   }
 
   .timeline-track-toggle {
-    @apply rounded-md border border-transparent bg-background/30 px-3 py-1.5 text-left text-xs text-muted-foreground transition hover:border-primary/40 hover:text-foreground;
+    @apply rounded-md border border-transparent bg-background/30 px-2 py-1 text-left text-xs text-muted-foreground transition hover:border-primary/40 hover:text-foreground;
   }
 
   .timeline-track-toggle.is-active {
@@ -137,11 +137,11 @@
   }
 
   .timeline-track-toggle-label {
-    @apply text-xs font-semibold;
+    @apply text-[11px] font-semibold;
   }
 
   .timeline-track-toggle-desc {
-    @apply text-[11px] text-muted-foreground;
+    @apply hidden;
   }
 
   .timeline-track-view {
@@ -149,11 +149,11 @@
   }
 
   .timeline-track-header {
-    @apply grid grid-cols-[160px_1fr] border-b border-border bg-muted/20;
+    @apply grid grid-cols-[120px_1fr] border-b border-border bg-muted/20;
   }
 
   .timeline-track-label {
-    @apply flex items-center gap-2 border-b border-border bg-muted/10 px-2.5 py-1 text-xs font-medium text-muted-foreground;
+    @apply flex items-center gap-1.5 border-b border-border bg-muted/10 px-2 py-1 text-xs font-medium text-muted-foreground;
   }
 
   .timeline-track-label--header {
@@ -161,7 +161,7 @@
   }
 
   .timeline-track-label-icon {
-    @apply text-lg;
+    @apply text-base;
   }
 
   .timeline-track-label-text {
@@ -181,15 +181,15 @@
   }
 
   .timeline-track-row {
-    @apply grid grid-cols-[160px_1fr] bg-background;
+    @apply grid grid-cols-[120px_1fr] bg-background;
   }
 
   .timeline-track-layers {
-    @apply flex flex-col gap-1.5 border-l border-border px-2.5 py-2;
+    @apply flex flex-col gap-1 border-l border-border px-2 py-1.5;
   }
 
   .timeline-track-layer {
-    @apply relative h-8 overflow-hidden rounded-md border border-border bg-muted/20;
+    @apply relative h-6 overflow-hidden rounded-md border border-border bg-muted/20;
   }
 
   .timeline-track-layer.track-layer-visibility {

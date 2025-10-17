@@ -2,6 +2,7 @@ import {
   BackpackIcon,
   Crosshair1Icon,
   DownloadIcon,
+  HamburgerMenuIcon,
   ImageIcon,
   LayersIcon,
   MixerHorizontalIcon,
@@ -28,4 +29,5 @@ export const Icons = {
   fit: Crosshair1Icon,
   save: DownloadIcon,
   open: UploadIcon,
+  menu: HamburgerMenuIcon,
 };

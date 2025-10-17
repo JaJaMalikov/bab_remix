@@ -3,7 +3,6 @@ import { Inspector } from "./components/Inspector";
 import { Timeline } from "./components/Timeline";
 import { UiProvider, useUi } from "./context/UiContext";
 import { AnimationProvider } from "./context/AnimationContext";
-import { MenuBar } from "./components/MenuBar";
 import { Layers } from "./components/Layers";
 import { PlaybackMini } from "./components/PlaybackMini";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
@@ -78,11 +77,7 @@ function RootShell() {
   );
 
   return (
-    <AppLayout
-      menubar={<MenuBar />}
-      sidePanel={sidePanel}
-      timeline={timelineArea}
-    >
+    <AppLayout sidePanel={sidePanel} timeline={timelineArea}>
       <ErrorBoundary message="La scène SVG est temporairement indisponible.">
         <SvgScene />
       </ErrorBoundary>
