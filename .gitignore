@@ -14,7 +14,7 @@ dist-ssr
 
 src-tauri
 coverage
-
+exemple_timeline
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
