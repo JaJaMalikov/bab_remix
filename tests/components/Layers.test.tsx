@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
 import { Layers } from "../../src/components/Layers";
-import * as UiContext from "../../src/context/UiContext";
+import { resetUiState, useUi } from "../../src/context/UiContext";
 import { vi } from "vitest";
 
 // Mock child components
@@ -26,38 +26,53 @@ vi.mock("../../src/components/LayerItem", () => ({
 }));
 
 describe("Layers", () => {
+  beforeEach(() => {
+    act(() => {
+      resetUiState();
+    });
+  });
+
   afterEach(() => {
+    act(() => {
+      resetUiState();
+    });
     vi.restoreAllMocks();
   });
 
   it("should render the layers panel with items", () => {
-    const mockUi = {
-      sceneItems: [
-        { id: "1", label: "Layer 1" },
-        { id: "2", label: "Layer 2" },
-      ],
-      setShowLayers: vi.fn(),
-    };
-    vi.spyOn(UiContext, "useUi").mockReturnValue(mockUi as any);
+    act(() => {
+      useUi.setState({
+        sceneItems: [
+          {
+            id: "1",
+            type: "puppet",
+            label: "Layer 1",
+            el: document.createElement("div"),
+          },
+          {
+            id: "2",
+            type: "image",
+            label: "Layer 2",
+            el: document.createElement("div"),
+          },
+        ],
+      });
+    });
 
     render(<Layers />);
 
-    expect(screen.getByText("Layers")).toBeInTheDocument();
     expect(screen.getByText("Layer 1")).toBeInTheDocument();
     expect(screen.getByText("Layer 2")).toBeInTheDocument();
     expect(screen.queryByText("No items in scene")).not.toBeInTheDocument();
   });
 
   it("should render a message when there are no items", () => {
-    const mockUi = {
-      sceneItems: [],
-      setShowLayers: vi.fn(),
-    };
-    vi.spyOn(UiContext, "useUi").mockReturnValue(mockUi as any);
+    act(() => {
+      useUi.setState({ sceneItems: [] });
+    });
 
     render(<Layers />);
 
-    expect(screen.getByText("Layers")).toBeInTheDocument();
     expect(screen.getByText("No items in scene")).toBeInTheDocument();
   });
 });

@@ -1,6 +1,6 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, within, act } from "@testing-library/react";
 import { Inspector } from "../../src/components/Inspector";
-import * as UiContext from "../../src/context/UiContext";
+import { resetUiState, useUi } from "../../src/context/UiContext";
 import * as AnimationContext from "../../src/context/AnimationContext";
 import { vi } from "vitest";
 import "@testing-library/jest-dom";
@@ -21,19 +21,6 @@ describe("Inspector", () => {
     },
   ];
 
-  const createUiMock = (overrides: Record<string, unknown> = {}) => ({
-    sceneItems: [],
-    selectedItemId: null,
-    setSelectedItemId: vi.fn(),
-    selectedLimb: "",
-    setSelectedLimb: vi.fn(),
-    angle: 0,
-    setAngle: vi.fn(),
-    removeSceneItem: vi.fn(),
-    setShowInspector: vi.fn(),
-    ...overrides,
-  });
-
   const createAnimationMock = (overrides: Record<string, unknown> = {}) => ({
     currentFrame: 0,
     addKeyframe: vi.fn(),
@@ -44,42 +31,51 @@ describe("Inspector", () => {
     ...overrides,
   });
 
-  let useUiSpy: ReturnType<typeof vi.spyOn>;
-  let useAnimationSpy: ReturnType<typeof vi.spyOn>;
+  let animationSpy: ReturnType<typeof vi.spyOn>;
+  let animationMock: ReturnType<typeof createAnimationMock>;
 
   beforeEach(() => {
-    useUiSpy = vi.spyOn(UiContext, "useUi");
-    useAnimationSpy = vi.spyOn(AnimationContext, "useAnimation");
+    act(() => {
+      resetUiState();
+    });
+    animationMock = createAnimationMock();
+    animationSpy = vi.spyOn(AnimationContext, "useAnimation");
+    animationSpy.mockReturnValue(animationMock as never);
   });
 
   afterEach(() => {
+    act(() => {
+      resetUiState();
+    });
     vi.restoreAllMocks();
   });
 
   it("should render the inspector sections", () => {
-    const uiMock = createUiMock({
-      sceneItems: testSceneItems,
-      selectedItemId: "1",
+    act(() => {
+      useUi.setState({
+        sceneItems: testSceneItems,
+        selectedItemId: "1",
+      });
     });
-    useUiSpy.mockReturnValue(uiMock as never);
-    useAnimationSpy.mockReturnValue(createAnimationMock() as never);
 
     render(<Inspector />);
-    expect(screen.getByText(/Scene Items/i)).toBeInTheDocument();
-    expect(screen.getByText("Properties")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Delete Item/i })).toBeInTheDocument();
+    expect(screen.getByText(/ITEMS \(2\)/i)).toBeInTheDocument();
+    expect(screen.getByText("Name")).toBeInTheDocument();
+    expect(screen.getAllByTitle(/Delete item/i)[0]).toBeInTheDocument();
   });
 
   it("should display the list of scene items", () => {
-    const uiMock = createUiMock({
-      sceneItems: testSceneItems,
-      selectedItemId: "1",
+    act(() => {
+      useUi.setState({
+        sceneItems: testSceneItems,
+        selectedItemId: "1",
+      });
     });
-    useUiSpy.mockReturnValue(uiMock as never);
-    useAnimationSpy.mockReturnValue(createAnimationMock() as never);
 
     render(<Inspector />);
-    const sceneItemsList = screen.getByText(/Scene Items/).parentElement?.nextElementSibling;
+    const sceneItemsList = screen
+      .getByText(/ITEMS/)
+      .parentElement?.nextElementSibling;
     expect(sceneItemsList).toBeInTheDocument();
     if (sceneItemsList) {
       expect(
@@ -92,15 +88,15 @@ describe("Inspector", () => {
   });
 
   it("should display properties for the selected item", () => {
-    const uiMock = createUiMock({
-      sceneItems: testSceneItems,
-      selectedItemId: "1",
+    act(() => {
+      useUi.setState({
+        sceneItems: testSceneItems,
+        selectedItemId: "1",
+      });
     });
-    useUiSpy.mockReturnValue(uiMock as never);
-    useAnimationSpy.mockReturnValue(createAnimationMock() as never);
 
     render(<Inspector />);
-    const propertiesGroup = screen.getByText("Properties").parentElement;
+    const propertiesGroup = screen.getByText("Name").parentElement;
     expect(propertiesGroup).toBeInTheDocument();
     if (propertiesGroup) {
       expect(within(propertiesGroup).getByText("Name")).toBeInTheDocument();

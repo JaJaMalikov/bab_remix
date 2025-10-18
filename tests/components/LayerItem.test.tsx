@@ -1,27 +1,45 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { LayerItem } from "../../src/components/LayerItem";
-import * as UiContext from "../../src/context/UiContext";
+import { resetUiState, useUi } from "../../src/context/UiContext";
 import { vi } from "vitest";
 
 describe("LayerItem", () => {
   const bringForward = vi.fn();
   const sendBackward = vi.fn();
-  const setSelectedPuppet = vi.fn();
+  const setSelectedItemId = vi.fn();
+  const setShowInspector = vi.fn();
+  const setShowLayers = vi.fn();
+  const setShowLibrary = vi.fn();
 
   beforeEach(() => {
-    vi.spyOn(UiContext, "useUi").mockReturnValue({
-      bringForward,
-      sendBackward,
-      setSelectedPuppet,
-    } as any);
+    act(() => {
+      resetUiState();
+      useUi.setState({
+        bringForward,
+        sendBackward,
+        setSelectedItemId,
+        setShowInspector,
+        setShowLayers,
+        setShowLibrary,
+      });
+    });
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    act(() => {
+      resetUiState();
+    });
+    bringForward.mockReset();
+    sendBackward.mockReset();
+    setSelectedItemId.mockReset();
+    setShowInspector.mockReset();
+    setShowLayers.mockReset();
+    setShowLibrary.mockReset();
   });
 
   const item = {
     id: "1",
+    type: "puppet" as const,
     label: "Test Layer",
     el: document.createElementNS("http://www.w3.org/2000/svg", "g"),
   };
@@ -43,9 +61,12 @@ describe("LayerItem", () => {
     expect(bringForward).toHaveBeenCalledWith("1");
   });
 
-  it('should call setSelectedPuppet when the "Select" button is clicked', () => {
+  it('should update inspector state when the "Select" button is clicked', () => {
     render(<LayerItem item={item} />);
     fireEvent.click(screen.getByText("Select"));
-    expect(setSelectedPuppet).toHaveBeenCalledWith(item.el);
+    expect(setSelectedItemId).toHaveBeenCalledWith(item.id);
+    expect(setShowInspector).toHaveBeenCalledWith(true);
+    expect(setShowLayers).toHaveBeenCalledWith(false);
+    expect(setShowLibrary).toHaveBeenCalledWith(false);
   });
 });

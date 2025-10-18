@@ -1,24 +1,27 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
 import { SvgScene } from "../../src/components/SvgScene";
-import * as UiContext from "../../src/context/UiContext";
+import { resetUiState, useUi } from "../../src/context/UiContext";
 import * as AnimationContext from "../../src/context/AnimationContext";
 import { vi } from "vitest";
 
 describe("SvgScene", () => {
   beforeEach(() => {
-    vi.spyOn(UiContext, "useUi").mockReturnValue({
-      selectedPuppet: null,
-      selectedLimb: null,
-      angle: 0,
-      setSelectedPuppet: vi.fn(),
-      setSelectedLimb: vi.fn(),
-      setAngle: vi.fn(),
-      setSelectedItemId: vi.fn(),
-      sceneItems: [],
-      addSceneItem: vi.fn(),
-      setFitInView: vi.fn(),
-      setImportAsset: vi.fn(),
-    } as any);
+    act(() => {
+      resetUiState();
+      useUi.setState({
+        selectedPuppet: null,
+        selectedLimb: "",
+        angle: 0,
+        sceneItems: [],
+        addSceneItem: vi.fn(),
+        setSelectedPuppet: vi.fn(),
+        setSelectedLimb: vi.fn(),
+        setAngle: vi.fn(),
+        setSelectedItemId: vi.fn(),
+        setFitInView: vi.fn(),
+        setImportAsset: vi.fn(),
+      });
+    });
 
     vi.spyOn(AnimationContext, "useAnimation").mockReturnValue({
       currentFrame: 0,
@@ -30,6 +33,9 @@ describe("SvgScene", () => {
   });
 
   afterEach(() => {
+    act(() => {
+      resetUiState();
+    });
     vi.restoreAllMocks();
   });
 
