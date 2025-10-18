@@ -1,17 +1,6 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import type { Dispatch, ReactNode, SetStateAction } from "react";
-import {
-  readFromLocalStorage,
-  writeToLocalStorage,
-} from "../hooks/useLocalStorage";
+import type { ReactNode, SetStateAction } from "react";
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 export interface PuppetMetadata {
   id: string;
@@ -46,27 +35,24 @@ export interface UiState {
   angle: number;
   setAngle: (deg: number) => void;
 
-  // Selected scene item (for Inspector)
   selectedItemId: string | null;
   setSelectedItemId: (id: string | null) => void;
 
-  // Panels & layout
   showTimeline: boolean;
-  setShowTimeline: Dispatch<SetStateAction<boolean>>;
+  setShowTimeline: (value: SetStateAction<boolean>) => void;
   timelineHeight: number;
-  setTimelineHeight: Dispatch<SetStateAction<number>>;
+  setTimelineHeight: (value: SetStateAction<number>) => void;
   showLibrary: boolean;
-  setShowLibrary: Dispatch<SetStateAction<boolean>>;
+  setShowLibrary: (value: SetStateAction<boolean>) => void;
   showInspector: boolean;
-  setShowInspector: Dispatch<SetStateAction<boolean>>;
+  setShowInspector: (value: SetStateAction<boolean>) => void;
   showLayers: boolean;
-  setShowLayers: Dispatch<SetStateAction<boolean>>;
+  setShowLayers: (value: SetStateAction<boolean>) => void;
   showToolbar: boolean;
-  setShowToolbar: Dispatch<SetStateAction<boolean>>;
+  setShowToolbar: (value: SetStateAction<boolean>) => void;
   showTracks: boolean;
-  setShowTracks: Dispatch<SetStateAction<boolean>>;
+  setShowTracks: (value: SetStateAction<boolean>) => void;
 
-  // Scene items for Layers panel
   sceneItems: SceneItem[];
   addSceneItem: (item: SceneItem) => void;
   removeSceneItem: (id: string) => void;
@@ -74,7 +60,6 @@ export interface UiState {
   bringForward: (id: string) => void;
   sendBackward: (id: string) => void;
 
-  // Scene helpers injected by SvgScene
   fitInView?: () => void;
   setFitInView: (fn: (() => void) | undefined) => void;
   importAsset?: (asset: {
@@ -93,44 +78,41 @@ export interface UiState {
   ) => void;
 }
 
-const Ctx = createContext<UiState | null>(null);
-
-const NUMBERED_LABEL_SUFFIX = / \(\d+\)$/;
+type LayoutState = Pick<
+  UiState,
+  | "showTimeline"
+  | "timelineHeight"
+  | "showLibrary"
+  | "showInspector"
+  | "showLayers"
+  | "showToolbar"
+  | "showTracks"
+>;
 
 const LAYOUT_STORAGE_KEY = "ui:layout";
+const NUMBERED_LABEL_SUFFIX = / \(\d+\)$/;
 
-type LayoutState = {
-  showTimeline: boolean;
-  timelineHeight: number;
-  showLibrary: boolean;
-  showInspector: boolean;
-  showLayers: boolean;
-  showToolbar: boolean;
-  showTracks: boolean;
-};
+const createBaseState = () => ({
+  selectedPuppet: null as UiState["selectedPuppet"],
+  selectedLimb: "",
+  angle: 0,
+  selectedItemId: null as UiState["selectedItemId"],
+  showTimeline: true,
+  timelineHeight: 160,
+  showLibrary: true,
+  showInspector: true,
+  showLayers: false,
+  showToolbar: true,
+  showTracks: false,
+  sceneItems: [] as SceneItem[],
+  fitInView: undefined as UiState["fitInView"],
+  importAsset: undefined as UiState["importAsset"],
+});
 
-type LayoutStateSetters = {
-  [K in keyof LayoutState]: Dispatch<SetStateAction<LayoutState[K]>>;
-};
-
-type BooleanLayoutKey = {
-  [K in keyof LayoutState]: LayoutState[K] extends boolean ? K : never;
-}[keyof LayoutState];
-
-type NumberLayoutKey = {
-  [K in keyof LayoutState]: LayoutState[K] extends number ? K : never;
-}[keyof LayoutState];
-
-const booleanLayoutKeys: BooleanLayoutKey[] = [
-  "showTimeline",
-  "showLibrary",
-  "showInspector",
-  "showLayers",
-  "showToolbar",
-  "showTracks",
-];
-
-const numberLayoutKeys: NumberLayoutKey[] = ["timelineHeight"];
+const applySetStateAction = <T,>(
+  value: SetStateAction<T>,
+  previous: T,
+): T => (typeof value === "function" ? (value as (prev: T) => T)(previous) : value);
 
 const deriveUniqueLabel = (existing: SceneItem[], desiredLabel: string) => {
   const normalizedBase = desiredLabel.replace(NUMBERED_LABEL_SUFFIX, "");
@@ -146,264 +128,123 @@ const deriveUniqueLabel = (existing: SceneItem[], desiredLabel: string) => {
   return `${normalizedBase} (${suffix})`;
 };
 
-type UiProviderProps = { children: ReactNode };
+const reorderSceneItems = (
+  items: SceneItem[],
+  id: string,
+  direction: 1 | -1,
+): SceneItem[] => {
+  const index = items.findIndex((item) => item.id === id);
+  if (index === -1) {
+    return items;
+  }
 
-export const UiProvider = ({ children }: UiProviderProps) => {
-  const [selectedPuppet, setSelectedPuppet] = useState<SVGElement | null>(
-    null,
-  );
-  const [selectedLimb, setSelectedLimb] = useState<string>("");
-  const [angle, setAngle] = useState<number>(0);
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-  const [showTimeline, setShowTimeline] = useState<boolean>(true);
-  const [timelineHeight, setTimelineHeight] = useState<number>(160);
-  const [showLibrary, setShowLibrary] = useState<boolean>(true);
-  const [showInspector, setShowInspector] = useState<boolean>(true);
-  const [showLayers, setShowLayers] = useState<boolean>(false);
-  const [showToolbar, setShowToolbar] = useState<boolean>(true);
-  const [showTracks, setShowTracks] = useState<boolean>(false);
-  const [sceneItems, setSceneItems] = useState<SceneItem[]>([]);
-  const [, setHelpersVersion] = useState(0);
-  const fitInViewRef = useRef<UiState["fitInView"]>(undefined);
-  const importAssetRef = useRef<UiState["importAsset"]>(undefined);
+  const targetIndex = Math.min(Math.max(index + direction, 0), items.length - 1);
+  if (targetIndex === index) {
+    return items;
+  }
 
-  const layoutSetters = useMemo<LayoutStateSetters>(
-    () => ({
-      showTimeline: setShowTimeline,
-      timelineHeight: setTimelineHeight,
-      showLibrary: setShowLibrary,
-      showInspector: setShowInspector,
-      showLayers: setShowLayers,
-      showToolbar: setShowToolbar,
-      showTracks: setShowTracks,
-    }),
-    [
-      setShowTimeline,
-      setTimelineHeight,
-      setShowLibrary,
-      setShowInspector,
-      setShowLayers,
-      setShowToolbar,
-      setShowTracks,
-    ],
-  );
+  const currentItem = items[index];
+  const parent = currentItem.el.parentNode;
+  if (!parent) {
+    return items;
+  }
 
-  const layoutValues = useMemo<LayoutState>(
-    () => ({
-      showTimeline,
-      timelineHeight,
-      showLibrary,
-      showInspector,
-      showLayers,
-      showToolbar,
-      showTracks,
-    }),
-    [
-      showTimeline,
-      timelineHeight,
-      showLibrary,
-      showInspector,
-      showLayers,
-      showToolbar,
-      showTracks,
-    ],
-  );
+  if (direction > 0) {
+    const nextSibling = currentItem.el.nextSibling;
+    if (!nextSibling) {
+      return items;
+    }
+    parent.insertBefore(currentItem.el, nextSibling.nextSibling);
+  } else {
+    const previousSibling = currentItem.el.previousSibling;
+    if (!previousSibling) {
+      return items;
+    }
+    parent.insertBefore(currentItem.el, previousSibling);
+  }
 
-  const addSceneItem = useCallback<UiState["addSceneItem"]>((item) => {
-    setSceneItems((prev) => {
-      const existing = prev.filter((i) => i.id !== item.id);
-      const nextLabel = deriveUniqueLabel(existing, item.label);
-      return [...existing, { ...item, label: nextLabel }];
-    });
-  }, []);
-
-  const removeSceneItem = useCallback<UiState["removeSceneItem"]>((id) => {
-    setSceneItems((prev) => prev.filter((i) => i.id !== id));
-  }, []);
-
-  const updateSceneItemLabel = useCallback<UiState["updateSceneItemLabel"]>(
-    (id, label) => {
-      setSceneItems((prev) =>
-        prev.map((i) => (i.id === id ? { ...i, label } : i)),
-      );
-    },
-    [],
-  );
-
-  const reorderSceneItem = useCallback((id: string, direction: 1 | -1) => {
-    setSceneItems((prev) => {
-      const index = prev.findIndex((item) => item.id === id);
-      if (index === -1) {
-        return prev;
-      }
-
-      const targetIndex = Math.min(
-        Math.max(index + direction, 0),
-        prev.length - 1,
-      );
-      if (targetIndex === index) {
-        return prev;
-      }
-
-      const currentItem = prev[index];
-      const parent = currentItem.el.parentNode;
-      if (!parent) {
-        return prev;
-      }
-
-      if (direction > 0) {
-        const nextSibling = currentItem.el.nextSibling;
-        if (!nextSibling) {
-          return prev;
-        }
-        parent.insertBefore(currentItem.el, nextSibling.nextSibling);
-      } else {
-        const previousSibling = currentItem.el.previousSibling;
-        if (!previousSibling) {
-          return prev;
-        }
-        parent.insertBefore(currentItem.el, previousSibling);
-      }
-
-      const updated = [...prev];
-      const [moved] = updated.splice(index, 1);
-      updated.splice(targetIndex, 0, moved);
-      return updated;
-    });
-  }, []);
-
-  const bringForward = useCallback<UiState["bringForward"]>(
-    (id) => {
-      reorderSceneItem(id, 1);
-    },
-    [reorderSceneItem],
-  );
-
-  const sendBackward = useCallback<UiState["sendBackward"]>(
-    (id) => {
-      reorderSceneItem(id, -1);
-    },
-    [reorderSceneItem],
-  );
-
-  const setFitInView = useCallback<UiState["setFitInView"]>(
-    (fn) => {
-      const next = fn ?? undefined;
-      if (fitInViewRef.current === next) {
-        return;
-      }
-      fitInViewRef.current = next;
-      setHelpersVersion((version) => version + 1);
-    },
-    [setHelpersVersion],
-  );
-
-  const setImportAsset = useCallback<UiState["setImportAsset"]>(
-    (fn) => {
-      const next = fn ?? undefined;
-      if (importAssetRef.current === next) {
-        return;
-      }
-      importAssetRef.current = next;
-      setHelpersVersion((version) => version + 1);
-    },
-    [setHelpersVersion],
-  );
-
-  const fitInView = fitInViewRef.current;
-  const importAsset = importAssetRef.current;
-
-  // load persisted UI layout
-  useEffect(() => {
-    const parsed = readFromLocalStorage<
-      Partial<Record<keyof LayoutState, unknown>>
-    >(LAYOUT_STORAGE_KEY, {});
-
-    booleanLayoutKeys.forEach((key) => {
-      const candidate = parsed[key];
-      if (typeof candidate === "boolean") {
-        layoutSetters[key](candidate);
-      }
-    });
-
-    numberLayoutKeys.forEach((key) => {
-      const candidate = parsed[key];
-      if (typeof candidate === "number") {
-        layoutSetters[key](candidate);
-      }
-    });
-  }, [layoutSetters]);
-
-  // Persist layout changes
-  useEffect(() => {
-    writeToLocalStorage(LAYOUT_STORAGE_KEY, layoutValues);
-  }, [layoutValues]);
-
-  const value = useMemo(
-    () => ({
-      selectedPuppet,
-      setSelectedPuppet,
-      selectedLimb,
-      setSelectedLimb,
-      angle,
-      setAngle,
-      selectedItemId,
-      setSelectedItemId,
-      showTimeline,
-      setShowTimeline,
-      timelineHeight,
-      setTimelineHeight,
-      showLibrary,
-      setShowLibrary,
-      showInspector,
-      setShowInspector,
-      showLayers,
-      setShowLayers,
-      showToolbar,
-      setShowToolbar,
-      showTracks,
-      setShowTracks,
-      sceneItems,
-      addSceneItem,
-      removeSceneItem,
-      updateSceneItemLabel,
-      bringForward,
-      sendBackward,
-      fitInView,
-      setFitInView,
-      importAsset,
-      setImportAsset,
-    }),
-    [
-      selectedPuppet,
-      selectedLimb,
-      angle,
-      selectedItemId,
-      showTimeline,
-      timelineHeight,
-      showLibrary,
-      showInspector,
-      showLayers,
-      showToolbar,
-      showTracks,
-      sceneItems,
-      addSceneItem,
-      removeSceneItem,
-      updateSceneItemLabel,
-      bringForward,
-      sendBackward,
-      fitInView,
-      setFitInView,
-      importAsset,
-      setImportAsset,
-    ],
-  );
-
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  const updated = [...items];
+  const [moved] = updated.splice(index, 1);
+  updated.splice(targetIndex, 0, moved);
+  return updated;
 };
 
-export const useUi = () => {
-  const ctx = useContext(Ctx);
-  if (!ctx) throw new Error("useUi must be used within UiProvider");
-  return ctx;
+export const useUi = create<UiState>()(
+  persist(
+    (set) => ({
+      ...createBaseState(),
+      selectedPuppet: null,
+      setSelectedPuppet: (g) => set({ selectedPuppet: g }),
+
+      setSelectedLimb: (id) => set({ selectedLimb: id }),
+
+      setAngle: (deg) => set({ angle: deg }),
+
+      setSelectedItemId: (id) => set({ selectedItemId: id }),
+
+      setShowTimeline: (value) =>
+        set((state) => ({ showTimeline: applySetStateAction(value, state.showTimeline) })),
+      setTimelineHeight: (value) =>
+        set((state) => ({
+          timelineHeight: applySetStateAction(value, state.timelineHeight),
+        })),
+      setShowLibrary: (value) =>
+        set((state) => ({ showLibrary: applySetStateAction(value, state.showLibrary) })),
+      setShowInspector: (value) =>
+        set((state) => ({ showInspector: applySetStateAction(value, state.showInspector) })),
+      setShowLayers: (value) =>
+        set((state) => ({ showLayers: applySetStateAction(value, state.showLayers) })),
+      setShowToolbar: (value) =>
+        set((state) => ({ showToolbar: applySetStateAction(value, state.showToolbar) })),
+      setShowTracks: (value) =>
+        set((state) => ({ showTracks: applySetStateAction(value, state.showTracks) })),
+
+      addSceneItem: (item) =>
+        set((state) => {
+          const existing = state.sceneItems.filter((i) => i.id !== item.id);
+          const nextLabel = deriveUniqueLabel(existing, item.label);
+          return { sceneItems: [...existing, { ...item, label: nextLabel }] };
+        }),
+      removeSceneItem: (id) =>
+        set((state) => ({ sceneItems: state.sceneItems.filter((item) => item.id !== id) })),
+      updateSceneItemLabel: (id, label) =>
+        set((state) => ({
+          sceneItems: state.sceneItems.map((item) =>
+            item.id === id ? { ...item, label } : item,
+          ),
+        })),
+      bringForward: (id) =>
+        set((state) => ({ sceneItems: reorderSceneItems(state.sceneItems, id, 1) })),
+      sendBackward: (id) =>
+        set((state) => ({ sceneItems: reorderSceneItems(state.sceneItems, id, -1) })),
+
+      setFitInView: (fn) =>
+        set((state) => (state.fitInView === fn ? state : { fitInView: fn })),
+      setImportAsset: (fn) =>
+        set((state) => (state.importAsset === fn ? state : { importAsset: fn })),
+    }),
+    {
+      name: LAYOUT_STORAGE_KEY,
+      partialize: (state) => ({
+        showTimeline: state.showTimeline,
+        timelineHeight: state.timelineHeight,
+        showLibrary: state.showLibrary,
+        showInspector: state.showInspector,
+        showLayers: state.showLayers,
+        showToolbar: state.showToolbar,
+        showTracks: state.showTracks,
+      }) as Partial<UiState>,
+      merge: (persistedState, currentState) => ({
+        ...currentState,
+        ...((persistedState as LayoutState | undefined) ?? {}),
+      }),
+    },
+  ),
+);
+
+export const UiProvider = ({ children }: { children: ReactNode }) => <>{children}</>;
+
+export const resetUiState = () => {
+  useUi.setState(createBaseState());
 };
+

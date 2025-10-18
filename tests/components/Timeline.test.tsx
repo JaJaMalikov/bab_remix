@@ -1,17 +1,11 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
 import { Timeline } from "../../src/components/Timeline";
-import * as UiContext from "../../src/context/UiContext";
+import { resetUiState, useUi } from "../../src/context/UiContext";
 import * as AnimationContext from "../../src/context/AnimationContext";
 import { vi } from "vitest";
 
 describe("Timeline", () => {
-  const mockUi = {
-    timelineHeight: 100,
-    setTimelineHeight: vi.fn(),
-    sceneItems: [],
-  };
-
-  const mockAnimation = {
+  const createAnimationMock = () => ({
     duration: 100,
     currentFrame: 0,
     setCurrentFrame: vi.fn(),
@@ -22,22 +16,31 @@ describe("Timeline", () => {
     snapshotKeyframes: vi.fn(),
     addKeyframe: vi.fn(),
     getValueAtFrame: vi.fn(),
-  };
+  });
 
   beforeEach(() => {
-    vi.spyOn(UiContext, "useUi").mockReturnValue(mockUi as any);
+    act(() => {
+      resetUiState();
+      useUi.setState({
+        timelineHeight: 100,
+        sceneItems: [],
+      });
+    });
     vi.spyOn(AnimationContext, "useAnimation").mockReturnValue(
-      mockAnimation as any,
+      createAnimationMock() as never,
     );
   });
 
   afterEach(() => {
+    act(() => {
+      resetUiState();
+    });
     vi.restoreAllMocks();
   });
 
   it("should render the timeline without crashing", () => {
     render(<Timeline />);
-    expect(screen.getByText("Pistes")).toBeInTheDocument();
-    expect(screen.getByText("Élément")).toBeInTheDocument();
+    expect(screen.getByTitle("Lecture")).toBeInTheDocument();
+    expect(screen.getByText("Frame")).toBeInTheDocument();
   });
 });
