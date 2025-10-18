@@ -9,6 +9,7 @@ import { useUi } from "../context/UiContext";
 import { useAnimation } from "../context/AnimationContext";
 import { useTimelineData } from "../hooks/useTimelineData";
 import { useVerticalResize } from "../hooks/useVerticalResize";
+import { Icons } from "./ui/icons";
 
 const MIN_HEIGHT = 56;
 const MAX_HEIGHT = 180;
@@ -244,6 +245,12 @@ export const Timeline: React.FC = React.memo(() => {
   );
 
   const showTrackRows = sceneItems.length > 0;
+  const PlayPauseIcon = playing ? Icons.pause : Icons.play;
+  const StopIcon = Icons.stop;
+  const SnapshotIcon = Icons.camera;
+  const ZoomInIcon = Icons.zoomIn;
+  const ZoomOutIcon = Icons.zoomOut;
+  const ZoomResetIcon = Icons.zoomReset;
 
   return (
     <div className="timeline" style={{ height: timelineHeight }}>
@@ -254,71 +261,107 @@ export const Timeline: React.FC = React.memo(() => {
       />
 
       <div className="timeline-body">
-        <div className="timeline-track-panel">
-          <div className="timeline-controls">
-            <button
-              type="button"
-              className="timeline-icon-button"
-              title={playing ? "Pause" : "Lecture"}
-              onClick={handleTogglePlay}
+        <div
+          className="timeline-track-panel"
+          aria-label="Barre d’outils de la timeline"
+        >
+          <div className="timeline-panel-section">
+            <span className="timeline-panel-heading">Transport</span>
+            <div
+              className="timeline-controls"
+              role="group"
+              aria-label="Contrôles de lecture"
             >
-              {playing ? "⏸" : "▶"}
-            </button>
-            <button
-              type="button"
-              className="timeline-icon-button"
-              title="Revenir au début"
-              onClick={handleStop}
-            >
-              ⏹
-            </button>
-            <button
-              type="button"
-              className="timeline-icon-button"
-              title="Snapshot des éléments à ce frame"
-              onClick={() => snapshotKeyframes(sceneItems)}
-            >
-              📸
-            </button>
+              <button
+                type="button"
+                className="timeline-icon-button"
+                title={playing ? "Mettre en pause" : "Lecture"}
+                onClick={handleTogglePlay}
+                data-state={playing ? "active" : undefined}
+              >
+                <PlayPauseIcon className="timeline-icon" aria-hidden />
+                <span className="sr-only">
+                  {playing ? "Mettre la lecture en pause" : "Lancer la lecture"}
+                </span>
+              </button>
+              <button
+                type="button"
+                className="timeline-icon-button"
+                title="Revenir au début"
+                onClick={handleStop}
+              >
+                <StopIcon className="timeline-icon" aria-hidden />
+                <span className="sr-only">Revenir au début</span>
+              </button>
+              <button
+                type="button"
+                className="timeline-icon-button"
+                title="Snapshot des éléments à ce frame"
+                onClick={() => snapshotKeyframes(sceneItems)}
+              >
+                <SnapshotIcon className="timeline-icon" aria-hidden />
+                <span className="sr-only">
+                  Capturer les keyframes des éléments visibles
+                </span>
+              </button>
+            </div>
           </div>
-          <div className="timeline-info">
-            <span className="timeline-readout" title="Frame courante">
-              <span className="timeline-readout-label">Frame</span>
-              <span className="timeline-readout-value">{currentFrame}</span>
-            </span>
-            <span className="timeline-readout" title="Durée totale">
-              <span className="timeline-readout-label">Durée</span>
-              <span className="timeline-readout-value">{duration || 0}</span>
-            </span>
+          <div className="timeline-panel-section">
+            <span className="timeline-panel-heading">Aperçu</span>
+            <div
+              className="timeline-info"
+              role="group"
+              aria-label="Informations temporelles"
+            >
+              <div className="timeline-readout" title="Frame courante">
+                <span className="timeline-readout-label">Frame</span>
+                <span className="timeline-readout-value">{currentFrame}</span>
+              </div>
+              <div className="timeline-readout" title="Durée totale">
+                <span className="timeline-readout-label">Durée</span>
+                <span className="timeline-readout-value">{duration || 0}</span>
+              </div>
+            </div>
           </div>
-          <div className="timeline-zoom-controls">
-            <button
-              type="button"
-              className="timeline-icon-button"
-              title="Zoom +"
-              onClick={handleZoomIn}
-              disabled={zoom >= 5}
+          <div className="timeline-panel-section">
+            <span className="timeline-panel-heading">Zoom</span>
+            <div
+              className="timeline-zoom-controls"
+              role="group"
+              aria-label="Contrôles de zoom"
             >
-              +
-            </button>
-            <button
-              type="button"
-              className="timeline-icon-button"
-              title="Zoom −"
-              onClick={handleZoomOut}
-              disabled={zoom <= 1}
-            >
-              −
-            </button>
-            <button
-              type="button"
-              className="timeline-icon-button"
-              title="Reset zoom"
-              onClick={handleResetZoom}
-              disabled={zoom === 1}
-            >
-              ⊙
-            </button>
+              <button
+                type="button"
+                className="timeline-icon-button"
+                title="Zoom avant"
+                onClick={handleZoomIn}
+                disabled={zoom >= 5}
+              >
+                <ZoomInIcon className="timeline-icon" aria-hidden />
+                <span className="sr-only">Zoom avant</span>
+              </button>
+              <button
+                type="button"
+                className="timeline-icon-button"
+                title="Zoom arrière"
+                onClick={handleZoomOut}
+                disabled={zoom <= 1}
+              >
+                <ZoomOutIcon className="timeline-icon" aria-hidden />
+                <span className="sr-only">Zoom arrière</span>
+              </button>
+              <button
+                type="button"
+                className="timeline-icon-button"
+                title="Réinitialiser le zoom"
+                onClick={handleResetZoom}
+                disabled={zoom === 1}
+                data-state={zoom !== 1 ? "active" : undefined}
+              >
+                <ZoomResetIcon className="timeline-icon" aria-hidden />
+                <span className="sr-only">Réinitialiser le zoom</span>
+              </button>
+            </div>
           </div>
         </div>
 

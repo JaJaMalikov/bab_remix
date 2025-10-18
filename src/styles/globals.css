@@ -76,73 +76,117 @@
   }
 
   .timeline {
-    @apply flex flex-col overflow-hidden border-t border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--foreground))];
+    --timeline-panel-width: 13.5rem;
+    @apply relative flex flex-col overflow-hidden rounded-t-2xl border border-[hsl(var(--border)/0.6)] bg-[hsl(var(--background))] text-[hsl(var(--foreground))];
+    background-image: linear-gradient(
+      180deg,
+      hsl(var(--background)) 0%,
+      hsl(var(--background) / 0.92) 55%,
+      hsl(var(--muted) / 0.35) 100%
+    );
+    box-shadow: 0 -18px 42px rgba(8, 15, 25, 0.45);
+    backdrop-filter: blur(18px);
   }
 
   .timeline-resizer {
-    @apply relative h-2 cursor-row-resize bg-transparent;
+    @apply relative h-3 cursor-row-resize bg-transparent;
+  }
+
+  .timeline-resizer::before {
+    content: "";
+    @apply absolute inset-x-0 top-0 h-px bg-[hsl(var(--border)/0.6)];
   }
 
   .timeline-resizer::after {
     content: "";
-    @apply absolute inset-x-0 top-1/2 mx-auto h-1 w-12 -translate-y-1/2 rounded-full bg-[hsl(var(--border))];
+    @apply absolute inset-x-0 top-1/2 mx-auto h-1.5 w-16 -translate-y-1/2 rounded-full bg-[hsl(var(--border)/0.85)] transition-colors;
+    box-shadow: 0 2px 8px rgba(8, 15, 25, 0.3);
   }
 
+  .timeline-resizer:hover::after {
+    @apply bg-[hsl(var(--primary))];
+  }
+
+  .timeline-icon {
+    @apply h-4 w-4;
+  }
 
   .timeline-icon-button {
-    @apply inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent bg-[hsl(var(--muted)/0.4)] text-sm text-[hsl(var(--muted-foreground))] transition hover:border-[hsl(var(--primary)/0.4)] hover:text-[hsl(var(--primary))] disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:border-transparent disabled:hover:text-[hsl(var(--muted-foreground))];
+    @apply inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[hsl(var(--border)/0.5)] bg-[hsl(var(--background)/0.82)] text-[hsl(var(--muted-foreground))] transition-all hover:-translate-y-[1px] hover:border-[hsl(var(--primary)/0.6)] hover:text-[hsl(var(--foreground))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[hsl(var(--primary))] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:border-[hsl(var(--border)/0.5)] disabled:hover:text-[hsl(var(--muted-foreground))];
+    box-shadow: 0 10px 26px rgba(8, 15, 25, 0.32);
+    backdrop-filter: blur(12px);
   }
 
-  .timeline-readout {
-    @apply flex items-center gap-1 rounded-md border border-transparent bg-[hsl(var(--muted)/0.3)] px-2 py-1 text-xs uppercase tracking-wide text-[hsl(var(--muted-foreground))];
+  .timeline-icon-button[data-state="active"] {
+    @apply border-[hsl(var(--primary)/0.7)] bg-[hsl(var(--primary)/0.22)] text-[hsl(var(--primary-foreground))];
+    box-shadow: 0 12px 30px rgba(37, 99, 235, 0.28);
   }
 
-  .timeline-readout-label {
-    @apply font-medium;
+  .timeline-panel-section {
+    @apply flex flex-col gap-3 rounded-xl border border-[hsl(var(--border)/0.35)] bg-[hsl(var(--background)/0.6)] px-3 py-3;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(14px);
   }
 
-  .timeline-readout-value {
-    @apply font-semibold text-[hsl(var(--foreground))];
+  .timeline-panel-heading {
+    @apply text-[11px] font-semibold uppercase tracking-[0.28em] text-[hsl(var(--muted-foreground))];
   }
 
-  .timeline-body {
-    @apply flex min-h-0 flex-1 overflow-hidden;
-  }
-
-  .timeline-track-panel {
-    @apply flex min-h-0 w-36 flex-col gap-2 border-r border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.3)] p-2;
-  }
-
-  .timeline-controls {
-    @apply flex items-center gap-1.5;
+  .timeline-controls,
+  .timeline-zoom-controls {
+    @apply inline-flex flex-wrap items-center gap-2;
   }
 
   .timeline-info {
-    @apply flex flex-col gap-1;
+    @apply grid gap-2;
   }
 
-  .timeline-zoom-controls {
-    @apply flex items-center gap-1.5;
+  .timeline-readout {
+    @apply flex items-center justify-between gap-2 rounded-lg border border-[hsl(var(--border)/0.45)] bg-[hsl(var(--background)/0.78)] px-3 py-2 text-xs font-medium text-[hsl(var(--muted-foreground))];
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 8px 18px rgba(8, 15, 25, 0.28);
+  }
+
+  .timeline-readout-label {
+    @apply uppercase tracking-[0.3em];
+  }
+
+  .timeline-readout-value {
+    @apply font-semibold text-sm text-[hsl(var(--foreground))];
+    font-variant-numeric: tabular-nums;
+  }
+
+  .timeline-body {
+    @apply flex min-h-0 flex-1 overflow-hidden bg-transparent;
+  }
+
+  .timeline-track-panel {
+    width: var(--timeline-panel-width);
+    @apply flex min-h-0 flex-col gap-4 border-r border-[hsl(var(--border)/0.55)] bg-[hsl(var(--background)/0.72)] p-4;
+    box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(20px);
   }
 
   .timeline-track-view {
-    @apply flex min-h-0 flex-1 flex-col;
+    @apply flex min-h-0 flex-1 flex-col bg-[hsl(var(--background)/0.65)];
   }
 
   .timeline-track-header {
-    @apply grid grid-cols-[120px_1fr] border-b border-border bg-muted/20;
+    display: grid;
+    grid-template-columns: var(--timeline-panel-width) 1fr;
+    @apply items-center border-b border-[hsl(var(--border)/0.6)] bg-[hsl(var(--muted)/0.25)];
+    backdrop-filter: blur(16px);
   }
 
   .timeline-track-label {
-    @apply flex items-center gap-1.5 border-b border-border bg-muted/10 px-2 py-1 text-xs font-medium text-muted-foreground;
+    @apply flex items-center gap-2 border-b border-transparent bg-transparent px-4 py-3 text-sm font-medium text-[hsl(var(--foreground))];
   }
 
   .timeline-track-label--header {
-    @apply bg-muted/20 text-[11px] font-semibold uppercase tracking-wide;
+    @apply bg-[hsl(var(--muted)/0.3)] text-[11px] font-semibold uppercase tracking-[0.28em] text-[hsl(var(--muted-foreground))];
   }
 
   .timeline-track-label-icon {
-    @apply text-base;
+    @apply text-lg;
   }
 
   .timeline-track-label-text {
@@ -150,23 +194,25 @@
   }
 
   .timeline-track-scroll {
-    @apply relative flex-1 overflow-y-auto overflow-x-hidden;
+    @apply relative flex-1 overflow-y-auto overflow-x-hidden bg-[hsl(var(--background)/0.55)];
   }
 
   .timeline-track-empty {
-    @apply flex h-full items-center justify-center px-6 py-4 text-center text-sm text-muted-foreground;
+    @apply flex h-full items-center justify-center px-8 py-6 text-center text-sm text-[hsl(var(--muted-foreground))];
   }
 
   .timeline-track-list {
-    @apply flex flex-col divide-y divide-border;
+    @apply flex flex-col divide-y divide-[hsl(var(--border)/0.2)];
   }
 
   .timeline-track-row {
-    @apply grid grid-cols-[120px_1fr] bg-background;
+    display: grid;
+    grid-template-columns: var(--timeline-panel-width) 1fr;
+    @apply bg-transparent transition-colors hover:bg-[hsl(var(--muted)/0.12)];
   }
 
   .timeline-track-layers {
-    @apply relative flex flex-col border-l border-border;
+    @apply relative flex flex-col border-l border-[hsl(var(--border)/0.35)] bg-[hsl(var(--background)/0.58)];
   }
 
   .timeline-track-layers::-webkit-scrollbar {
@@ -178,39 +224,43 @@
   }
 
   .timeline-track-layer {
-    @apply relative h-6 overflow-hidden bg-muted/20;
+    @apply relative h-6 overflow-hidden rounded-md border border-[hsl(var(--border)/0.3)] bg-[hsl(var(--muted)/0.22)];
   }
 
   .timeline-track-layer.track-layer-visibility {
-    @apply bg-emerald-900/20;
+    @apply bg-emerald-500/15;
   }
 
   .timeline-track-layer.track-layer-position {
-    @apply bg-sky-900/20;
+    @apply bg-sky-500/15;
   }
 
   .timeline-track-layer.track-layer-rotation {
-    @apply bg-purple-900/20;
+    @apply bg-purple-500/15;
   }
 
   .timeline-track-playhead {
-    @apply pointer-events-none absolute inset-y-0 w-0.5 bg-primary z-10;
+    @apply pointer-events-none absolute inset-y-1 w-px bg-[hsl(var(--primary))];
+    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.32);
+    z-index: 10;
   }
 
   .timeline-track-segment {
-    @apply absolute top-0 h-full;
+    @apply absolute inset-y-1 rounded-md;
+    box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.18);
   }
 
   .timeline-track-segment.is-visible {
-    @apply bg-emerald-400/50;
+    @apply bg-emerald-400/60;
   }
 
   .timeline-track-segment.is-hidden {
-    @apply bg-muted/60;
+    @apply bg-[hsl(var(--muted)/0.55)];
   }
 
   .timeline-keyframe {
-    @apply absolute top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-sm bg-primary shadow;
+    @apply absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[3px] border border-[hsl(var(--background))] bg-[hsl(var(--primary))];
+    box-shadow: 0 0 0 1px rgba(8, 15, 25, 0.35), 0 4px 8px rgba(8, 15, 25, 0.3);
   }
 
   .timeline-keyframe.position-x {
@@ -226,7 +276,8 @@
   }
 
   .timeline-lane {
-    @apply relative h-12 cursor-col-resize select-none border-l border-border bg-background;
+    @apply relative h-14 cursor-col-resize select-none border-l border-[hsl(var(--border)/0.35)] bg-[hsl(var(--background)/0.6)];
+    backdrop-filter: blur(12px);
   }
 
   .timeline-lane::-webkit-scrollbar {
@@ -242,46 +293,53 @@
   }
 
   .timeline-lane-background {
-    @apply absolute inset-0 bg-gradient-to-b from-transparent via-muted/30 to-transparent;
+    @apply absolute inset-0;
+    background-image: linear-gradient(180deg, transparent 0%, rgba(148, 163, 184, 0.16) 50%, transparent 100%);
   }
 
   .timeline-playhead {
-    @apply pointer-events-none absolute inset-y-0 w-0.5 bg-primary;
+    @apply pointer-events-none absolute inset-y-0 w-px bg-[hsl(var(--primary))];
+    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.24);
   }
 
   .timeline-marker {
-    @apply absolute top-1/2 flex h-9 w-3 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-end text-[10px] text-muted-foreground;
+    @apply absolute top-1/2 flex h-10 w-8 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-end gap-1 rounded-lg border border-transparent bg-[hsl(var(--background)/0.9)] px-1 text-[10px] font-medium text-[hsl(var(--muted-foreground))] transition-colors hover:border-[hsl(var(--primary)/0.6)] hover:text-[hsl(var(--foreground))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[hsl(var(--primary))];
+    box-shadow: 0 6px 14px rgba(8, 15, 25, 0.3);
   }
 
   .timeline-marker.is-active {
-    @apply text-primary;
+    @apply border-[hsl(var(--primary))] bg-[hsl(var(--primary)/0.22)] text-[hsl(var(--primary-foreground))];
+    box-shadow: 0 12px 28px rgba(37, 99, 235, 0.35);
   }
 
   .timeline-marker-stem {
-    @apply h-4 w-px bg-border;
+    @apply h-4 w-px rounded-full bg-[hsl(var(--border)/0.8)];
   }
 
   .timeline-marker-cap {
-    @apply h-2 w-2 rotate-45 bg-border;
+    @apply h-2 w-2 rotate-45 rounded-[2px] bg-[hsl(var(--border)/0.8)];
   }
 
   .timeline-lane-empty {
-    @apply flex h-full items-center justify-center text-sm text-muted-foreground;
+    @apply flex h-full items-center justify-center px-6 text-sm text-[hsl(var(--muted-foreground))];
   }
 
   .timeline-lane-scale {
-    @apply absolute inset-x-0 bottom-0 h-4 min-h-4;
+    @apply absolute inset-x-0 bottom-0 h-6 min-h-6;
+    pointer-events: none;
+    background-image: linear-gradient(180deg, transparent 0%, rgba(148, 163, 184, 0.18) 100%);
   }
 
   .timeline-lane-tick {
-    @apply absolute bottom-0 flex h-full -translate-x-1/2 flex-col items-center text-[10px] text-muted-foreground;
+    @apply absolute bottom-0 flex h-full -translate-x-1/2 flex-col items-center justify-end text-[10px] font-medium text-[hsl(var(--muted-foreground))];
+    pointer-events: none;
   }
 
   .timeline-lane-tick-line {
-    @apply h-3 w-px bg-border;
+    @apply h-3 w-px rounded-full bg-[hsl(var(--border)/0.7)];
   }
 
   .timeline-lane-tick-label {
-    @apply mt-1;
+    @apply mt-1 font-mono;
   }
 }
