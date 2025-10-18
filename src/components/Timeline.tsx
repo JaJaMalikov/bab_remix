@@ -41,7 +41,38 @@ export const Timeline: React.FC = React.memo(() => {
   });
 
   const rulerScrollRef = useRef<HTMLDivElement | null>(null);
-  const [zoom, setZoom] = useState(1);
+  const tracksScrollRef = useRef<HTMLDivElement | null>(null);
+  const timelineBodyRef = useRef<HTMLDivElement | null>(null);
+
+  // Calculer le zoom par défaut pour remplir l'écran
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  useEffect(() => {
+    if (timelineBodyRef.current) {
+      // Soustraire la largeur du panneau de contrôle (~200px) et du label (~136px)
+      const width = timelineBodyRef.current.offsetWidth - 200 - 150;
+      setContainerWidth(width > 0 ? width : 800);
+    }
+  }, []);
+
+  const defaultZoom = useMemo(() => {
+    if (containerWidth > 0 && duration > 0) {
+      const pixelsPerFrame = 2;
+      const neededWidth = duration * pixelsPerFrame;
+      if (neededWidth < containerWidth) {
+        return containerWidth / neededWidth;
+      }
+    }
+    return 1;
+  }, [containerWidth, duration]);
+
+  const [zoom, setZoom] = useState(defaultZoom);
+
+  useEffect(() => {
+    if (defaultZoom > 1 && zoom === 1) {
+      setZoom(defaultZoom);
+    }
+  }, [defaultZoom, zoom]);
 
   const maxFrameIndex = Math.max(duration - 1, 0);
   const frameDivisor = Math.max(maxFrameIndex, 1);
@@ -124,8 +155,10 @@ export const Timeline: React.FC = React.memo(() => {
     setCurrentFrame(keyframeFrames[keyframeFrames.length - 1]);
   }, [currentFrame, keyframeFrames, setCurrentFrame]);
 
-  const syncScroll = useCallback((sourceScrollLeft: number) => {
-    if (rulerScrollRef.current) {
+  const syncScroll = useCallback((sourceScrollLeft: number, source: 'ruler' | 'tracks') => {
+    if (source === 'ruler' && tracksScrollRef.current) {
+      tracksScrollRef.current.scrollLeft = sourceScrollLeft;
+    } else if (source === 'tracks' && rulerScrollRef.current) {
       rulerScrollRef.current.scrollLeft = sourceScrollLeft;
     }
   }, []);
@@ -168,7 +201,7 @@ export const Timeline: React.FC = React.memo(() => {
         title="Redimensionner la timeline"
       />
 
-      <div className="timeline-body">
+      <div ref={timelineBodyRef} className="timeline-body">
         {/* Controls Panel */}
         <PlaybackControls
           isPlaying={playing}
@@ -194,7 +227,7 @@ export const Timeline: React.FC = React.memo(() => {
           <div
             ref={rulerScrollRef}
             className="timeline-ruler-scroll"
-            onScroll={(e) => syncScroll(e.currentTarget.scrollLeft)}
+            onScroll={(e) => syncScroll(e.currentTarget.scrollLeft, 'ruler')}
           >
             <TimelineRuler
               duration={duration}
@@ -207,17 +240,11 @@ export const Timeline: React.FC = React.memo(() => {
 
           {/* Tracks */}
           <div className="timeline-tracks-scroll">
-            {!showTrackRows && (
-              <div className="timeline-track-empty">
-                Aucun élément dans la scène pour le moment.
-              </div>
-            )}
-
             {showTrackRows && (
               <div
-                ref={rulerScrollRef}
+                ref={tracksScrollRef}
                 className="timeline-tracks-container"
-                onScroll={(e) => syncScroll(e.currentTarget.scrollLeft)}
+                onScroll={(e) => syncScroll(e.currentTarget.scrollLeft, 'tracks')}
               >
                 {itemTrackData.map((trackData) => {
                   // Prepare keyframes for the track
