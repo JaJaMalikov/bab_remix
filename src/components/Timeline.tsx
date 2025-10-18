@@ -24,12 +24,6 @@ const extractClientX = (event: MouseEvent | TouchEvent): number | null => {
   return (event as MouseEvent).clientX ?? null;
 };
 
-type TrackFilters = {
-  visibility: boolean;
-  position: boolean;
-  rotation: boolean;
-};
-
 export const Timeline: React.FC = React.memo(() => {
   const { timelineHeight, setTimelineHeight, sceneItems } = useUi();
   const {
@@ -52,14 +46,11 @@ export const Timeline: React.FC = React.memo(() => {
     maxHeight: MAX_HEIGHT,
   });
 
-  // All track types always enabled
-  const trackFilters: TrackFilters = {
-    visibility: true,
-    position: true,
-    rotation: true,
-  };
   const laneRef = useRef<HTMLDivElement | null>(null);
+  const rulerScrollRef = useRef<HTMLDivElement | null>(null);
+  const layersScrollRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const [isScrubbing, setIsScrubbing] = useState(false);
+  const [zoom, setZoom] = useState(1);
 
   const maxFrameIndex = Math.max(duration - 1, 0);
   const frameDivisor = Math.max(maxFrameIndex, 1);
@@ -141,23 +132,6 @@ export const Timeline: React.FC = React.memo(() => {
     [startScrubbing],
   );
 
-  const handleTrackLayerPointerDown = useCallback(
-    (
-      event:
-        | React.MouseEvent<HTMLDivElement>
-        | React.TouchEvent<HTMLDivElement>,
-    ) => {
-      event.preventDefault();
-      const clientX =
-        "touches" in event
-          ? (event.touches[0]?.clientX ?? null)
-          : ((event as React.MouseEvent).clientX ?? null);
-      if (clientX == null) return;
-      startScrubbing(clientX);
-    },
-    [startScrubbing],
-  );
-
   const toggleVisibilityAtFrame = useCallback(
     (itemId: string, frame: number) => {
       const currentValue = getValueAtFrame(itemId, null, "visible", frame);
@@ -229,6 +203,27 @@ export const Timeline: React.FC = React.memo(() => {
     setCurrentFrame(0);
   }, [setCurrentFrame, setPlaying]);
 
+  const handleZoomIn = useCallback(() => {
+    setZoom((prev) => Math.min(prev + 0.5, 5));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setZoom((prev) => Math.max(prev - 0.5, 1));
+  }, []);
+
+  const handleResetZoom = useCallback(() => {
+    setZoom(1);
+  }, []);
+
+  const syncScroll = useCallback((sourceScrollLeft: number) => {
+    if (rulerScrollRef.current) {
+      rulerScrollRef.current.scrollLeft = sourceScrollLeft;
+    }
+    layersScrollRefs.current.forEach((el) => {
+      if (el) el.scrollLeft = sourceScrollLeft;
+    });
+  }, []);
+
   const gotoFrame = useCallback(
     (frame: number) => {
       setCurrentFrame(clamp(frame, 0, frameDivisor));
@@ -296,6 +291,35 @@ export const Timeline: React.FC = React.memo(() => {
               <span className="timeline-readout-value">{duration || 0}</span>
             </span>
           </div>
+          <div className="timeline-zoom-controls">
+            <button
+              type="button"
+              className="timeline-icon-button"
+              title="Zoom +"
+              onClick={handleZoomIn}
+              disabled={zoom >= 5}
+            >
+              +
+            </button>
+            <button
+              type="button"
+              className="timeline-icon-button"
+              title="Zoom −"
+              onClick={handleZoomOut}
+              disabled={zoom <= 1}
+            >
+              −
+            </button>
+            <button
+              type="button"
+              className="timeline-icon-button"
+              title="Reset zoom"
+              onClick={handleResetZoom}
+              disabled={zoom === 1}
+            >
+              ⊙
+            </button>
+          </div>
         </div>
 
         <div className="timeline-track-view">
@@ -304,18 +328,24 @@ export const Timeline: React.FC = React.memo(() => {
               Élément
             </div>
             <div
+              ref={rulerScrollRef}
               className={`timeline-lane${isScrubbing ? " is-scrubbing" : ""}`}
-              ref={laneRef}
-              onMouseDown={handleLanePointerDown}
-              onTouchStart={handleLanePointerDown}
-              role="presentation"
+              style={{ overflowX: zoom > 1 ? "auto" : "hidden" }}
+              onScroll={(e) => syncScroll(e.currentTarget.scrollLeft)}
             >
               <div className="timeline-lane-background" />
               <div
-                className="timeline-playhead"
-                style={{ left: `${currentFramePosition}%` }}
-              />
-              {frameMarkers.map(({ frame, count }) => {
+                ref={laneRef}
+                style={{ width: `${zoom * 100}%`, position: "relative", minHeight: "48px" }}
+                onMouseDown={handleLanePointerDown}
+                onTouchStart={handleLanePointerDown}
+                role="presentation"
+              >
+                <div
+                  className="timeline-playhead"
+                  style={{ left: `${currentFramePosition}%` }}
+                />
+                {frameMarkers.map(({ frame, count }) => {
                 const left = (frame / safeFrameDivisor) * 100;
                 return (
                   <button
@@ -363,6 +393,7 @@ export const Timeline: React.FC = React.memo(() => {
                   );
                 })}
               </div>
+              </div>
             </div>
           </div>
 
@@ -390,12 +421,20 @@ export const Timeline: React.FC = React.memo(() => {
                           {trackData.label}
                         </span>
                       </div>
-                      <div className="timeline-track-layers">
-                        <div
-                          className="timeline-track-playhead"
-                          style={{ left: `${currentFramePosition}%` }}
-                        />
-                        {trackFilters.visibility && (
+                      <div
+                        ref={(el) => {
+                          if (el) layersScrollRefs.current.set(trackData.id, el);
+                          else layersScrollRefs.current.delete(trackData.id);
+                        }}
+                        className="timeline-track-layers"
+                        style={{ overflowX: zoom > 1 ? "auto" : "hidden" }}
+                        onScroll={(e) => syncScroll(e.currentTarget.scrollLeft)}
+                      >
+                        <div style={{ width: `${zoom * 100}%`, position: "relative" }}>
+                          <div
+                            className="timeline-track-playhead"
+                            style={{ left: `${currentFramePosition}%` }}
+                          />
                           <div
                             className="timeline-track-layer track-layer-visibility"
                             onMouseDown={(event) =>
@@ -412,77 +451,57 @@ export const Timeline: React.FC = React.memo(() => {
                             }
                             role="presentation"
                           >
-                            {trackData.visibility.map((segment, index) => {
-                              const start = clamp(
-                                segment.start,
-                                0,
-                                frameDivisor,
-                              );
-                              const end = clamp(segment.end, 0, frameDivisor);
-                              const leftPercent =
-                                (start / safeFrameDivisor) * 100;
-                              const span = Math.max(end - start, 1);
-                              const widthPercent = Math.min(
-                                (span / safeFrameDivisor) * 100,
-                                100 - leftPercent,
-                              );
-                              return (
-                                <div
-                                  key={index}
-                                  className={`timeline-track-segment${segment.visible ? " is-visible" : " is-hidden"}`}
-                                  style={{
-                                    left: `${leftPercent}%`,
-                                    width: `${widthPercent}%`,
-                                  }}
-                                />
-                              );
-                            })}
+                          {trackData.visibility.map((segment, index) => {
+                            const start = clamp(
+                              segment.start,
+                              0,
+                              frameDivisor,
+                            );
+                            const end = clamp(segment.end, 0, frameDivisor);
+                            const leftPercent =
+                              (start / safeFrameDivisor) * 100;
+                            const span = Math.max(end - start, 1);
+                            const widthPercent = Math.min(
+                              (span / safeFrameDivisor) * 100,
+                              100 - leftPercent,
+                            );
+                            return (
+                              <div
+                                key={index}
+                                className={`timeline-track-segment${segment.visible ? " is-visible" : " is-hidden"}`}
+                                style={{
+                                  left: `${leftPercent}%`,
+                                  width: `${widthPercent}%`,
+                                }}
+                              />
+                            );
+                          })}
+                          {trackData.position.map((kf, index) => {
+                            const leftPercent =
+                              (kf.frame / safeFrameDivisor) * 100;
+                            return (
+                              <div
+                                key={`${kf.axis}-${index}-${kf.frame}`}
+                                className={`timeline-keyframe position-${kf.axis}`}
+                                style={{ left: `${leftPercent}%` }}
+                                title={`${kf.axis.toUpperCase()} • Frame ${kf.frame}`}
+                              />
+                            );
+                          })}
+                          {trackData.rotation.map((kf, index) => {
+                            const leftPercent =
+                              (kf.frame / safeFrameDivisor) * 100;
+                            return (
+                              <div
+                                key={`${trackData.id}-rot-${index}-${kf.frame}`}
+                                className="timeline-keyframe rotation"
+                                style={{ left: `${leftPercent}%` }}
+                                title={`Rotation • Frame ${kf.frame}`}
+                              />
+                            );
+                          })}
                           </div>
-                        )}
-
-                        {trackFilters.position && (
-                          <div
-                            className="timeline-track-layer track-layer-position"
-                            onMouseDown={handleTrackLayerPointerDown}
-                            onTouchStart={handleTrackLayerPointerDown}
-                            role="presentation"
-                          >
-                            {trackData.position.map((kf, index) => {
-                              const leftPercent =
-                                (kf.frame / safeFrameDivisor) * 100;
-                              return (
-                                <div
-                                  key={`${kf.axis}-${index}-${kf.frame}`}
-                                  className={`timeline-keyframe position-${kf.axis}`}
-                                  style={{ left: `${leftPercent}%` }}
-                                  title={`${kf.axis.toUpperCase()} • Frame ${kf.frame}`}
-                                />
-                              );
-                            })}
-                          </div>
-                        )}
-
-                        {trackFilters.rotation && (
-                          <div
-                            className="timeline-track-layer track-layer-rotation"
-                            onMouseDown={handleTrackLayerPointerDown}
-                            onTouchStart={handleTrackLayerPointerDown}
-                            role="presentation"
-                          >
-                            {trackData.rotation.map((kf, index) => {
-                              const leftPercent =
-                                (kf.frame / safeFrameDivisor) * 100;
-                              return (
-                                <div
-                                  key={`${trackData.id}-rot-${index}-${kf.frame}`}
-                                  className="timeline-keyframe rotation"
-                                  style={{ left: `${leftPercent}%` }}
-                                  title={`Rotation • Frame ${kf.frame}`}
-                                />
-                              );
-                            })}
-                          </div>
-                        )}
+                        </div>
                       </div>
                     </div>
                   );

@@ -90,7 +90,7 @@
 
 
   .timeline-icon-button {
-    @apply inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent bg-[hsl(var(--muted)/0.4)] text-sm text-[hsl(var(--muted-foreground))] transition hover:border-[hsl(var(--primary)/0.4)] hover:text-[hsl(var(--primary))];
+    @apply inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent bg-[hsl(var(--muted)/0.4)] text-sm text-[hsl(var(--muted-foreground))] transition hover:border-[hsl(var(--primary)/0.4)] hover:text-[hsl(var(--primary))] disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:border-transparent disabled:hover:text-[hsl(var(--muted-foreground))];
   }
 
   .timeline-readout {
@@ -119,6 +119,10 @@
 
   .timeline-info {
     @apply flex flex-col gap-1;
+  }
+
+  .timeline-zoom-controls {
+    @apply flex items-center gap-1.5;
   }
 
   .timeline-track-view {
@@ -165,6 +169,14 @@
     @apply relative flex flex-col border-l border-border;
   }
 
+  .timeline-track-layers::-webkit-scrollbar {
+    display: none;
+  }
+
+  .timeline-track-layers {
+    scrollbar-width: none;
+  }
+
   .timeline-track-layer {
     @apply relative h-6 overflow-hidden bg-muted/20;
   }
@@ -198,7 +210,7 @@
   }
 
   .timeline-keyframe {
-    @apply absolute top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 rounded-sm bg-primary shadow;
+    @apply absolute top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-sm bg-primary shadow;
   }
 
   .timeline-keyframe.position-x {
@@ -217,6 +229,14 @@
     @apply relative h-12 cursor-col-resize select-none border-l border-border bg-background;
   }
 
+  .timeline-lane::-webkit-scrollbar {
+    display: none;
+  }
+
+  .timeline-lane {
+    scrollbar-width: none;
+  }
+
   .timeline-lane.is-scrubbing {
     @apply cursor-grabbing;
   }
@@ -230,7 +250,7 @@
   }
 
   .timeline-marker {
-    @apply absolute top-1/2 flex h-9 w-3 -translate-y-1/2 flex-col items-center justify-end text-[10px] text-muted-foreground;
+    @apply absolute top-1/2 flex h-9 w-3 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-end text-[10px] text-muted-foreground;
   }
 
   .timeline-marker.is-active {
@@ -250,11 +270,11 @@
   }
 
   .timeline-lane-scale {
-    @apply absolute inset-x-0 bottom-0 h-4;
+    @apply absolute inset-x-0 bottom-0 h-4 min-h-4;
   }
 
   .timeline-lane-tick {
-    @apply absolute bottom-0 flex h-full flex-col items-center text-[10px] text-muted-foreground;
+    @apply absolute bottom-0 flex h-full -translate-x-1/2 flex-col items-center text-[10px] text-muted-foreground;
   }
 
   .timeline-lane-tick-line {

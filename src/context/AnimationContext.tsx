@@ -448,7 +448,7 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const loop = (now: number) => {
       const elapsed = now - startTimeRef.current;
-      const frame = Math.floor((elapsed / 1000) * 30); // 30 fps
+      const frame = Math.max(0, Math.floor((elapsed / 1000) * 30)); // 30 fps, never negative
 
       if (frame >= duration) {
         setCurrentFrame(0);
