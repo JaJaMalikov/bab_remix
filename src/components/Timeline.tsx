@@ -24,28 +24,10 @@ const extractClientX = (event: MouseEvent | TouchEvent): number | null => {
   return (event as MouseEvent).clientX ?? null;
 };
 
-type TrackId = "visibility" | "position" | "rotation";
-
-type TrackFilters = Record<TrackId, boolean>;
-
-const TRACK_OPTIONS: Array<{
-  id: TrackId;
-  label: string;
-  description: string;
-}> = [
-  {
-    id: "visibility",
-    label: "Visibilité",
-    description: "Segments d'apparition / disparition",
-  },
-  { id: "position", label: "Position", description: "Keyframes X / Y" },
-  { id: "rotation", label: "Rotation", description: "Keyframes de rotation" },
-];
-
-const DEFAULT_TRACK_FILTERS: TrackFilters = {
-  visibility: true,
-  position: true,
-  rotation: false,
+type TrackFilters = {
+  visibility: boolean;
+  position: boolean;
+  rotation: boolean;
 };
 
 export const Timeline: React.FC = React.memo(() => {
@@ -70,9 +52,12 @@ export const Timeline: React.FC = React.memo(() => {
     maxHeight: MAX_HEIGHT,
   });
 
-  const [trackFilters, setTrackFilters] = useState<TrackFilters>(
-    DEFAULT_TRACK_FILTERS,
-  );
+  // All track types always enabled
+  const trackFilters: TrackFilters = {
+    visibility: true,
+    position: true,
+    rotation: true,
+  };
   const laneRef = useRef<HTMLDivElement | null>(null);
   const [isScrubbing, setIsScrubbing] = useState(false);
 
@@ -234,9 +219,6 @@ export const Timeline: React.FC = React.memo(() => {
     return 1;
   }, [frameDivisor]);
 
-  const handleToggleTrackFilter = useCallback((id: TrackId) => {
-    setTrackFilters((prev) => ({ ...prev, [id]: !prev[id] }));
-  }, []);
 
   const handleTogglePlay = useCallback(() => {
     setPlaying(!playing);
@@ -266,10 +248,7 @@ export const Timeline: React.FC = React.memo(() => {
     [removeKeyframe, tracks],
   );
 
-  const activeTrackCount = TRACK_OPTIONS.filter(
-    (option) => trackFilters[option.id],
-  ).length;
-  const showTrackRows = activeTrackCount > 0 && sceneItems.length > 0;
+  const showTrackRows = sceneItems.length > 0;
 
   return (
     <div className="timeline" style={{ height: timelineHeight }}>
@@ -278,65 +257,44 @@ export const Timeline: React.FC = React.memo(() => {
         onMouseDown={onResizeMouseDown}
         title="Redimensionner la timeline"
       />
-      <div className="timeline-toolbar">
-        <div className="timeline-toolbar-left">
-          <button
-            type="button"
-            className="timeline-icon-button"
-            title={playing ? "Pause" : "Lecture"}
-            onClick={handleTogglePlay}
-          >
-            {playing ? "⏸" : "▶"}
-          </button>
-          <button
-            type="button"
-            className="timeline-icon-button"
-            title="Revenir au début"
-            onClick={handleStop}
-          >
-            ⏹
-          </button>
-          <button
-            type="button"
-            className="timeline-icon-button"
-            title="Snapshot des éléments à ce frame"
-            onClick={() => snapshotKeyframes(sceneItems)}
-          >
-            📸
-          </button>
-        </div>
-        <div className="timeline-toolbar-right">
-          <span className="timeline-readout" title="Frame courante">
-            <span className="timeline-readout-label">Frame</span>
-            <span className="timeline-readout-value">{currentFrame}</span>
-          </span>
-          <span className="timeline-readout" title="Durée totale">
-            <span className="timeline-readout-label">Durée</span>
-            <span className="timeline-readout-value">{duration || 0}</span>
-          </span>
-        </div>
-      </div>
 
       <div className="timeline-body">
         <div className="timeline-track-panel">
-          <div className="timeline-track-panel-header">Pistes</div>
-          <div className="timeline-track-toggle-list">
-            {TRACK_OPTIONS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                className={`timeline-track-toggle${trackFilters[option.id] ? " is-active" : ""}`}
-                onClick={() => handleToggleTrackFilter(option.id)}
-                aria-pressed={trackFilters[option.id]}
-              >
-                <span className="timeline-track-toggle-label">
-                  {option.label}
-                </span>
-                <span className="timeline-track-toggle-desc">
-                  {option.description}
-                </span>
-              </button>
-            ))}
+          <div className="timeline-controls">
+            <button
+              type="button"
+              className="timeline-icon-button"
+              title={playing ? "Pause" : "Lecture"}
+              onClick={handleTogglePlay}
+            >
+              {playing ? "⏸" : "▶"}
+            </button>
+            <button
+              type="button"
+              className="timeline-icon-button"
+              title="Revenir au début"
+              onClick={handleStop}
+            >
+              ⏹
+            </button>
+            <button
+              type="button"
+              className="timeline-icon-button"
+              title="Snapshot des éléments à ce frame"
+              onClick={() => snapshotKeyframes(sceneItems)}
+            >
+              📸
+            </button>
+          </div>
+          <div className="timeline-info">
+            <span className="timeline-readout" title="Frame courante">
+              <span className="timeline-readout-label">Frame</span>
+              <span className="timeline-readout-value">{currentFrame}</span>
+            </span>
+            <span className="timeline-readout" title="Durée totale">
+              <span className="timeline-readout-label">Durée</span>
+              <span className="timeline-readout-value">{duration || 0}</span>
+            </span>
           </div>
         </div>
 
@@ -411,9 +369,7 @@ export const Timeline: React.FC = React.memo(() => {
           <div className="timeline-track-scroll">
             {!showTrackRows && (
               <div className="timeline-track-empty">
-                {sceneItems.length === 0
-                  ? "Aucun élément dans la scène pour le moment."
-                  : "Sélectionner au moins un type de piste pour visualiser la timeline."}
+                Aucun élément dans la scène pour le moment.
               </div>
             )}
 
@@ -435,6 +391,10 @@ export const Timeline: React.FC = React.memo(() => {
                         </span>
                       </div>
                       <div className="timeline-track-layers">
+                        <div
+                          className="timeline-track-playhead"
+                          style={{ left: `${currentFramePosition}%` }}
+                        />
                         {trackFilters.visibility && (
                           <div
                             className="timeline-track-layer track-layer-visibility"
@@ -477,10 +437,6 @@ export const Timeline: React.FC = React.memo(() => {
                                 />
                               );
                             })}
-                            <div
-                              className="timeline-track-playhead"
-                              style={{ left: `${currentFramePosition}%` }}
-                            />
                           </div>
                         )}
 
@@ -503,10 +459,6 @@ export const Timeline: React.FC = React.memo(() => {
                                 />
                               );
                             })}
-                            <div
-                              className="timeline-track-playhead"
-                              style={{ left: `${currentFramePosition}%` }}
-                            />
                           </div>
                         )}
 
@@ -529,10 +481,6 @@ export const Timeline: React.FC = React.memo(() => {
                                 />
                               );
                             })}
-                            <div
-                              className="timeline-track-playhead"
-                              style={{ left: `${currentFramePosition}%` }}
-                            />
                           </div>
                         )}
                       </div>

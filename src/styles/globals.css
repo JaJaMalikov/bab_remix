@@ -88,14 +88,6 @@
     @apply absolute inset-x-0 top-1/2 mx-auto h-1 w-12 -translate-y-1/2 rounded-full bg-[hsl(var(--border))];
   }
 
-  .timeline-toolbar {
-    @apply flex items-center justify-between border-b border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.4)] px-3 py-1.5;
-  }
-
-  .timeline-toolbar-left,
-  .timeline-toolbar-right {
-    @apply flex items-center gap-2;
-  }
 
   .timeline-icon-button {
     @apply inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent bg-[hsl(var(--muted)/0.4)] text-sm text-[hsl(var(--muted-foreground))] transition hover:border-[hsl(var(--primary)/0.4)] hover:text-[hsl(var(--primary))];
@@ -118,31 +110,15 @@
   }
 
   .timeline-track-panel {
-    @apply flex min-h-0 w-36 flex-col border-r border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.3)];
+    @apply flex min-h-0 w-36 flex-col gap-2 border-r border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.3)] p-2;
   }
 
-  .timeline-track-panel-header {
-    @apply border-b border-border px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground;
+  .timeline-controls {
+    @apply flex items-center gap-1.5;
   }
 
-  .timeline-track-toggle-list {
-    @apply flex min-h-0 flex-col gap-1 overflow-y-auto p-1.5;
-  }
-
-  .timeline-track-toggle {
-    @apply rounded-md border border-transparent bg-background/30 px-2 py-1 text-left text-xs text-muted-foreground transition hover:border-primary/40 hover:text-foreground;
-  }
-
-  .timeline-track-toggle.is-active {
-    @apply border-primary/60 bg-primary/10 text-foreground;
-  }
-
-  .timeline-track-toggle-label {
-    @apply text-[11px] font-semibold;
-  }
-
-  .timeline-track-toggle-desc {
-    @apply hidden;
+  .timeline-info {
+    @apply flex flex-col gap-1;
   }
 
   .timeline-track-view {
@@ -186,11 +162,11 @@
   }
 
   .timeline-track-layers {
-    @apply flex flex-col gap-1 border-l border-border px-2 py-1.5;
+    @apply relative flex flex-col border-l border-border;
   }
 
   .timeline-track-layer {
-    @apply relative h-6 overflow-hidden rounded-md border border-border bg-muted/20;
+    @apply relative h-6 overflow-hidden bg-muted/20;
   }
 
   .timeline-track-layer.track-layer-visibility {
@@ -206,11 +182,11 @@
   }
 
   .timeline-track-playhead {
-    @apply pointer-events-none absolute top-0 bottom-0 w-0.5 bg-primary;
+    @apply pointer-events-none absolute inset-y-0 w-0.5 bg-primary z-10;
   }
 
   .timeline-track-segment {
-    @apply absolute top-0 h-full rounded-sm border border-transparent;
+    @apply absolute top-0 h-full;
   }
 
   .timeline-track-segment.is-visible {
