@@ -6,13 +6,6 @@ import { useAnimation } from "../../context/AnimationContext";
 import { Icons } from "../ui/icons";
 import { cn } from "../../lib/utils";
 import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "../ui/dropdown-menu";
-import {
   serializeProject,
   saveProjectToFile,
   loadProjectFromFile,
@@ -103,54 +96,7 @@ export function Sidebar() {
   return (
     <aside className="flex h-full w-12 flex-col items-center border-r border-border bg-muted/30">
       <Tooltip.Provider delayDuration={200}>
-        {/* Menu dropdown at top */}
-        <div className="flex w-full flex-col items-center gap-1.5 border-b border-border py-3">
-          <DropdownMenu>
-            <Tooltip.Root>
-              <Tooltip.Trigger asChild>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground"
-                    aria-label="Menu"
-                  >
-                    <Icons.menu className="h-5 w-5" aria-hidden />
-                  </button>
-                </DropdownMenuTrigger>
-              </Tooltip.Trigger>
-              <Tooltip.Content
-                className="z-50 rounded-md border border-border bg-popover px-2.5 py-1 text-xs text-popover-foreground shadow-md"
-                side="right"
-                sideOffset={8}
-              >
-                Menu
-                <Tooltip.Arrow className="fill-border" />
-              </Tooltip.Content>
-            </Tooltip.Root>
-            <DropdownMenuContent align="start" side="right">
-              <DropdownMenuItem onSelect={handleSave}>
-                <Icons.save className="mr-2 h-4 w-4" />
-                Save Project
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={handleLoad}>
-                <Icons.open className="mr-2 h-4 w-4" />
-                Open Project
-              </DropdownMenuItem>
-              <DropdownMenuCheckboxItem
-                checked={showTimeline}
-                onCheckedChange={(checked) => setShowTimeline(Boolean(checked))}
-              >
-                Timeline
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuItem onSelect={() => fitInView?.()}>
-                <Icons.fit className="mr-2 h-4 w-4" />
-                Fit in View
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        {/* Panel buttons */}
+        {/* Top section - all buttons */}
         <div className="flex flex-1 flex-col items-center gap-1.5 py-3">
           {SIDEBAR_ITEMS.map(({ id, label, icon: Icon, shortcut }) => {
             const selected = activePanel === id;
@@ -184,6 +130,97 @@ export function Sidebar() {
               </Tooltip.Root>
             );
           })}
+
+          <Tooltip.Root>
+            <Tooltip.Trigger asChild>
+              <button
+                type="button"
+                onClick={() => setShowTimeline(!showTimeline)}
+                className={cn(
+                  "flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground",
+                  showTimeline && "bg-primary/10 text-primary",
+                )}
+                aria-label="Toggle Timeline"
+                aria-pressed={showTimeline}
+              >
+                <Icons.timeline className="h-5 w-5" aria-hidden />
+              </button>
+            </Tooltip.Trigger>
+            <Tooltip.Content
+              className="z-50 rounded-md border border-border bg-popover px-2.5 py-1 text-xs text-popover-foreground shadow-md"
+              side="right"
+              sideOffset={8}
+            >
+              Timeline
+              <Tooltip.Arrow className="fill-border" />
+            </Tooltip.Content>
+          </Tooltip.Root>
+
+          <Tooltip.Root>
+            <Tooltip.Trigger asChild>
+              <button
+                type="button"
+                onClick={() => fitInView?.()}
+                className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground"
+                aria-label="Fit in View"
+              >
+                <Icons.fit className="h-5 w-5" aria-hidden />
+              </button>
+            </Tooltip.Trigger>
+            <Tooltip.Content
+              className="z-50 rounded-md border border-border bg-popover px-2.5 py-1 text-xs text-popover-foreground shadow-md"
+              side="right"
+              sideOffset={8}
+            >
+              Fit in View
+              <Tooltip.Arrow className="fill-border" />
+            </Tooltip.Content>
+          </Tooltip.Root>
+        </div>
+
+        {/* Bottom section - action buttons */}
+        <div className="flex flex-col items-center gap-1.5 border-t border-border py-3">
+          <Tooltip.Root>
+            <Tooltip.Trigger asChild>
+              <button
+                type="button"
+                onClick={handleSave}
+                className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground"
+                aria-label="Save Project"
+              >
+                <Icons.save className="h-5 w-5" aria-hidden />
+              </button>
+            </Tooltip.Trigger>
+            <Tooltip.Content
+              className="z-50 rounded-md border border-border bg-popover px-2.5 py-1 text-xs text-popover-foreground shadow-md"
+              side="right"
+              sideOffset={8}
+            >
+              Save Project
+              <Tooltip.Arrow className="fill-border" />
+            </Tooltip.Content>
+          </Tooltip.Root>
+
+          <Tooltip.Root>
+            <Tooltip.Trigger asChild>
+              <button
+                type="button"
+                onClick={handleLoad}
+                className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground"
+                aria-label="Open Project"
+              >
+                <Icons.open className="h-5 w-5" aria-hidden />
+              </button>
+            </Tooltip.Trigger>
+            <Tooltip.Content
+              className="z-50 rounded-md border border-border bg-popover px-2.5 py-1 text-xs text-popover-foreground shadow-md"
+              side="right"
+              sideOffset={8}
+            >
+              Open Project
+              <Tooltip.Arrow className="fill-border" />
+            </Tooltip.Content>
+          </Tooltip.Root>
         </div>
       </Tooltip.Provider>
     </aside>
