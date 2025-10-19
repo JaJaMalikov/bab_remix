@@ -45,9 +45,14 @@
   - `role="button"` et `tabIndex={0}` pour navigation clavier
   - `aria-label` descriptif pour screen readers
   - Support Enter et Espace pour toggle visibility
+- **Snap to Grid** : Magnétisme des keyframes pendant le drag
+  - Toggle button dans PlaybackControls (icône MagicWand)
+  - État persisté dans `UiContext.snapToGrid`
+  - Appliqué dans `Timeline.handlePointerMove` lors du drag
+  - Actif par défaut (snapToGrid: true)
 
 ### 📋 Prochaines Étapes (Optionnel)
-- **Snap to grid** : Magnétisme lors du drag (Bonus)
+- Aucune - toutes les phases complétées !
 
 ---
 
@@ -429,7 +434,7 @@ const selectedCount = keyframes.filter(kf =>
 ### Phase 3 - Améliorations (3h) ✅ COMPLÉTÉE
 9. ✅ **Context menu** - Menu sur clic droit avec Copy/Paste/Duplicate/Delete
 10. ✅ **Accessibilité visibility track** - aria-label + keyboard support
-11. ⏳ **Snap to grid** - Bonus (optionnel)
+11. ✅ **Snap to grid** - Magnétisme des keyframes lors du drag (toggle button dans controls)
 
 ---
 

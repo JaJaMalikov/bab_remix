@@ -263,8 +263,8 @@ export const TimelineTrack = React.memo(
 
             return (
               <ContextMenu key={keyframe.id}>
-                <ContextMenuTrigger asChild>
-                  <Tooltip delayDuration={300}>
+                <Tooltip delayDuration={300}>
+                  <ContextMenuTrigger asChild>
                     <TooltipTrigger asChild>
                       <button
                         type="button"
@@ -287,18 +287,18 @@ export const TimelineTrack = React.memo(
                         }}
                       />
                     </TooltipTrigger>
-                    <TooltipContent side="top" align="center">
-                      <div className="text-center">
-                        {tooltipParts.map((part, idx) => (
-                          <React.Fragment key={idx}>
-                            {idx > 0 && <span className="text-primary-foreground/60"> • </span>}
-                            {part}
-                          </React.Fragment>
-                        ))}
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                </ContextMenuTrigger>
+                  </ContextMenuTrigger>
+                  <TooltipContent side="top" align="center">
+                    <div className="text-center">
+                      {tooltipParts.map((part, idx) => (
+                        <React.Fragment key={idx}>
+                          {idx > 0 && <span className="text-primary-foreground/60"> • </span>}
+                          {part}
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
 
                 <ContextMenuContent className="w-48">
                   <ContextMenuItem onClick={() => handleCopyValue(keyframe)}>
@@ -351,6 +351,7 @@ export const TimelineTrack = React.memo(
       prevProps.duration === nextProps.duration &&
       prevProps.zoom === nextProps.zoom &&
       prevProps.selectedKeyframes === nextProps.selectedKeyframes &&
+      prevProps.dragOffset === nextProps.dragOffset &&
       prevProps.copiedValue === nextProps.copiedValue &&
       prevProps.onKeyframePointerDown === nextProps.onKeyframePointerDown &&
       prevProps.onVisibilityTrackClick === nextProps.onVisibilityTrackClick &&

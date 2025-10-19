@@ -31,10 +31,8 @@ export interface AttachedObject {
 
 export interface Keyframe {
   frame: number;
-  value: KeyframeValue;
-  variant?: string;
-  attachedObject?: AttachedObject;
-  easing?: string; // Easing function name (default: "linear")
+  value: number | boolean | string;
+  easing?: string;
 }
 
 export interface AnimationTrack {
@@ -202,29 +200,26 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({
    * @param trackId ID de la piste d'animation.
    * @param frame Numéro de la frame à supprimer.
    */
-  const removeKeyframe = useCallback((trackId: string, frame: number) => {
-    setTracks((prev) => {
-      const trackIndex = prev.findIndex((t) => t.id === trackId);
-      if (trackIndex === -1) return prev;
+    const removeKeyframe = useCallback(
+      (trackId: string, frame: number) => {
+        setTracks((prevTracks) => {
+          const trackIndex = prevTracks.findIndex((t) => t.id === trackId);
+          if (trackIndex === -1) return prevTracks;
 
-      const track = prev[trackIndex];
-      const updatedKeyframes = track.keyframes.filter(
-        (kf) => kf.frame !== frame,
-      );
+          const track = { ...prevTracks[trackIndex] };
+          track.keyframes = track.keyframes.filter((kf) => kf.frame !== frame);
 
-      if (updatedKeyframes.length === 0) {
-        // Remove track if no keyframes left
-        return prev.filter((t) => t.id !== trackId);
-      }
+          if (track.keyframes.length === 0) {
+            return prevTracks.filter((_, i) => i !== trackIndex);
+          }
 
-      const updatedTrack = { ...track, keyframes: updatedKeyframes };
-      return [
-        ...prev.slice(0, trackIndex),
-        updatedTrack,
-        ...prev.slice(trackIndex + 1),
-      ];
-    });
-  }, []);
+          const newTracks = [...prevTracks];
+          newTracks[trackIndex] = track;
+          return newTracks;
+        });
+      },
+      [],
+    );
 
   const moveKeyframes = useCallback((mutations: KeyframeMutation[]) => {
     if (mutations.length === 0) return;

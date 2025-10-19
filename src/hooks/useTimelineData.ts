@@ -38,6 +38,8 @@ export interface ItemTrackData {
   type: "puppet" | "image";
   keyframes: TimelineKeyframe[];
   visibility: VisibilitySegment[];
+  /** Member ID for puppet limb tracks, null for main item tracks */
+  memberId?: string | null;
 }
 
 export const useTimelineData = (

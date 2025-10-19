@@ -374,22 +374,8 @@
   }
 
   .timeline-keyframe.visibility {
-    width: 6px;
-    height: 6px;
-    transform: translate(-50%, -50%);
-    border-radius: 9999px;
-    @apply border-[hsl(var(--background))] bg-[hsl(var(--timeline-visible)/0.85)];
-    box-shadow:
-      0 0 0 1px rgba(8, 15, 25, 0.25),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.45);
-  }
-
-  .timeline-keyframe.visibility.is-selected {
-    transform: translate(-50%, -50%) scale(1.4);
-    @apply border-[hsl(var(--primary))] bg-[hsl(var(--primary))];
-    box-shadow:
-      0 0 0 1px rgba(8, 15, 25, 0.25),
-      0 0 0 3px rgba(37, 99, 235, 0.35);
+    /* Use same style as other keyframes: rotated square */
+    @apply bg-[hsl(var(--timeline-visible))];
   }
 
   /* Ghost keyframes (shown during drag) */
@@ -403,10 +389,7 @@
   }
 
   .timeline-keyframe-ghost.visibility {
-    width: 6px;
-    height: 6px;
-    transform: translate(-50%, -50%);
-    border-radius: 9999px;
+    /* Use same style as other ghost keyframes */
   }
 
   /* Visual feedback for visibility track clicks */
