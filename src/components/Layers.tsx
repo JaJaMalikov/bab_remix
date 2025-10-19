@@ -9,7 +9,7 @@ export const Layers = memo(() => {
     <div className="flex h-full flex-col gap-2">
       {sceneItems.length === 0 && (
         <div className="rounded border border-dashed border-border bg-muted/20 p-3 text-center text-xs text-muted-foreground">
-          No items in scene
+          Pas d'objet sur la scene
         </div>
       )}
       {sceneItems.map((item) => (

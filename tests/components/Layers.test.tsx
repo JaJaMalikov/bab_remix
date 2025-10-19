@@ -25,6 +25,9 @@ vi.mock("../../src/components/LayerItem", () => ({
   ),
 }));
 
+const matchesEmptyLayerMessage = (content: string) =>
+  /No items in scene/i.test(content) || /Pas d'objet sur la scene/i.test(content);
+
 describe("Layers", () => {
   beforeEach(() => {
     act(() => {
@@ -63,7 +66,7 @@ describe("Layers", () => {
 
     expect(screen.getByText("Layer 1")).toBeInTheDocument();
     expect(screen.getByText("Layer 2")).toBeInTheDocument();
-    expect(screen.queryByText("No items in scene")).not.toBeInTheDocument();
+    expect(screen.queryByText(matchesEmptyLayerMessage)).not.toBeInTheDocument();
   });
 
   it("should render a message when there are no items", () => {
@@ -73,6 +76,6 @@ describe("Layers", () => {
 
     render(<Layers />);
 
-    expect(screen.getByText("No items in scene")).toBeInTheDocument();
+    expect(screen.getByText(matchesEmptyLayerMessage)).toBeInTheDocument();
   });
 });

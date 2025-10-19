@@ -88,6 +88,9 @@ describe("SceneItemList", () => {
       />,
     );
 
-    expect(screen.getByText(/No items in scene/i)).toBeInTheDocument();
+    const message = screen.getByText((content) =>
+      /No items in scene/i.test(content) || /Pas d'objet sur la scene/i.test(content),
+    );
+    expect(message).toBeInTheDocument();
   });
 });

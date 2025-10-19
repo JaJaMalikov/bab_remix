@@ -75,7 +75,7 @@ export const SceneItemList: React.FC<SceneItemListProps> = ({
         })}
         {items.length === 0 && (
           <div className="rounded border border-dashed border-border px-2 py-2 text-center text-[10px] text-muted-foreground">
-            No items in scene
+            Pas d'objet sur la scene
           </div>
         )}
       </div>
