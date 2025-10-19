@@ -18,8 +18,8 @@ import { TimelineRuler } from "./TimelineRuler";
 import { TimelineTrack } from "./TimelineTrack";
 import { PlaybackControls } from "./PlaybackControls";
 
-const MIN_HEIGHT = 44;
-const MAX_HEIGHT = 180;
+const MIN_HEIGHT = 46;
+const MAX_HEIGHT = 147;
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);

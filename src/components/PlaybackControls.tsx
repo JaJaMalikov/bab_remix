@@ -161,33 +161,14 @@ export function PlaybackControls({
             <span className="timeline-readout-label">Frame</span>
             <span className="timeline-readout-value">{currentFrame}</span>
           </div>
-          <div className="timeline-readout" title="Durée totale">
+          <label
+            className="timeline-readout"
+            title="Durée totale (frames)"
+            htmlFor="timeline-duration-input"
+          >
             <span className="timeline-readout-label">Durée</span>
-            <span className="timeline-readout-value">{duration || 0}</span>
-          </div>
-          <div className="timeline-readout" title="Durée totale (secondes)">
-            <span className="timeline-readout-label">Secondes</span>
-            <span className="timeline-readout-value">{formattedSeconds}</span>
-          </div>
-          <div className="timeline-readout" title="Images par seconde">
-            <span className="timeline-readout-label">FPS</span>
-            <span className="timeline-readout-value">{fps}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Timeline settings */}
-      <div className="timeline-panel-section">
-        <div
-          className="flex flex-wrap items-end gap-3 text-xs text-[hsl(var(--muted-foreground))]"
-          role="group"
-          aria-label="Réglages de l'animation"
-        >
-          <label className="flex flex-col gap-1">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.28em]">
-              Durée (frames)
-            </span>
             <input
+              id="timeline-duration-input"
               type="number"
               min={1}
               step={1}
@@ -206,14 +187,21 @@ export function PlaybackControls({
               }}
               inputMode="numeric"
               aria-label="Durée totale de l'animation en frames"
-              className="w-24 rounded-md border border-border bg-background px-2 py-1 text-right font-mono text-sm text-foreground transition focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
+              className="timeline-readout-field no-scrollbar"
             />
           </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.28em]">
-              Cadence (fps)
-            </span>
+          <div className="timeline-readout" title="Durée totale (secondes)">
+            <span className="timeline-readout-label">Secondes</span>
+            <span className="timeline-readout-value">{formattedSeconds}</span>
+          </div>
+          <label
+            className="timeline-readout"
+            title="Images par seconde"
+            htmlFor="timeline-fps-input"
+          >
+            <span className="timeline-readout-label">FPS</span>
             <input
+              id="timeline-fps-input"
               type="number"
               min={1}
               step={1}
@@ -232,7 +220,7 @@ export function PlaybackControls({
               }}
               inputMode="numeric"
               aria-label="Cadence d'image (images par seconde)"
-              className="w-24 rounded-md border border-border bg-background px-2 py-1 text-right font-mono text-sm text-foreground transition focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
+              className="timeline-readout-field no-scrollbar"
             />
           </label>
         </div>

@@ -119,11 +119,11 @@
   .timeline {
     --timeline-panel-width: clamp(10rem, 24vw, 12.5rem);
     --timeline-label-width: clamp(7rem, 18vw, 8.5rem);
-    @apply relative flex flex-col overflow-hidden rounded-t-xl border border-[hsl(var(--border)/0.45)] bg-[hsl(var(--background)/0.95)] text-[hsl(var(--foreground))];
+    @apply relative flex flex-col overflow-hidden  border border-[hsl(var(--border)/0.45)] bg-[hsl(var(--background)/0.95)] text-[hsl(var(--foreground))];
   }
 
   .timeline-resizer {
-    @apply relative h-2 cursor-row-resize bg-transparent;
+    @apply relative h-1 cursor-row-resize bg-transparent;
   }
 
   .timeline-resizer::before {
@@ -142,7 +142,7 @@
 
   .timeline-controls-panel {
     width: var(--timeline-panel-width);
-    @apply flex min-h-0 flex-col gap-4 border-r border-[hsl(var(--border)/0.45)] bg-[hsl(var(--background)/0.92)] px-4 py-4;
+    @apply flex min-h-0 flex-col gap-4 border-r border-[hsl(var(--border)/0.45)] bg-[hsl(var(--background)/0.92)] px-3 py-1;
   }
 
   .timeline-view {
@@ -256,7 +256,7 @@
   }
 
   .timeline-icon-button {
-    @apply inline-flex h-8 w-8 items-center justify-center rounded-md border border-[hsl(var(--border)/0.45)] bg-[hsl(var(--background)/0.85)] text-[hsl(var(--muted-foreground))] transition-colors hover:border-[hsl(var(--primary)/0.5)] hover:text-[hsl(var(--foreground))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[hsl(var(--primary))] disabled:cursor-not-allowed disabled:opacity-40;
+    @apply inline-flex h-8 w-8 items-center justify-center rounded-md border border-[hsl(var(--border)/0.45)] bg-[hsl(var(--background)/0.85)] text-[hsl(var(--muted-foreground))] transition-colors hover:border-[hsl(var(--primary)/0.5)] hover:text-[hsl(var(--foreground))] focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-[hsl(var(--primary))] disabled:cursor-not-allowed disabled:opacity-40;
   }
 
   .timeline-icon-button[data-state="active"] {
@@ -268,7 +268,7 @@
   }
 
   .timeline-readout {
-    @apply flex items-center justify-between font-mono text-sm text-[hsl(var(--foreground))];
+    @apply flex items-center justify-between font-mono text-xs text-[hsl(var(--foreground))];
   }
 
   .timeline-readout-label {
@@ -280,6 +280,14 @@
     font-variant-numeric: tabular-nums;
   }
 
+  .timeline-readout-field {
+    @apply w-24 border-[hsl(var(--border)/0.6)] bg-transparent px-1 py-1 text-right font-mono text-xs text-[hsl(var(--foreground))];
+    font-variant-numeric: tabular-nums;
+  }
+
+  .timeline-readout-field:focus-visible {
+    @apply border-[hsl(var(--primary))] outline-none ring-1 ring-[hsl(var(--primary)/0.4)];
+  }
 
   .timeline-track-label-icon {
     @apply text-base;
