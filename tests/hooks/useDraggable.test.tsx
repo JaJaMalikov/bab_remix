@@ -136,7 +136,7 @@ describe("useDraggable", () => {
     const { move, up } = getLatestWindowDragArgs();
 
     act(() => {
-      move(new MouseEvent("mousemove", { clientX: 320, clientY: 225 }));
+      move(new MouseEvent("mousemove", { clientX: 335, clientY: 228 }));
     });
 
     expect(screen.getByTestId("position")).toHaveTextContent("300,200");
