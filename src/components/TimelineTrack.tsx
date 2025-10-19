@@ -1,16 +1,11 @@
 import { cn } from "../lib/utils";
+import type {
+  TimelineKeyframe,
+  VisibilitySegment,
+} from "../hooks/useTimelineData";
 
-interface Keyframe {
-  frame: number;
-  type: "position" | "rotation" | "visible";
-  axis?: "x" | "y";
-  value?: unknown;
-}
-
-interface VisibilitySegment {
-  start: number;
-  end: number;
-  visible: boolean;
+interface TrackKeyframe extends TimelineKeyframe {
+  displayFrame: number;
 }
 
 interface TimelineTrackProps {
@@ -19,7 +14,7 @@ interface TimelineTrackProps {
   /** Le type d'élément associé à la piste (pantin ou image). */
   type: "puppet" | "image";
   /** La liste des keyframes à afficher sur la piste. */
-  keyframes: Keyframe[];
+  keyframes: TrackKeyframe[];
   /** La liste des segments de visibilité à afficher. */
   visibilitySegments: VisibilitySegment[];
   /** La durée totale de l'animation. */
@@ -28,8 +23,14 @@ interface TimelineTrackProps {
   zoom: number;
   /** La frame actuelle, pour afficher la tête de lecture. */
   currentFrame: number;
-  /** Callback appelé lors d'un clic sur une keyframe. */
-  onKeyframeClick?: (keyframe: Keyframe) => void;
+  /** Les keyframes actuellement sélectionnées. */
+  selectedKeyframes: Set<string>;
+  /** Callback déclenché au début d'un drag. */
+  onKeyframePointerDown: (
+    keyframe: TimelineKeyframe,
+    event: React.PointerEvent<HTMLButtonElement>,
+    pixelsPerFrame: number,
+  ) => void;
   /** Callback appelé lors d'un clic sur la piste de visibilité. */
   onVisibilityTrackClick?: (frame: number) => void;
 }
@@ -42,7 +43,8 @@ export function TimelineTrack({
   duration,
   zoom,
   currentFrame,
-  onKeyframeClick,
+  selectedKeyframes,
+  onKeyframePointerDown,
   onVisibilityTrackClick,
 }: TimelineTrackProps) {
   const pixelsPerFrame = 2 * zoom;
@@ -98,20 +100,50 @@ export function TimelineTrack({
           </div>
 
           {/* Keyframes */}
-          {keyframes.map((keyframe, i) => {
-            const left = keyframe.frame * pixelsPerFrame;
+          {keyframes.map((keyframe) => {
+            const left = keyframe.displayFrame * pixelsPerFrame;
+            const isSelected = selectedKeyframes.has(keyframe.id);
+            const baseLabel =
+              keyframe.type === "position"
+                ? `Position${keyframe.axis ? ` ${keyframe.axis.toUpperCase()}` : ""}`
+                : keyframe.type === "rotation"
+                  ? "Rotation"
+                  : "Visibilité";
+            let valueText = "";
+            if (keyframe.type === "visibility") {
+              valueText = keyframe.value ? "Visible" : "Masquée";
+            } else if (typeof keyframe.value === "number" && Number.isFinite(keyframe.value)) {
+              const absolute = Math.abs(keyframe.value);
+              valueText =
+                absolute >= 100 || Number.isInteger(keyframe.value)
+                  ? keyframe.value.toFixed(0)
+                  : keyframe.value.toFixed(2);
+            }
+            const tooltipParts = [
+              baseLabel,
+              ...(valueText ? [valueText] : []),
+              `Frame ${Math.round(keyframe.displayFrame)}`,
+            ];
 
             return (
               <button
-                key={`${keyframe.type}-${keyframe.axis}-${i}`}
+                type="button"
+                key={keyframe.id}
                 className={cn(
                   "timeline-keyframe",
                   keyframe.type === "position" && `position-${keyframe.axis}`,
                   keyframe.type === "rotation" && "rotation",
+                  keyframe.type === "visibility" && "visibility",
+                  isSelected && "is-selected",
                 )}
                 style={{ left }}
-                onClick={() => onKeyframeClick?.(keyframe)}
-                title={`${keyframe.type}${keyframe.axis ? ` ${keyframe.axis.toUpperCase()}` : ""} • Frame ${keyframe.frame}`}
+                title={tooltipParts.join(" • ")}
+                aria-pressed={isSelected}
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onKeyframePointerDown(keyframe, event, pixelsPerFrame);
+                }}
               />
             );
           })}

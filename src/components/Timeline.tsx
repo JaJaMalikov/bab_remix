@@ -7,7 +7,12 @@ import React, {
 } from "react";
 import { useUi } from "../context/UiContext";
 import { useAnimation } from "../context/AnimationContext";
+import type {
+  Keyframe as AnimationKeyframe,
+  KeyframeMutation,
+} from "../context/AnimationContext";
 import { useTimelineData } from "../hooks/useTimelineData";
+import type { TimelineKeyframe } from "../hooks/useTimelineData";
 import { useVerticalResize } from "../hooks/useVerticalResize";
 import { TimelineRuler } from "./TimelineRuler";
 import { TimelineTrack } from "./TimelineTrack";
@@ -19,10 +24,22 @@ const MAX_HEIGHT = 180;
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
 
+interface DragState {
+  pointerId: number;
+  startClientX: number;
+  pixelsPerFrame: number;
+  offset: number;
+  duplicate: boolean;
+  minOffset: number;
+  maxOffset: number;
+  originKey: string;
+}
+
 export const Timeline: React.FC = React.memo(() => {
   const { timelineHeight, setTimelineHeight, sceneItems } = useUi();
   const {
     duration,
+    fps,
     currentFrame,
     setCurrentFrame,
     tracks,
@@ -31,6 +48,10 @@ export const Timeline: React.FC = React.memo(() => {
     snapshotKeyframes,
     addKeyframe,
     getValueAtFrame,
+    setDuration,
+    setFps,
+    moveKeyframes,
+    duplicateKeyframes,
   } = useAnimation();
 
   const { onResizeMouseDown } = useVerticalResize({
@@ -67,6 +88,30 @@ export const Timeline: React.FC = React.memo(() => {
   }, [containerWidth, duration]);
 
   const [zoom, setZoom] = useState(defaultZoom);
+  const [selectedKeyframeIds, setSelectedKeyframeIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const selectedKeyframeIdsRef = useRef<Set<string>>(new Set());
+  const [dragStateValue, setDragStateValue] = useState<DragState | null>(null);
+  const dragStateRef = useRef<DragState | null>(null);
+  const setDragState = useCallback(
+    (
+      value:
+        | DragState
+        | null
+        | ((prev: DragState | null) => DragState | null),
+    ) => {
+      setDragStateValue((prev) => {
+        const next =
+          typeof value === "function"
+            ? (value as (prev: DragState | null) => DragState | null)(prev)
+            : value;
+        dragStateRef.current = next;
+        return next;
+      });
+    },
+    [],
+  );
 
   useEffect(() => {
     if (defaultZoom > 1 && zoom === 1) {
@@ -78,12 +123,47 @@ export const Timeline: React.FC = React.memo(() => {
   const frameDivisor = Math.max(maxFrameIndex, 1);
 
   const itemTrackData = useTimelineData(sceneItems, tracks, frameDivisor);
+  const keyframeLookup = useMemo(() => {
+    const map = new Map<
+      string,
+      { trackId: string; frame: number; keyframe: AnimationKeyframe }
+    >();
+    tracks.forEach((track) => {
+      track.keyframes.forEach((kf) => {
+        map.set(`${track.id}:${kf.frame}`, {
+          trackId: track.id,
+          frame: kf.frame,
+          keyframe: kf,
+        });
+      });
+    });
+    return map;
+  }, [tracks]);
 
   useEffect(() => {
     if (timelineHeight > MAX_HEIGHT) {
       setTimelineHeight(MAX_HEIGHT);
     }
   }, [timelineHeight, setTimelineHeight]);
+
+  useEffect(() => {
+    setSelectedKeyframeIds((prev) => {
+      let mutated = false;
+      const next = new Set<string>();
+      prev.forEach((id) => {
+        if (keyframeLookup.has(id)) {
+          next.add(id);
+        } else {
+          mutated = true;
+        }
+      });
+      return mutated ? next : prev;
+    });
+  }, [keyframeLookup]);
+
+  useEffect(() => {
+    selectedKeyframeIdsRef.current = selectedKeyframeIds;
+  }, [selectedKeyframeIds]);
 
   const toggleVisibilityAtFrame = useCallback(
     (itemId: string, frame: number) => {
@@ -118,6 +198,213 @@ export const Timeline: React.FC = React.memo(() => {
     setPlaying(false);
     setCurrentFrame(0);
   }, [setCurrentFrame, setPlaying]);
+
+  const handleDurationChange = useCallback(
+    (nextDuration: number) => {
+      if (!Number.isFinite(nextDuration)) return;
+      const normalized = Math.max(1, Math.round(nextDuration));
+      setDuration(normalized);
+      setCurrentFrame((prev) => Math.min(prev, normalized - 1));
+    },
+    [setCurrentFrame, setDuration],
+  );
+
+  const handleFpsChange = useCallback(
+    (nextFps: number) => {
+      if (!Number.isFinite(nextFps)) return;
+      const normalized = Math.max(1, Math.round(nextFps));
+      setFps(normalized);
+    },
+    [setFps],
+  );
+
+  const gotoFrame = useCallback(
+    (frame: number) => {
+      setCurrentFrame(clamp(frame, 0, frameDivisor));
+    },
+    [frameDivisor, setCurrentFrame],
+  );
+
+  const handleKeyframePointerDown = useCallback(
+    (
+      keyframe: TimelineKeyframe,
+      event: React.PointerEvent<HTMLButtonElement>,
+      pixelsPerFrame: number,
+    ) => {
+      if (event.button !== 0 || dragStateRef.current) return;
+
+      const prevSelection = selectedKeyframeIds;
+      const updatedSelection = new Set(prevSelection);
+      const keyId = keyframe.id;
+      const isToggle = event.metaKey || event.ctrlKey;
+      const isAdditive = event.shiftKey;
+
+      if (isToggle) {
+        if (updatedSelection.has(keyId)) {
+          updatedSelection.delete(keyId);
+        } else {
+          updatedSelection.add(keyId);
+        }
+        if (updatedSelection.size === 0) {
+          updatedSelection.add(keyId);
+        }
+      } else if (isAdditive) {
+        updatedSelection.add(keyId);
+      } else {
+        if (!(updatedSelection.size === 1 && updatedSelection.has(keyId))) {
+          updatedSelection.clear();
+          updatedSelection.add(keyId);
+        }
+      }
+
+      let selectionChanged = updatedSelection.size !== prevSelection.size;
+      if (!selectionChanged) {
+        for (const id of updatedSelection) {
+          if (!prevSelection.has(id)) {
+            selectionChanged = true;
+            break;
+          }
+        }
+      }
+
+      const selectionForDrag = selectionChanged ? updatedSelection : prevSelection;
+      if (selectionChanged) {
+        setSelectedKeyframeIds(updatedSelection);
+      }
+
+      if (selectionForDrag.size === 0) return;
+
+      const frames: number[] = [];
+      selectionForDrag.forEach((id) => {
+        const meta = keyframeLookup.get(id);
+        if (meta) frames.push(meta.frame);
+      });
+      if (frames.length === 0) return;
+
+      const minFrame = Math.min(...frames);
+      const maxFrame = Math.max(...frames);
+      const safePixelsPerFrame = pixelsPerFrame <= 0 ? 1 : pixelsPerFrame;
+      const minOffset = -minFrame;
+      const maxOffset = maxFrameIndex - maxFrame;
+
+      window.getSelection()?.removeAllRanges();
+      setDragState({
+        pointerId: event.pointerId,
+        startClientX: event.clientX,
+        pixelsPerFrame: safePixelsPerFrame,
+        offset: 0,
+        duplicate: event.altKey,
+        minOffset,
+        maxOffset,
+        originKey: keyId,
+      });
+    },
+    [
+      keyframeLookup,
+      maxFrameIndex,
+      selectedKeyframeIds,
+      setDragState,
+      setSelectedKeyframeIds,
+    ],
+  );
+
+  const handlePointerMove = useCallback(
+    (event: PointerEvent) => {
+      const state = dragStateRef.current;
+      if (!state || event.pointerId !== state.pointerId) return;
+
+      const divisor = state.pixelsPerFrame || 1;
+      const rawOffset = Math.round(
+        (event.clientX - state.startClientX) / divisor,
+      );
+      const clamped = clamp(
+        rawOffset,
+        state.minOffset,
+        state.maxOffset,
+      );
+      const duplicate = event.altKey;
+
+      if (clamped !== state.offset || duplicate !== state.duplicate) {
+        setDragState((prev) =>
+          prev
+            ? {
+                ...prev,
+                offset: clamped,
+                duplicate,
+              }
+            : prev,
+        );
+      }
+    },
+    [setDragState],
+  );
+
+  const handlePointerUp = useCallback(
+    (event: PointerEvent) => {
+      const state = dragStateRef.current;
+      if (!state || event.pointerId !== state.pointerId) return;
+
+      const offset = state.offset;
+      const duplicate = state.duplicate || event.altKey;
+      const selection = selectedKeyframeIdsRef.current;
+      const mutations: KeyframeMutation[] = [];
+
+      selection.forEach((id) => {
+        const meta = keyframeLookup.get(id);
+        if (!meta) return;
+        mutations.push({
+          trackId: meta.trackId,
+          from: meta.frame,
+          to: meta.frame + offset,
+          keyframe: meta.keyframe,
+        });
+      });
+
+      if (offset !== 0 && mutations.length > 0) {
+        if (duplicate) {
+          duplicateKeyframes(mutations);
+        } else {
+          moveKeyframes(mutations);
+        }
+        const updatedSelection = new Set<string>();
+        mutations.forEach((mutation) => {
+          updatedSelection.add(`${mutation.trackId}:${mutation.to}`);
+        });
+        setSelectedKeyframeIds(updatedSelection);
+      } else if (offset === 0) {
+        const originMeta = keyframeLookup.get(state.originKey);
+        if (originMeta) {
+          gotoFrame(originMeta.frame);
+        }
+      }
+
+      setDragState(null);
+    },
+    [
+      duplicateKeyframes,
+      gotoFrame,
+      keyframeLookup,
+      moveKeyframes,
+      setDragState,
+      setSelectedKeyframeIds,
+    ],
+  );
+
+  useEffect(() => {
+    if (!dragStateValue) return;
+    const moveListener = (event: PointerEvent) => { handlePointerMove(event); };
+    const upListener = (event: PointerEvent) => { handlePointerUp(event); };
+
+    window.addEventListener("pointermove", moveListener);
+    window.addEventListener("pointerup", upListener);
+    window.addEventListener("pointercancel", upListener);
+
+    return () => {
+      window.removeEventListener("pointermove", moveListener);
+      window.removeEventListener("pointerup", upListener);
+      window.removeEventListener("pointercancel", upListener);
+    };
+  }, [dragStateValue, handlePointerMove, handlePointerUp]);
 
   const handleZoomIn = useCallback(() => {
     setZoom((prev) => Math.min(prev + 0.3, 5));
@@ -163,14 +450,8 @@ export const Timeline: React.FC = React.memo(() => {
       }
     }, []);
 
-  const gotoFrame = useCallback(
-    (frame: number) => {
-      setCurrentFrame(clamp(frame, 0, frameDivisor));
-    },
-    [frameDivisor, setCurrentFrame],
-  );
-
   const showTrackRows = sceneItems.length > 0;
+  const dragOffset = dragStateValue?.offset ?? 0;
 
   const hasPrevKeyframe = useMemo(
     () => keyframeFrames.some((frame) => frame < currentFrame),
@@ -207,6 +488,7 @@ export const Timeline: React.FC = React.memo(() => {
           isPlaying={playing}
           currentFrame={currentFrame}
           duration={duration}
+          fps={fps}
           zoom={zoom}
           hasPrevKeyframe={hasPrevKeyframe}
           hasNextKeyframe={hasNextKeyframe}
@@ -219,6 +501,8 @@ export const Timeline: React.FC = React.memo(() => {
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
           onZoomReset={handleResetZoom}
+          onDurationChange={handleDurationChange}
+          onFpsChange={handleFpsChange}
         />
 
         {/* Timeline View */}
@@ -233,6 +517,7 @@ export const Timeline: React.FC = React.memo(() => {
               duration={duration}
               currentFrame={currentFrame}
               zoom={zoom}
+              fps={fps}
               onSeek={gotoFrame}
               onZoom={handleZoomChange}
             />
@@ -247,32 +532,28 @@ export const Timeline: React.FC = React.memo(() => {
                 onScroll={(e) => { syncScroll(e.currentTarget.scrollLeft, 'tracks'); }}
               >
                 {itemTrackData.map((trackData) => {
-                  // Prepare keyframes for the track
-                  const keyframes = [
-                    ...trackData.position.map((kf) => ({
-                      frame: kf.frame,
-                      type: "position" as const,
-                      axis: kf.axis,
-                      value: kf.value,
-                    })),
-                    ...trackData.rotation.map((kf) => ({
-                      frame: kf.frame,
-                      type: "rotation" as const,
-                      value: kf.value,
-                    })),
-                  ];
+                  const renderedKeyframes = trackData.keyframes.map((kf) => {
+                    const isSelected = selectedKeyframeIds.has(kf.id);
+                    const offset = isSelected ? dragOffset : 0;
+                    const targetFrame = clamp(kf.frame + offset, 0, maxFrameIndex);
+                    return {
+                      ...kf,
+                      displayFrame: targetFrame,
+                    };
+                  });
 
                   return (
                     <TimelineTrack
                       key={trackData.id}
                       name={trackData.label}
                       type={trackData.type}
-                      keyframes={keyframes}
+                      keyframes={renderedKeyframes}
                       visibilitySegments={trackData.visibility}
                       duration={duration}
                       zoom={zoom}
                       currentFrame={currentFrame}
-                      onKeyframeClick={(kf) => { gotoFrame(kf.frame); }}
+                      selectedKeyframes={selectedKeyframeIds}
+                      onKeyframePointerDown={handleKeyframePointerDown}
                       onVisibilityTrackClick={(frame) => {
                         setCurrentFrame(frame);
                         toggleVisibilityAtFrame(trackData.id, frame);

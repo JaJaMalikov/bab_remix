@@ -45,6 +45,7 @@ export interface ProjectData {
   };
   animation: {
     duration: number;
+    fps?: number;
     tracks: AnimationTrack[];
   };
 }
@@ -61,9 +62,10 @@ export function serializeProject(params: {
   }>;
   tracks: AnimationTrack[];
   duration: number;
+  fps: number;
   background: string | null;
 }): ProjectData {
-  const { sceneItems, tracks, duration, background } = params;
+  const { sceneItems, tracks, duration, fps, background } = params;
 
   const items = sceneItems.map((item) => {
     const el = item.el;
@@ -156,6 +158,7 @@ export function serializeProject(params: {
     },
     animation: {
       duration,
+      fps,
       tracks,
     },
   };

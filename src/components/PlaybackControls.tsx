@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Icons } from "./ui/icons";
 
 interface PlaybackControlsProps {
@@ -7,6 +8,8 @@ interface PlaybackControlsProps {
   currentFrame: number;
   /** La durée totale de l'animation en frames. */
   duration: number;
+  /** La cadence d'image actuelle (images par seconde). */
+  fps: number;
   /** Le niveau de zoom actuel de la timeline. */
   zoom: number;
   /** Indique s'il y a une keyframe avant la frame courante. */
@@ -31,12 +34,17 @@ interface PlaybackControlsProps {
   onZoomOut: () => void;
   /** Callback pour réinitialiser le niveau de zoom. */
   onZoomReset: () => void;
+  /** Callback pour modifier la durée totale. */
+  onDurationChange: (duration: number) => void;
+  /** Callback pour modifier la cadence d'image. */
+  onFpsChange: (fps: number) => void;
 }
 
 export function PlaybackControls({
   isPlaying,
   currentFrame,
   duration,
+  fps,
   hasPrevKeyframe,
   hasNextKeyframe,
   onPlay,
@@ -45,12 +53,48 @@ export function PlaybackControls({
   onPrevKeyframe,
   onNextKeyframe,
   onSnapshot,
+  onDurationChange,
+  onFpsChange,
 }: PlaybackControlsProps) {
   const PlayPauseIcon = isPlaying ? Icons.pause : Icons.play;
   const StopIcon = Icons.stop;
   const SnapshotIcon = Icons.camera;
   const PrevKeyframeIcon = Icons.prevKeyframe;
   const NextKeyframeIcon = Icons.nextKeyframe;
+  const [durationDraft, setDurationDraft] = useState(() => duration.toString());
+  const [fpsDraft, setFpsDraft] = useState(() => fps.toString());
+
+  useEffect(() => {
+    setDurationDraft(duration.toString());
+  }, [duration]);
+
+  useEffect(() => {
+    setFpsDraft(fps.toString());
+  }, [fps]);
+
+  const commitDuration = (raw: string) => {
+    if (raw.trim() === "") {
+      setDurationDraft(duration.toString());
+      return;
+    }
+    const parsed = Number(raw);
+    if (Number.isNaN(parsed)) return;
+    onDurationChange(parsed);
+  };
+
+  const commitFps = (raw: string) => {
+    if (raw.trim() === "") {
+      setFpsDraft(fps.toString());
+      return;
+    }
+    const parsed = Number(raw);
+    if (Number.isNaN(parsed)) return;
+    onFpsChange(parsed);
+  };
+
+  const durationSeconds =
+    fps > 0 && Number.isFinite(duration / fps) ? duration / fps : 0;
+  const formattedSeconds = durationSeconds.toFixed(2);
 
   return (
     <div className="timeline-controls-panel">
@@ -121,10 +165,78 @@ export function PlaybackControls({
             <span className="timeline-readout-label">Durée</span>
             <span className="timeline-readout-value">{duration || 0}</span>
           </div>
+          <div className="timeline-readout" title="Durée totale (secondes)">
+            <span className="timeline-readout-label">Secondes</span>
+            <span className="timeline-readout-value">{formattedSeconds}</span>
+          </div>
+          <div className="timeline-readout" title="Images par seconde">
+            <span className="timeline-readout-label">FPS</span>
+            <span className="timeline-readout-value">{fps}</span>
+          </div>
         </div>
       </div>
 
-
+      {/* Timeline settings */}
+      <div className="timeline-panel-section">
+        <div
+          className="flex flex-wrap items-end gap-3 text-xs text-[hsl(var(--muted-foreground))]"
+          role="group"
+          aria-label="Réglages de l'animation"
+        >
+          <label className="flex flex-col gap-1">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.28em]">
+              Durée (frames)
+            </span>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              value={durationDraft}
+              onChange={(event) => { setDurationDraft(event.currentTarget.value); }}
+              onBlur={() => { commitDuration(durationDraft); }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  commitDuration(durationDraft);
+                  (event.currentTarget as HTMLInputElement).blur();
+                }
+                if (event.key === "Escape") {
+                  setDurationDraft(duration.toString());
+                  (event.currentTarget as HTMLInputElement).blur();
+                }
+              }}
+              inputMode="numeric"
+              aria-label="Durée totale de l'animation en frames"
+              className="w-24 rounded-md border border-border bg-background px-2 py-1 text-right font-mono text-sm text-foreground transition focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.28em]">
+              Cadence (fps)
+            </span>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              value={fpsDraft}
+              onChange={(event) => { setFpsDraft(event.currentTarget.value); }}
+              onBlur={() => { commitFps(fpsDraft); }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  commitFps(fpsDraft);
+                  (event.currentTarget as HTMLInputElement).blur();
+                }
+                if (event.key === "Escape") {
+                  setFpsDraft(fps.toString());
+                  (event.currentTarget as HTMLInputElement).blur();
+                }
+              }}
+              inputMode="numeric"
+              aria-label="Cadence d'image (images par seconde)"
+              className="w-24 rounded-md border border-border bg-background px-2 py-1 text-right font-mono text-sm text-foreground transition focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
+            />
+          </label>
+        </div>
+      </div>
     </div>
   );
 }

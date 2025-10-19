@@ -40,7 +40,7 @@ export function Sidebar() {
     sceneItems,
   } = useUi();
 
-  const { tracks, duration } = useAnimation();
+  const { tracks, duration, fps } = useAnimation();
 
   const activePanel = useMemo<SidebarPanel | null>(() => {
     if (showLibrary) return "library";
@@ -66,6 +66,7 @@ export function Sidebar() {
       sceneItems,
       tracks,
       duration,
+      fps,
       background,
     });
 
@@ -74,7 +75,7 @@ export function Sidebar() {
       .replace(/[:.]/g, "-")
       .slice(0, -5);
     saveProjectToFile(projectData, `animation-${timestamp}.bab.json`);
-  }, [sceneItems, tracks, duration]);
+  }, [sceneItems, tracks, duration, fps]);
 
   const handleLoad = useCallback(async () => {
     if (sceneItems.length > 0) {

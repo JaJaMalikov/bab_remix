@@ -8,6 +8,8 @@ interface TimelineRulerProps {
   currentFrame: number;
   /** Le niveau de zoom de la timeline. */
   zoom: number;
+  /** La cadence d'image (images par seconde). */
+  fps: number;
   /** Callback appelé lorsque l'utilisateur clique ou glisse sur la règle pour changer de frame. */
   onSeek: (frame: number) => void;
   /** Callback optionnel appelé lorsque l'utilisateur zoome avec la molette de la souris. */
@@ -18,6 +20,7 @@ export function TimelineRuler({
   duration,
   currentFrame,
   zoom,
+  fps,
   onSeek,
   onZoom,
 }: TimelineRulerProps) {
@@ -25,30 +28,58 @@ export function TimelineRuler({
 
   const pixelsPerFrame = 2 * zoom;
   const totalWidth = duration * pixelsPerFrame;
+  const framesPerSecond = Math.max(1, Math.round(fps));
 
   // Generate tick marks based on frames
   const generateTicks = () => {
     const ticks = [];
 
     // Determine interval based on zoom
-    let frameInterval;
-    if (zoom < 0.5) {
-      frameInterval = 60;
-    } else if (zoom < 1) {
-      frameInterval = 30;
-    } else if (zoom < 2) {
-      frameInterval = 12;
+    let frameInterval: number;
+    if (zoom >= 3) {
+      frameInterval = Math.max(1, Math.round(framesPerSecond / 8));
+    } else if (zoom >= 2) {
+      frameInterval = Math.max(1, Math.round(framesPerSecond / 4));
+    } else if (zoom >= 1) {
+      frameInterval = Math.max(1, Math.round(framesPerSecond / 2));
+    } else if (zoom >= 0.5) {
+      frameInterval = framesPerSecond;
+    } else if (zoom >= 0.25) {
+      frameInterval = framesPerSecond * 2;
     } else {
-      frameInterval = 6;
+      frameInterval = framesPerSecond * 4;
     }
 
+    const majorInterval = framesPerSecond;
+
     for (let frame = 0; frame <= duration; frame += frameInterval) {
-      const isMajor = frame % 30 === 0; // Major tick every 30 frames
+      const isMajor = frame % majorInterval === 0;
+      const seconds = frame / framesPerSecond;
+      const label =
+        isMajor && Number.isFinite(seconds)
+          ? `${seconds % 1 === 0 ? seconds.toFixed(0) : seconds.toFixed(1)}s`
+          : null;
       ticks.push({
         frame,
         position: frame * pixelsPerFrame,
         isMajor,
-        label: isMajor ? frame.toString() : null,
+        label,
+      });
+    }
+
+    if (ticks.length === 0 || ticks[ticks.length - 1].frame < duration) {
+      const frame = duration;
+      const isMajor = frame % majorInterval === 0;
+      const seconds = frame / framesPerSecond;
+      const label =
+        isMajor && Number.isFinite(seconds)
+          ? `${seconds % 1 === 0 ? seconds.toFixed(0) : seconds.toFixed(1)}s`
+          : null;
+      ticks.push({
+        frame,
+        position: frame * pixelsPerFrame,
+        isMajor,
+        label,
       });
     }
 
@@ -77,7 +108,7 @@ export function TimelineRuler({
 
   return (
     <div className="timeline-ruler-container">
-      <div className="timeline-ruler-spacer">Frame</div>
+      <div className="timeline-ruler-spacer">Temps</div>
 
       <div className="timeline-ruler-content" style={{ minWidth: totalWidth }}>
         <div

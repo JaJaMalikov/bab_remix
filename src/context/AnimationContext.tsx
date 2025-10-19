@@ -43,14 +43,23 @@ export interface AnimationTrack {
   keyframes: Keyframe[];
 }
 
+export interface KeyframeMutation {
+  trackId: string;
+  from: number;
+  to: number;
+  keyframe: Keyframe;
+}
+
 export interface AnimationState {
   duration: number;
+  fps: number;
   currentFrame: number;
   tracks: AnimationTrack[];
   playing: boolean;
   setPlaying: Dispatch<SetStateAction<boolean>>;
 
   setDuration: (frames: number) => void;
+  setFps: (fps: number) => void;
   setCurrentFrame: Dispatch<SetStateAction<number>>;
 
   addKeyframe: (
@@ -63,6 +72,8 @@ export interface AnimationState {
     attachedObject?: AttachedObject,
   ) => void;
   removeKeyframe: (trackId: string, frame: number) => void;
+  moveKeyframes: (mutations: KeyframeMutation[]) => void;
+  duplicateKeyframes: (mutations: KeyframeMutation[]) => void;
   getTrack: (
     targetId: string,
     targetMemberId: string | null,
@@ -88,6 +99,7 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [duration, setDuration] = useState(300); // 300 frames = 10s at 30fps
+  const [fps, setFps] = useState(30);
   const [currentFrame, setCurrentFrame] = useState(0);
   const [tracks, setTracks] = useState<AnimationTrack[]>([]);
   const [playing, setPlaying] = useState(false);
@@ -194,6 +206,86 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({
         ...prev.slice(trackIndex + 1),
       ];
     });
+  }, []);
+
+  const moveKeyframes = useCallback((mutations: KeyframeMutation[]) => {
+    if (mutations.length === 0) return;
+
+    const grouped = mutations.reduce<Map<string, KeyframeMutation[]>>(
+      (map, mutation) => {
+        const list = map.get(mutation.trackId) ?? [];
+        list.push(mutation);
+        map.set(mutation.trackId, list);
+        return map;
+      },
+      new Map(),
+    );
+
+    setTracks((prev) =>
+      prev
+        .map((track) => {
+          const trackMutations = grouped.get(track.id);
+          if (!trackMutations || trackMutations.length === 0) {
+            return track;
+          }
+
+          const framesToRemove = new Set<number>();
+          trackMutations.forEach(({ from, to }) => {
+            framesToRemove.add(from);
+            framesToRemove.add(to);
+          });
+
+          const preserved = track.keyframes.filter(
+            (kf) => !framesToRemove.has(kf.frame),
+          );
+          const moved = trackMutations.map(({ keyframe, to }) => ({
+            ...keyframe,
+            frame: to,
+          }));
+
+          const nextKeyframes = [...preserved, ...moved].sort(
+            (a, b) => a.frame - b.frame,
+          );
+
+          return nextKeyframes.length > 0
+            ? { ...track, keyframes: nextKeyframes }
+            : null;
+        })
+        .filter((track): track is AnimationTrack => Boolean(track)),
+    );
+  }, []);
+
+  const duplicateKeyframes = useCallback((mutations: KeyframeMutation[]) => {
+    if (mutations.length === 0) return;
+
+    setTracks((prev) =>
+      prev.map((track) => {
+        const relevant = mutations.filter(
+          (mutation) => mutation.trackId === track.id,
+        );
+        if (relevant.length === 0) return track;
+
+        const framesToReplace = new Set<number>(
+          relevant.map((mutation) => mutation.to),
+        );
+
+        const preserved = track.keyframes.filter(
+          (kf) => !framesToReplace.has(kf.frame),
+        );
+
+        const duplicated = relevant.map((mutation) => ({
+          ...mutation.keyframe,
+          frame: mutation.to,
+        }));
+
+        return {
+          ...track,
+          keyframes: [...preserved, ...duplicated].sort(
+            (a, b) => a.frame - b.frame,
+          ),
+        };
+      }),
+    );
   }, []);
 
   const getTrack = useCallback(
@@ -488,12 +580,17 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({
 
     // Capture current frame at play start
     const startFrame = currentFrame;
-    startTimeRef.current = performance.now() - (startFrame * 1000) / 30; // 30 fps
+    const effectiveFps = Math.max(fps, 1);
+    startTimeRef.current =
+      performance.now() - (startFrame * 1000) / effectiveFps;
     lastFrameRef.current = startFrame;
 
     const loop = (now: number) => {
       const elapsed = now - startTimeRef.current;
-      const frame = Math.max(0, Math.floor((elapsed / 1000) * 30)); // 30 fps, never negative
+      const frame = Math.max(
+        0,
+        Math.floor((elapsed / 1000) * effectiveFps),
+      ); // never negative
 
       if (frame >= duration) {
         setCurrentFrame(0);
@@ -514,7 +611,7 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playing, duration]); // currentFrame removed from deps to avoid recalculation
+  }, [playing, duration, fps]); // currentFrame removed from deps to avoid recalculation
 
   // Listen for project load events
   useEffect(() => {
@@ -527,8 +624,12 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // Load animation data
       if (projectData.animation) {
-        setDuration(projectData.animation.duration);
+        setDuration(projectData.animation.duration ?? 300);
+        setFps(projectData.animation.fps ?? 30);
         setTracks(projectData.animation.tracks);
+      } else {
+        setDuration(300);
+        setFps(30);
       }
       setPlaying(false); // Stop playback on load
     };
@@ -540,14 +641,18 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({
   const value = useMemo(
     () => ({
       duration,
+      fps,
       currentFrame,
       tracks,
       playing,
       setPlaying,
       setDuration,
+      setFps,
       setCurrentFrame,
       addKeyframe,
       removeKeyframe,
+      moveKeyframes,
+      duplicateKeyframes,
       getTrack,
       getValueAtFrame,
       removeAllTracksForTarget,
@@ -555,11 +660,14 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({
     }),
     [
       duration,
+      fps,
       currentFrame,
       tracks,
       playing,
       addKeyframe,
       removeKeyframe,
+      moveKeyframes,
+      duplicateKeyframes,
       getTrack,
       getValueAtFrame,
       removeAllTracksForTarget,

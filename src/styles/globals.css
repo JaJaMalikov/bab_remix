@@ -313,11 +313,28 @@
     @apply absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[3px] border border-[hsl(var(--background))] bg-[hsl(var(--keyframe-default))];
     box-shadow: 0 0 0 1px rgba(8, 15, 25, 0.3);
     transition: all 0.15s ease;
-    cursor: pointer;
+    cursor: grab;
   }
 
   .timeline-keyframe:hover {
-    @apply scale-125;
+    @apply scale-110;
+  }
+
+  .timeline-keyframe:focus-visible {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 2px;
+  }
+
+  .timeline-keyframe:active {
+    cursor: grabbing;
+  }
+
+  .timeline-keyframe.is-selected {
+    @apply border-[hsl(var(--primary))] bg-[hsl(var(--primary)/0.9)];
+    box-shadow:
+      0 0 0 1px rgba(8, 15, 25, 0.3),
+      0 0 0 3px rgba(37, 99, 235, 0.35);
+    transform: translate(-50%, -50%) rotate(45deg) scale(1.2);
   }
 
   .timeline-keyframe.position-x {
@@ -330,6 +347,25 @@
 
   .timeline-keyframe.rotation {
     @apply bg-[hsl(var(--keyframe-rotation))];
+  }
+
+  .timeline-keyframe.visibility {
+    width: 6px;
+    height: 6px;
+    transform: translate(-50%, -50%);
+    border-radius: 9999px;
+    @apply border-[hsl(var(--background))] bg-[hsl(var(--timeline-visible)/0.85)];
+    box-shadow:
+      0 0 0 1px rgba(8, 15, 25, 0.25),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.45);
+  }
+
+  .timeline-keyframe.visibility.is-selected {
+    transform: translate(-50%, -50%) scale(1.4);
+    @apply border-[hsl(var(--primary))] bg-[hsl(var(--primary))];
+    box-shadow:
+      0 0 0 1px rgba(8, 15, 25, 0.25),
+      0 0 0 3px rgba(37, 99, 235, 0.35);
   }
 
   @media (max-width: 960px) {
