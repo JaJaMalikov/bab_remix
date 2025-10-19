@@ -43,13 +43,16 @@ export const useAnimationPlaybackUnified = () => {
       return;
     }
 
-    // Collect all updates from tracks in a single pass
-    const updates = {
-      visibility: new Map<string, boolean>(),
-      transforms: new Map<string, Record<string, number>>(),
-      variants: new Map<string, { group: string; value: string; item: SceneItem }>(),
-      attachments: new Map<string, string>(),
-    };
+    // Use requestAnimationFrame to batch DOM updates in a single browser frame
+    // This prevents layout thrashing and improves smoothness
+    const rafId = requestAnimationFrame(() => {
+      // Collect all updates from tracks in a single pass
+      const updates = {
+        visibility: new Map<string, boolean>(),
+        transforms: new Map<string, Record<string, number>>(),
+        variants: new Map<string, { group: string; value: string; item: SceneItem }>(),
+        attachments: new Map<string, string>(),
+      };
 
     // Single iteration over tracks to collect all animation values
     tracks.forEach((track) => {
@@ -220,6 +223,10 @@ export const useAnimationPlaybackUnified = () => {
       }
     });
 
-    perfMonitor.endMeasure("playback-frame");
+      perfMonitor.endMeasure("playback-frame");
+    });
+
+    // Cleanup: cancel RAF if effect re-runs before completion
+    return () => cancelAnimationFrame(rafId);
   }, [currentFrame, tracks, sceneItems, getValueAtFrame, clearAttachmentAttributes, recording]);
 };
