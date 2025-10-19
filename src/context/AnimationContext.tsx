@@ -10,6 +10,7 @@ import React, {
 import type { Dispatch, SetStateAction } from "react";
 import { SceneItem } from "./UiContext";
 import { readItemTransform } from "../utils/svgTransform";
+import { EASINGS, linear } from "../utils/easings";
 
 export type AnimationProperty =
   | "rotation"
@@ -33,6 +34,7 @@ export interface Keyframe {
   value: KeyframeValue;
   variant?: string;
   attachedObject?: AttachedObject;
+  easing?: string; // Easing function name (default: "linear")
 }
 
 export interface AnimationTrack {
@@ -56,7 +58,9 @@ export interface AnimationState {
   currentFrame: number;
   tracks: AnimationTrack[];
   playing: boolean;
+  recording: boolean;
   setPlaying: Dispatch<SetStateAction<boolean>>;
+  setRecording: Dispatch<SetStateAction<boolean>>;
 
   setDuration: (frames: number) => void;
   setFps: (fps: number) => void;
@@ -116,6 +120,7 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({
   const [currentFrame, setCurrentFrame] = useState(0);
   const [tracks, setTracks] = useState<AnimationTrack[]>([]);
   const [playing, setPlaying] = useState(false);
+  const [recording, setRecording] = useState(false);
   const rafRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const lastFrameRef = useRef<number>(-1);
@@ -335,16 +340,36 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({
       const track = getTrack(targetId, targetMemberId, property);
       if (!track || track.keyframes.length === 0) return null;
 
-      // Find surrounding keyframes
-      const before = track.keyframes
-        .filter((kf) => kf.frame <= frame)
-        .sort((a, b) => b.frame - a.frame)[0];
-      const after = track.keyframes
-        .filter((kf) => kf.frame > frame)
-        .sort((a, b) => a.frame - b.frame)[0];
+      const keyframes = track.keyframes;
 
-      if (!before) return after.value;
-      if (!after) return before.value;
+      // Binary search for keyframe at or before target frame - O(log n) instead of O(n log n)
+      let beforeIdx = -1;
+      let left = 0;
+      let right = keyframes.length - 1;
+
+      while (left <= right) {
+        const mid = Math.floor((left + right) / 2);
+        if (keyframes[mid].frame <= frame) {
+          beforeIdx = mid;
+          left = mid + 1;
+        } else {
+          right = mid - 1;
+        }
+      }
+
+      // No keyframe at or before target frame
+      if (beforeIdx === -1) {
+        return keyframes[0].value;
+      }
+
+      const before = keyframes[beforeIdx];
+
+      // No keyframe after target frame (or exact match)
+      if (beforeIdx === keyframes.length - 1) {
+        return before.value;
+      }
+
+      const after = keyframes[beforeIdx + 1];
 
       // For variants and attachments, use step interpolation
       if (
@@ -357,15 +382,19 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // Type guard for interpolation
       if (typeof before.value !== "number" || typeof after.value !== "number") {
-        // Should not happen for interpolatable properties, but as a safeguard:
         return before.value;
       }
 
-      // Linear interpolation for numeric properties
-      const t = (frame - before.frame) / (after.frame - before.frame);
+      // Apply easing to interpolation
+      let t = (frame - before.frame) / (after.frame - before.frame);
       if (isNaN(t) || !isFinite(t)) {
         return before.value;
       }
+
+      // Apply easing function if specified on the keyframe
+      const easingFn = before.easing ? (EASINGS[before.easing] || linear) : linear;
+      t = easingFn(t);
+
       return before.value + t * (after.value - before.value);
     },
     [getTrack],
@@ -658,7 +687,9 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({
       currentFrame,
       tracks,
       playing,
+      recording,
       setPlaying,
+      setRecording,
       setDuration,
       setFps,
       setCurrentFrame,
@@ -677,6 +708,7 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({
       currentFrame,
       tracks,
       playing,
+      recording,
       addKeyframe,
       removeKeyframe,
       moveKeyframes,

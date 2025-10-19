@@ -5,6 +5,8 @@ import { useFpsCounter } from "../hooks/useFpsCounter";
 interface PlaybackControlsProps {
   /** Indique si l'animation est en cours de lecture. */
   isPlaying: boolean;
+  /** Indique si le mode recording est actif. */
+  isRecording: boolean;
   /** La frame actuellement affichée dans la timeline. */
   currentFrame: number;
   /** La durée totale de l'animation en frames. */
@@ -23,6 +25,8 @@ interface PlaybackControlsProps {
   onPause: () => void;
   /** Callback pour arrêter la lecture et revenir au début. */
   onStop: () => void;
+  /** Callback pour toggle le mode recording. */
+  onToggleRecording: () => void;
   /** Callback pour sauter à la keyframe précédente. */
   onPrevKeyframe: () => void;
   /** Callback pour sauter à la keyframe suivante. */
@@ -43,6 +47,7 @@ interface PlaybackControlsProps {
 
 export function PlaybackControls({
   isPlaying,
+  isRecording,
   currentFrame,
   duration,
   fps,
@@ -51,6 +56,7 @@ export function PlaybackControls({
   onPlay,
   onPause,
   onStop,
+  onToggleRecording,
   onPrevKeyframe,
   onNextKeyframe,
   onSnapshot,
@@ -111,6 +117,7 @@ export function PlaybackControls({
             title={isPlaying ? "Mettre en pause" : "Lecture"}
             onClick={isPlaying ? onPause : onPlay}
             data-state={isPlaying ? "active" : undefined}
+            disabled={isRecording}
           >
             <PlayPauseIcon className="timeline-icon" aria-hidden />
             <span className="sr-only">
@@ -154,6 +161,20 @@ export function PlaybackControls({
           >
             <SnapshotIcon className="timeline-icon" aria-hidden />
             <span className="sr-only">Capturer les keyframes des éléments visibles</span>
+          </button>
+          <button
+            type="button"
+            className="timeline-icon-button"
+            title={isRecording ? "Mode Recording actif - Cliquer pour désactiver" : "Activer le mode Recording"}
+            onClick={onToggleRecording}
+            data-state={isRecording ? "active" : undefined}
+            style={{
+              color: isRecording ? '#ef4444' : undefined,
+              fontWeight: isRecording ? 'bold' : undefined
+            }}
+          >
+            <span className="timeline-icon" aria-hidden>⏺</span>
+            <span className="sr-only">{isRecording ? "Désactiver" : "Activer"} le mode recording</span>
           </button>
         </div>
       </div>

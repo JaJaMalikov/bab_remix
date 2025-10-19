@@ -20,7 +20,7 @@ import {
  * state reads and prevent race conditions.
  */
 export const useAnimationPlaybackUnified = () => {
-  const { currentFrame, getValueAtFrame, tracks } = useAnimation();
+  const { currentFrame, getValueAtFrame, tracks, recording } = useAnimation();
   const { sceneItems } = useUi();
 
   const clearAttachmentAttributes = useCallback((imageEl: SVGGraphicsElement) => {
@@ -34,6 +34,9 @@ export const useAnimationPlaybackUnified = () => {
   }, []);
 
   useEffect(() => {
+    // Skip playback if in recording mode - manual edits take precedence
+    if (recording) return;
+
     // Collect all updates from tracks in a single pass
     const updates = {
       visibility: new Map<string, boolean>(),
@@ -210,5 +213,5 @@ export const useAnimationPlaybackUnified = () => {
         }
       }
     });
-  }, [currentFrame, tracks, sceneItems, getValueAtFrame, clearAttachmentAttributes]);
+  }, [currentFrame, tracks, sceneItems, getValueAtFrame, clearAttachmentAttributes, recording]);
 };

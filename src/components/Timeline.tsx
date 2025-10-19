@@ -44,7 +44,9 @@ export const Timeline: React.FC = React.memo(() => {
     setCurrentFrame,
     tracks,
     playing,
+    recording,
     setPlaying,
+    setRecording,
     snapshotKeyframes,
     addKeyframe,
     getValueAtFrame,
@@ -486,6 +488,7 @@ export const Timeline: React.FC = React.memo(() => {
         {/* Controls Panel */}
         <PlaybackControls
           isPlaying={playing}
+          isRecording={recording}
           currentFrame={currentFrame}
           duration={duration}
           fps={fps}
@@ -495,6 +498,7 @@ export const Timeline: React.FC = React.memo(() => {
           onPlay={() => { setPlaying(true); }}
           onPause={() => { setPlaying(false); }}
           onStop={handleStop}
+          onToggleRecording={() => { setRecording(prev => !prev); }}
           onPrevKeyframe={handlePrevKeyframe}
           onNextKeyframe={handleNextKeyframe}
           onSnapshot={() => { snapshotKeyframes(sceneItems); }}
