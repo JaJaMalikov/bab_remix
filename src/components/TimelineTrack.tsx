@@ -1,3 +1,5 @@
+import { cn } from "../lib/utils";
+
 interface Keyframe {
   frame: number;
   type: "position" | "rotation" | "visible";
@@ -82,7 +84,10 @@ export function TimelineTrack({
               return (
                 <div
                   key={index}
-                  className={`timeline-track-segment ${segment.visible ? "is-visible" : "is-hidden"}`}
+                  className={cn(
+                    "timeline-track-segment",
+                    segment.visible ? "is-visible" : "is-hidden"
+                  )}
                   style={{
                     left: `${leftPercent}%`,
                     width: `${widthPercent}%`,
@@ -95,18 +100,15 @@ export function TimelineTrack({
           {/* Keyframes */}
           {keyframes.map((keyframe, i) => {
             const left = keyframe.frame * pixelsPerFrame;
-            let className = "timeline-keyframe";
-
-            if (keyframe.type === "position") {
-              className += ` position-${keyframe.axis}`;
-            } else if (keyframe.type === "rotation") {
-              className += " rotation";
-            }
 
             return (
               <button
                 key={`${keyframe.type}-${keyframe.axis}-${i}`}
-                className={className}
+                className={cn(
+                  "timeline-keyframe",
+                  keyframe.type === "position" && `position-${keyframe.axis}`,
+                  keyframe.type === "rotation" && "rotation"
+                )}
                 style={{ left }}
                 onClick={() => onKeyframeClick?.(keyframe)}
                 title={`${keyframe.type}${keyframe.axis ? ` ${keyframe.axis.toUpperCase()}` : ""} • Frame ${keyframe.frame}`}

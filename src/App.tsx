@@ -10,17 +10,14 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { AppLayout } from "./components/layout/app-layout";
 import { SidePanel } from "./components/layout/side-panel";
 import { LibraryPanel } from "./components/features/library-panel";
-import { Theme } from "@radix-ui/themes";
 
 export default function App() {
   return (
-    <Theme appearance="dark" accentColor="red" grayColor="sage">
       <UiProvider>
         <AnimationProvider>
           <RootShell />
         </AnimationProvider>
       </UiProvider>
-    </Theme>
   );
 }
 

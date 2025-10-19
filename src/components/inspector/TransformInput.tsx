@@ -1,5 +1,6 @@
 import { Input } from "../ui/input";
 import React from "react";
+import { cn } from "../../lib/utils";
 
 interface TransformInputProps {
   label: string;
@@ -41,7 +42,12 @@ export const TransformInput: React.FC<TransformInputProps> = ({
           type="button"
           onClick={onAddKeyframe}
           title="Add keyframe"
-          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded border text-xs ${hasKeyframe ? "border-primary bg-primary text-primary-foreground" : "border-border bg-muted/40 text-muted-foreground hover:border-primary/60"}`}
+          className={cn(
+            "flex h-6 w-6 shrink-0 items-center justify-center rounded border text-xs",
+            hasKeyframe
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border bg-muted/40 text-muted-foreground hover:border-primary/60"
+          )}
         >
           ◆
         </button>

@@ -1,5 +1,6 @@
 import React from "react";
 import type { SceneItem } from "../../context/UiContext";
+import { cn } from "../../lib/utils";
 
 interface SceneItemListProps {
   /** La liste des éléments présents dans la scène. */
@@ -43,7 +44,12 @@ export const SceneItemList: React.FC<SceneItemListProps> = ({
           return (
             <div
               key={item.id}
-              className={`flex items-center gap-1 rounded border px-2 py-1 ${selected ? "border-primary bg-primary/10" : "border-border bg-muted/40"}`}
+              className={cn(
+                "flex items-center gap-1 rounded border px-2 py-1",
+                selected
+                  ? "border-primary bg-primary/10"
+                  : "border-border bg-muted/40"
+              )}
             >
               <button
                 type="button"

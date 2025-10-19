@@ -1,4 +1,5 @@
 import React, { useRef } from "react";
+import { cn } from "../lib/utils";
 
 interface TimelineRulerProps {
   /** La durée totale de l'animation en frames. */
@@ -94,7 +95,10 @@ export function TimelineRuler({
               style={{ left: tick.position }}
             >
               <div
-                className={`timeline-ruler-tick-line ${tick.isMajor ? "major" : "minor"}`}
+                className={cn(
+                  "timeline-ruler-tick-line",
+                  tick.isMajor ? "major" : "minor"
+                )}
               />
               {tick.label && (
                 <div className="timeline-ruler-tick-label">{tick.label}</div>
