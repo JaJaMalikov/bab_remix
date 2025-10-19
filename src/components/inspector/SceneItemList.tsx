@@ -48,7 +48,7 @@ export const SceneItemList: React.FC<SceneItemListProps> = ({
                 "flex items-center gap-1 rounded border px-2 py-1",
                 selected
                   ? "border-primary bg-primary/10"
-                  : "border-border bg-muted/40"
+                  : "border-border bg-muted/40",
               )}
             >
               <button

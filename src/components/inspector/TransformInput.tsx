@@ -46,7 +46,7 @@ export const TransformInput: React.FC<TransformInputProps> = ({
             "flex h-6 w-6 shrink-0 items-center justify-center rounded border text-xs",
             hasKeyframe
               ? "border-primary bg-primary text-primary-foreground"
-              : "border-border bg-muted/40 text-muted-foreground hover:border-primary/60"
+              : "border-border bg-muted/40 text-muted-foreground hover:border-primary/60",
           )}
         >
           ◆

@@ -16,7 +16,7 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
   handleVariantChange,
 }) => {
   if (
-    selectedItem.type !== 'puppet' ||
+    selectedItem.type !== "puppet" ||
     !selectedItem.metadata?.variantGroups ||
     selectedItem.metadata.variantGroups.length === 0
   ) {

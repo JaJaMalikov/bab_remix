@@ -42,7 +42,7 @@ export const SvgScene = memo(() => {
       anchor: SVGGElement;
       dropX: number;
       dropY: number;
-      metadata?: unknown;
+      metadata?: any;
     }[]
   >([]);
 
@@ -76,55 +76,55 @@ export const SvgScene = memo(() => {
     if (!sceneRef.current) {
       const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
       g.setAttribute("data-scene", "true");
-      viewportRef.current.appendChild(g);
+      viewportRef.current!.appendChild(g);
       sceneRef.current = g;
     }
-    return { viewport: viewportRef.current, scene: sceneRef.current! };
+    return { viewport: viewportRef.current!, scene: sceneRef.current! };
   }, []);
 
   const setDecor = useCallback(async (href: string) => {
-      const img = new Image();
-      img.decoding = "async";
-      const p = new Promise<{ w: number; h: number }>((resolve, reject) => {
-        img.onload = () => { resolve({ w: img.naturalWidth, h: img.naturalHeight }); };
-        img.onerror = reject;
-      });
-      img.src = href;
-      try {
-        const { w, h } = await p;
+    const img = new Image();
+    img.decoding = "async";
+    const p = new Promise<{ w: number; h: number }>((resolve, reject) => {
+      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+      img.onerror = reject;
+    });
+    img.src = href;
+    try {
+      const { w, h } = await p;
 
-        const svg = svgRef.current!;
-        svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
-        svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
-        viewSizeRef.current = { w, h };
+      const svg = svgRef.current!;
+      svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+      svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+      viewSizeRef.current = { w, h };
 
-        const { viewport } = ensureContainers();
-        if (!bgRef.current) {
-          const bg = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "image",
-          );
-          bg.setAttribute("x", "0");
-          bg.setAttribute("y", "0");
-          bg.setAttribute("width", String(w));
-          bg.setAttribute("height", String(h));
-          bg.setAttribute("href", href);
-          viewport.insertBefore(bg, viewport.firstChild);
-          bgRef.current = bg;
-        } else {
-          bgRef.current.setAttribute("width", String(w));
-          bgRef.current.setAttribute("height", String(h));
-          bgRef.current.setAttribute("href", href);
-        }
-      } catch (error) {
-        toast({
-          variant: "destructive",
-          title: "Erreur",
-          description: "Impossible de charger l'image du décor.",
-        });
-        console.error("Failed to load decor image:", error);
+      const { viewport } = ensureContainers();
+      if (!bgRef.current) {
+        const bg = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "image",
+        );
+        bg.setAttribute("x", "0");
+        bg.setAttribute("y", "0");
+        bg.setAttribute("width", String(w));
+        bg.setAttribute("height", String(h));
+        bg.setAttribute("href", href);
+        viewport.insertBefore(bg, viewport.firstChild);
+        bgRef.current = bg as SVGImageElement;
+      } else {
+        bgRef.current.setAttribute("width", String(w));
+        bgRef.current.setAttribute("height", String(h));
+        bgRef.current.setAttribute("href", href);
       }
-    }, [ensureContainers, toast]);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Impossible de charger l'image du décor.",
+      });
+      console.error("Failed to load decor image:", error);
+    }
+  }, [ensureContainers, toast]);
 
   const initializeVisibilityForItem = useCallback(
     (itemId: string) => {
@@ -181,9 +181,7 @@ export const SvgScene = memo(() => {
 
     const onDragOver = (e: DragEvent) => {
       e.preventDefault();
-      if (e.dataTransfer) {
-        e.dataTransfer.dropEffect = "copy";
-      }
+      e.dataTransfer!.dropEffect = "copy";
     };
     const onDrop = async (e: DragEvent) => {
       e.preventDefault();
@@ -191,7 +189,7 @@ export const SvgScene = memo(() => {
       if (!data) return;
       const asset: Asset = JSON.parse(data);
       const pt = toSceneCoords(e.clientX, e.clientY);
-      void dropAsset(asset, pt.x, pt.y);
+      await dropAsset(asset, pt.x, pt.y);
     };
 
     svg.addEventListener("dragover", onDragOver);
@@ -206,7 +204,7 @@ export const SvgScene = memo(() => {
 
   // Default decor at startup
   useEffect(() => {
-    setDecor("/assets/decors/scene.png").catch((error: unknown) => {
+    setDecor("/assets/decors/scene.png").catch((error) => {
       console.error("Failed to set default decor:", error);
     });
     ensureContainers();
@@ -228,7 +226,7 @@ export const SvgScene = memo(() => {
       setFitInView(undefined);
       setImportAsset(undefined);
     };
-  }, [doFitInView, dropAsset, setFitInView, setImportAsset, toSceneCoords]);
+  }, [doFitInView, dropAsset, toSceneCoords]);
 
   return (
     <div
@@ -287,7 +285,7 @@ export const SvgScene = memo(() => {
                 const tx = Math.round(p.dropX - (bbox.x + bbox.width / 2));
                 const ty = Math.round(p.dropY - (bbox.y + bbox.height / 2));
                 p.anchor.setAttribute("transform", `translate(${tx}, ${ty})`);
-              } catch { /* empty */ }
+              } catch {}
             }}
           />,
           p.anchor,

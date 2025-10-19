@@ -18,12 +18,12 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({
   handleAttachToMember,
   handleDetachFromMember,
 }) => {
-  if (selectedItem.type !== 'image') return null;
+  if (selectedItem.type !== "image") return null;
 
   const imageEl = selectedItem.el as SVGGraphicsElement;
-  const isAttached = imageEl.hasAttribute('data-attached-to-puppet');
-  const attachedPuppetId = imageEl.getAttribute('data-attached-to-puppet');
-  const attachedMemberId = imageEl.getAttribute('data-attached-to-member');
+  const isAttached = imageEl.hasAttribute("data-attached-to-puppet");
+  const attachedPuppetId = imageEl.getAttribute("data-attached-to-puppet");
+  const attachedMemberId = imageEl.getAttribute("data-attached-to-member");
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -34,13 +34,13 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({
             <span className="flex-1 text-xs text-foreground">
               {(() => {
                 const puppet = sceneItems.find((p) => p.id === attachedPuppetId);
-                if (!puppet) return 'Unknown';
+                if (!puppet) return "Unknown";
                 const puppetRoot = (puppet.el as SVGGElement).firstChild as SVGGElement | null;
-                if (!puppetRoot) return 'Unknown';
+                if (!puppetRoot) return "Unknown";
                 const member = puppetRoot.querySelector(
-                  `#${CSS.escape(attachedMemberId || '')}`,
+                  `#${CSS.escape(attachedMemberId || "")}`,
                 ) as SVGGElement | null;
-                const memberName = member?.id || attachedMemberId;
+                const memberName = member?.id ?? attachedMemberId;
                 return `${puppet.label} › ${memberName}`;
               })()}
             </span>
@@ -65,12 +65,12 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({
           >
             <option value="">-- Select member --</option>
             {sceneItems
-              .filter((item) => item.type === 'puppet')
+              .filter((item) => item.type === "puppet")
               .map((puppet) => {
                 const anchor = puppet.el;
                 const puppetRoot = anchor.firstChild as SVGGElement | null;
                 if (!puppetRoot) return null;
-                const members = puppetRoot.querySelectorAll('[data-membre]');
+                const members = puppetRoot.querySelectorAll("[data-membre]");
                 return Array.from(members).map((member) => {
                   const name = member.id;
                   return (

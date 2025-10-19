@@ -231,14 +231,14 @@ export const useUi = create<UiState>()(
     {
       name: LAYOUT_STORAGE_KEY,
       partialize: (state) => ({
-        showTimeline: state.showTimeline,
-        timelineHeight: state.timelineHeight,
-        showLibrary: state.showLibrary,
-        showInspector: state.showInspector,
-        showLayers: state.showLayers,
-        showToolbar: state.showToolbar,
-        showTracks: state.showTracks,
-      }) as Partial<UiState>,
+          showTimeline: state.showTimeline,
+          timelineHeight: state.timelineHeight,
+          showLibrary: state.showLibrary,
+          showInspector: state.showInspector,
+          showLayers: state.showLayers,
+          showToolbar: state.showToolbar,
+          showTracks: state.showTracks,
+        }) as Partial<UiState>,
       merge: (persistedState, currentState) => ({
         ...currentState,
         ...((persistedState as LayoutState | undefined) ?? {}),

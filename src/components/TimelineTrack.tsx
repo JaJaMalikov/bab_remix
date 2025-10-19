@@ -4,7 +4,7 @@ interface Keyframe {
   frame: number;
   type: "position" | "rotation" | "visible";
   axis?: "x" | "y";
-  value?: any;
+  value?: unknown;
 }
 
 interface VisibilitySegment {
@@ -86,7 +86,7 @@ export function TimelineTrack({
                   key={index}
                   className={cn(
                     "timeline-track-segment",
-                    segment.visible ? "is-visible" : "is-hidden"
+                    segment.visible ? "is-visible" : "is-hidden",
                   )}
                   style={{
                     left: `${leftPercent}%`,
@@ -107,7 +107,7 @@ export function TimelineTrack({
                 className={cn(
                   "timeline-keyframe",
                   keyframe.type === "position" && `position-${keyframe.axis}`,
-                  keyframe.type === "rotation" && "rotation"
+                  keyframe.type === "rotation" && "rotation",
                 )}
                 style={{ left }}
                 onClick={() => onKeyframeClick?.(keyframe)}

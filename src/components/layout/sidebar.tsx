@@ -60,7 +60,7 @@ export function Sidebar() {
   const handleSave = useCallback(() => {
     const svgEl = document.querySelector("svg[data-scene]");
     const bgEl = svgEl?.querySelector("image") as SVGImageElement | null;
-    const background = bgEl?.getAttribute("href") || null;
+    const background = bgEl?.getAttribute("href") ?? null;
 
     const projectData = serializeProject({
       sceneItems,
@@ -97,7 +97,7 @@ export function Sidebar() {
         description: "Impossible de charger le fichier de projet.",
       });
     }
-  }, [sceneItems]);
+  }, [sceneItems.length, toast]);
 
   return (
     <aside className="flex h-full w-12 flex-col items-center border-r border-border bg-muted/30">
@@ -115,7 +115,7 @@ export function Sidebar() {
                       "flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground",
                       selected && "bg-primary/10 text-primary",
                     )}
-                    onClick={() => togglePanel(id)}
+                    onClick={() => { togglePanel(id); }}
                     aria-pressed={selected}
                     aria-label={label}
                   >

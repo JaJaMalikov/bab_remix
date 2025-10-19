@@ -9,11 +9,11 @@ interface TransformEditorProps {
   /** L'objet contenant les transformations actuelles de l'élément (position, rotation, échelle). */
   transform: { x: number; y: number; rotation: number; scaleX: number; scaleY: number; };
   /** Callback pour gérer le changement de position (X ou Y). */
-  handlePositionChange: (axis: 'x' | 'y', value: number) => void;
+  handlePositionChange: (axis: "x" | "y", value: number) => void;
   /** Callback pour gérer le changement de rotation. */
   handleRotationChange: (value: number) => void;
   /** Callback pour gérer le changement d'échelle (X ou Y). */
-  handleScaleChange: (axis: 'scaleX' | 'scaleY', value: number) => void;
+  handleScaleChange: (axis: "scaleX" | "scaleY", value: number) => void;
 }
 
 export const TransformEditor: React.FC<TransformEditorProps> = ({
@@ -42,7 +42,7 @@ export const TransformEditor: React.FC<TransformEditorProps> = ({
         />
       </div>
 
-      {selectedItem.type === 'image' && (
+      {selectedItem.type === "image" && (
         <>
           <div className="flex items-center gap-2">
             <span className="w-16 text-[10px] font-medium uppercase text-muted-foreground">Rotation</span>

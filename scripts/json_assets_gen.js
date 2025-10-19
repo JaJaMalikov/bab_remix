@@ -80,7 +80,7 @@ function parsePantinFile(filePath) {
   const variantGroups = new Map();
   new Map();
 
-    const walk = (node, currentMemberId) => {
+  const walk = (node, currentMemberId) => {
     if (!node || node.nodeType !== 1) return;
     const element = node;
     const idAttr = element.getAttribute("id");

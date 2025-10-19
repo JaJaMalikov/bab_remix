@@ -39,7 +39,7 @@ export const ItemProperties: React.FC<ItemPropertiesProps> = ({ item }) => {
           <Input
             type="text"
             value={labelInput}
-            onChange={(event) => setLabelInput(event.target.value)}
+            onChange={(event) => { setLabelInput(event.target.value); }}
             onKeyDown={(event) => event.key === "Enter" && handleSaveLabel()}
             autoFocus
             className="h-6 flex-1 text-xs"

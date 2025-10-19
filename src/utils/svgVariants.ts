@@ -1,16 +1,16 @@
-type VariantInfo = {
+interface VariantInfo {
   targetMemberId: string | null;
   name: string | null;
   isDefault?: boolean;
   isBehindParent?: boolean;
 };
 
-export type VariantGroupMetadata = {
+export interface VariantGroupMetadata {
   group: string;
   variants: VariantInfo[];
 };
 
-type TargetMemberContext = {
+interface TargetMemberContext {
   member: SVGGElement | null;
   parent: SVGGElement | null;
 };
@@ -152,7 +152,7 @@ export const findVisibleVariant = (
       continue;
     }
 
-    const targetId = variant.getAttribute("data-variant-target") || variant.id;
+    const targetId = variant.getAttribute("data-variant-target") ?? variant.id;
     const groupName = variant.getAttribute("data-variant-groupe");
     if (
       (targetId && targetId === memberId) ||

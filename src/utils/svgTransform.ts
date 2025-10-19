@@ -40,7 +40,7 @@ export interface ParsedTransform {
 }
 
 export function parseTransformAttribute(element: Element): ParsedTransform {
-  const transform = element.getAttribute("transform") || "";
+  const transform = element.getAttribute("transform") ?? "";
 
   // Parse translate(x, y) or translate(x y)
   const translateMatch = transform.match(

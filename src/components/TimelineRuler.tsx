@@ -97,7 +97,7 @@ export function TimelineRuler({
               <div
                 className={cn(
                   "timeline-ruler-tick-line",
-                  tick.isMajor ? "major" : "minor"
+                  tick.isMajor ? "major" : "minor",
                 )}
               />
               {tick.label && (

@@ -8,7 +8,7 @@ export interface Size {
   height: number;
 }
 
-type Options = {
+interface Options {
   storageKey?: string;
 };
 

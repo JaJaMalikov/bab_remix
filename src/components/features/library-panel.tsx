@@ -12,7 +12,7 @@ const CATEGORY_TABS = [
 
 type CategoryValue = (typeof CATEGORY_TABS)[number]["value"];
 
-type ManifestEntry = {
+interface ManifestEntry {
   name: string;
   path: string;
   category: CategoryValue;

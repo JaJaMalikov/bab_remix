@@ -152,8 +152,9 @@ function InspectorComponent() {
     };
 
     window.addEventListener("item:transformed", handleTransformUpdate);
-    return () =>
+    return () => {
       window.removeEventListener("item:transformed", handleTransformUpdate);
+    };
   }, [sceneItems, addKeyframe, currentFrame, ensureInitialSnapshot]);
 
   // Initialize default variants when selecting a puppet
@@ -218,25 +219,28 @@ function InspectorComponent() {
     setSelectedLimb("");
   }, [setSelectedItemId, setSelectedLimb]);
 
-  const handleDeleteItem = useCallback((id: string) => {
-    const item = sceneItems.find((i) => i.id === id);
-    if (item?.el.parentNode) {
-      item.el.parentNode.removeChild(item.el);
-    }
-    removeSceneItem(id);
-    removeAllTracksForTarget(id); // Remove animation tracks
-    if (selectedItemId === id) {
-      setSelectedItemId(null);
-      setSelectedLimb("");
-    }
-  }, [
-    selectedItemId,
-    sceneItems,
-    removeSceneItem,
-    removeAllTracksForTarget,
-    setSelectedItemId,
-    setSelectedLimb,
-  ]);
+  const handleDeleteItem = useCallback(
+    (id: string) => {
+      const item = sceneItems.find((i) => i.id === id);
+      if (item?.el.parentNode) {
+        item.el.parentNode.removeChild(item.el);
+      }
+      removeSceneItem(id);
+      removeAllTracksForTarget(id); // Remove animation tracks
+      if (selectedItemId === id) {
+        setSelectedItemId(null);
+        setSelectedLimb("");
+      }
+    },
+    [
+      selectedItemId,
+      sceneItems,
+      removeSceneItem,
+      removeAllTracksForTarget,
+      setSelectedItemId,
+      setSelectedLimb,
+    ],
+  );
 
 
 
@@ -426,7 +430,7 @@ function InspectorComponent() {
 
   // Helper to update attachment with automatic keyframing and error handling
   const updateAttachmentWithKeyframes = useCallback(
-    (updateFn: () => Record<string, any> | null, errorMessage: string) => {
+    (updateFn: () => Record<string, unknown> | null, errorMessage: string) => {
       if (!selectedItem || selectedItem.type !== "image") return;
 
       try {
@@ -437,7 +441,7 @@ function InspectorComponent() {
 
         // Add keyframes for all returned properties
         Object.entries(result).forEach(([prop, value]) => {
-          if (value !== undefined) {
+          if (value !== undefined && (typeof value === "string" || typeof value === "number" || typeof value === "boolean")) {
             addKeyframe(
               selectedItem.id,
               null,
@@ -458,7 +462,7 @@ function InspectorComponent() {
         console.error(err);
       }
     },
-    [selectedItem, ensureInitialSnapshot, addKeyframe, currentFrame],
+    [selectedItem, ensureInitialSnapshot, addKeyframe, currentFrame, toast],
   );
 
   // Handle detaching image from puppet member

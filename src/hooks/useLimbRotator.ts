@@ -1,32 +1,32 @@
-import { useState, useRef, useEffect } from 'react';
-import { useWindowDrag } from './useWindowDrag';
-import { getRotationFromTransform, setRotationWithOrigin } from '../utils/svgTransform';
-import type { SceneItem } from '../context/UiContext';
-import { AnimationProperty } from '../context/AnimationContext';
+import { useState, useRef, useEffect } from "react";
+import { useWindowDrag } from "./useWindowDrag";
+import { getRotationFromTransform, setRotationWithOrigin } from "../utils/svgTransform";
+import type { SceneItem } from "../context/UiContext";
+import { AnimationProperty, KeyframeValue } from "../context/AnimationContext";
 
 const parseTransformOrigin = (limb: SVGGElement): { local: { x: number; y: number }; screen: { x: number; y: number } } | null => {
   try {
-    const originStr = limb.style.transformOrigin || getComputedStyle(limb).transformOrigin || '';
+    const originStr = limb.style.transformOrigin || getComputedStyle(limb).transformOrigin || "";
     if (!originStr) return null;
     const parts = originStr.trim().split(/\s+/);
     if (parts.length < 2) return null;
     const [oxRaw, oyRaw] = parts;
     const bbox = limb.getBBox();
-    const parseValue = (value: string, axis: 'x' | 'y') => {
-      if (value.endsWith('%')) {
+    const parseValue = (value: string, axis: "x" | "y") => {
+      if (value.endsWith("%")) {
         const percent = parseFloat(value) / 100;
-        const base = axis === 'x' ? bbox.x : bbox.y;
-        const size = axis === 'x' ? bbox.width : bbox.height;
+        const base = axis === "x" ? bbox.x : bbox.y;
+        const size = axis === "x" ? bbox.width : bbox.height;
         return base + size * percent;
       }
       const match = value.match(/(-?\d*\.?\d+)/);
       if (match) {
         return parseFloat(match[1]);
       }
-      return axis === 'x' ? bbox.x + bbox.width / 2 : bbox.y + bbox.height / 2;
+      return axis === "x" ? bbox.x + bbox.width / 2 : bbox.y + bbox.height / 2;
     };
-    const localX = parseValue(oxRaw, 'x');
-    const localY = parseValue(oyRaw, 'y');
+    const localX = parseValue(oxRaw, "x");
+    const localY = parseValue(oyRaw, "y");
     const ownerSvg = limb.ownerSVGElement;
     const screenMatrix = limb.getScreenCTM();
     if (!ownerSvg || !screenMatrix) return null;
@@ -51,7 +51,7 @@ interface LimbRotatorArgs {
   setUiSelectedPuppet: (puppet: SVGGElement | null) => void;
   setUiSelectedLimb: (limbId: string) => void;
   setUiAngle: (angle: number) => void;
-  addKeyframe: (targetId: string, targetMemberId: string | null, property: AnimationProperty, frame: number, value: any) => void;
+  addKeyframe: (targetId: string, targetMemberId: string | null, property: AnimationProperty, frame: number, value: KeyframeValue) => void;
   currentFrame: number;
   ensureInitialSnapshot: () => void;
 }
@@ -140,12 +140,12 @@ export const useLimbRotator = ({
     };
 
     const captureOptions: AddEventListenerOptions = { capture: true };
-    svg.addEventListener('mousedown', onMouseDown, captureOptions);
+    svg.addEventListener("mousedown", onMouseDown, captureOptions);
 
     return () => {
-      svg.removeEventListener('mousedown', onMouseDown, captureOptions);
+      svg.removeEventListener("mousedown", onMouseDown, captureOptions);
     };
-  }, [sceneItems, setSelectedItemId, setUiAngle, setUiSelectedLimb, setUiSelectedPuppet, dragMovedRef]);
+  }, [sceneItems, setSelectedItemId, setUiAngle, setUiSelectedLimb, setUiSelectedPuppet, dragMovedRef, svgRef]);
 
   useWindowDrag(
     isRotating,

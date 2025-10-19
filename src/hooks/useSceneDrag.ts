@@ -28,7 +28,7 @@ type DraggingRef =
       itemId: string | null;
     };
 
-type Coords = { x: number; y: number };
+interface Coords { x: number; y: number }
 
 /**
  * A hook to manage dragging puppets and images within the SVG scene.
@@ -50,7 +50,7 @@ export const useSceneDrag = (
         const m = c.matrix;
         return { tx: m.e || 0, ty: m.f || 0 };
       }
-    } catch {}
+    } catch { /* empty */ }
     const parsed = parseTransformAttribute(el);
     return { tx: parsed.translate?.x ?? 0, ty: parsed.translate?.y ?? 0 };
   }, []);
@@ -61,19 +61,19 @@ export const useSceneDrag = (
 
     const onMouseDown = (e: MouseEvent) => {
       if (e.button !== 0) return; // drag only with left click
-      const path: EventTarget[] = (e.composedPath && e.composedPath()) || [];
+      const path: EventTarget[] = (e.composedPath?.()) || [];
       let anchor: SVGGElement | null = null;
       let img: SVGGraphicsElement | null = null;
       for (const n of path) {
         if (n instanceof SVGGElement && n.hasAttribute("data-anchor")) {
-          anchor = n as SVGGElement;
+          anchor = n;
           break;
         }
         if (
           n instanceof SVGGraphicsElement &&
           n.hasAttribute("data-draggable")
         ) {
-          img = n as SVGGraphicsElement;
+          img = n;
           break;
         }
       }
@@ -133,7 +133,7 @@ export const useSceneDrag = (
         drag.el.setAttribute("x", String(x));
         drag.el.setAttribute("y", String(y));
 
-        const transformAttr = drag.el.getAttribute("transform") || "";
+        const transformAttr = drag.el.getAttribute("transform") ?? "";
         if (
           /\brotate\(/.test(transformAttr) ||
           /\bscale\(/.test(transformAttr)

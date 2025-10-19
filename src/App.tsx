@@ -13,11 +13,11 @@ import { LibraryPanel } from "./components/features/library-panel";
 
 export default function App() {
   return (
-      <UiProvider>
-        <AnimationProvider>
-          <RootShell />
-        </AnimationProvider>
-      </UiProvider>
+    <UiProvider>
+      <AnimationProvider>
+        <RootShell />
+      </AnimationProvider>
+    </UiProvider>
   );
 }
 

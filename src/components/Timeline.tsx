@@ -155,13 +155,13 @@ export const Timeline: React.FC = React.memo(() => {
     setCurrentFrame(keyframeFrames[keyframeFrames.length - 1]);
   }, [currentFrame, keyframeFrames, setCurrentFrame]);
 
-  const syncScroll = useCallback((sourceScrollLeft: number, source: 'ruler' | 'tracks') => {
-    if (source === 'ruler' && tracksScrollRef.current) {
-      tracksScrollRef.current.scrollLeft = sourceScrollLeft;
-    } else if (source === 'tracks' && rulerScrollRef.current) {
-      rulerScrollRef.current.scrollLeft = sourceScrollLeft;
-    }
-  }, []);
+  const syncScroll = useCallback((sourceScrollLeft: number, source: "ruler" | "tracks") => {
+      if (source === "ruler" && tracksScrollRef.current) {
+        tracksScrollRef.current.scrollLeft = sourceScrollLeft;
+      } else if (source === "tracks" && rulerScrollRef.current) {
+        rulerScrollRef.current.scrollLeft = sourceScrollLeft;
+      }
+    }, []);
 
   const gotoFrame = useCallback(
     (frame: number) => {
@@ -210,12 +210,12 @@ export const Timeline: React.FC = React.memo(() => {
           zoom={zoom}
           hasPrevKeyframe={hasPrevKeyframe}
           hasNextKeyframe={hasNextKeyframe}
-          onPlay={() => setPlaying(true)}
-          onPause={() => setPlaying(false)}
+          onPlay={() => { setPlaying(true); }}
+          onPause={() => { setPlaying(false); }}
           onStop={handleStop}
           onPrevKeyframe={handlePrevKeyframe}
           onNextKeyframe={handleNextKeyframe}
-          onSnapshot={() => snapshotKeyframes(sceneItems)}
+          onSnapshot={() => { snapshotKeyframes(sceneItems); }}
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
           onZoomReset={handleResetZoom}
@@ -227,7 +227,7 @@ export const Timeline: React.FC = React.memo(() => {
           <div
             ref={rulerScrollRef}
             className="timeline-ruler-scroll"
-            onScroll={(e) => syncScroll(e.currentTarget.scrollLeft, 'ruler')}
+            onScroll={(e) => { syncScroll(e.currentTarget.scrollLeft, 'ruler'); }}
           >
             <TimelineRuler
               duration={duration}
@@ -244,7 +244,7 @@ export const Timeline: React.FC = React.memo(() => {
               <div
                 ref={tracksScrollRef}
                 className="timeline-tracks-container"
-                onScroll={(e) => syncScroll(e.currentTarget.scrollLeft, 'tracks')}
+                onScroll={(e) => { syncScroll(e.currentTarget.scrollLeft, 'tracks'); }}
               >
                 {itemTrackData.map((trackData) => {
                   // Prepare keyframes for the track
@@ -272,7 +272,7 @@ export const Timeline: React.FC = React.memo(() => {
                       duration={duration}
                       zoom={zoom}
                       currentFrame={currentFrame}
-                      onKeyframeClick={(kf) => gotoFrame(kf.frame)}
+                      onKeyframeClick={(kf) => { gotoFrame(kf.frame); }}
                       onVisibilityTrackClick={(frame) => {
                         setCurrentFrame(frame);
                         toggleVisibilityAtFrame(trackData.id, frame);

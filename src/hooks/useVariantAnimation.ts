@@ -8,12 +8,12 @@ export const useVariantAnimation = () => {
   const { sceneItems } = useUi();
 
   useEffect(() => {
-    tracks.forEach(track => {
-      if (track.property === 'activeVariant') {
-        const value = getValueAtFrame(track.targetId, track.targetMemberId, 'activeVariant', currentFrame);
-        if (typeof value === 'string') {
-          const item = sceneItems.find(i => i.id === track.targetId);
-          if (item && item.type === 'puppet') {
+    tracks.forEach((track) => {
+      if (track.property === "activeVariant") {
+        const value = getValueAtFrame(track.targetId, track.targetMemberId, "activeVariant", currentFrame);
+        if (typeof value === "string") {
+          const item = sceneItems.find((i) => i.id === track.targetId);
+          if (item && item.type === "puppet") {
             const puppetRoot = item.el.firstChild as SVGGElement | null;
             if (puppetRoot) {
               const group = item.metadata?.variantGroups.find(g => g.group === track.targetMemberId);

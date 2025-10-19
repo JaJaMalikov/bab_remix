@@ -1,30 +1,30 @@
 import { useEffect, useRef } from "react";
 import type { CSSProperties, RefObject } from "react";
-import { useToast } from "../hooks/use-toast";
+import { useToast, type Toast } from "../hooks/use-toast";
 import { LRUCache } from "../utils/lruCache";
 
-type PuppetMemberMetadata = {
+interface PuppetMemberMetadata {
   id: string;
   name: string;
   parentId: string | null;
   children: string[];
   isBehindParent: boolean;
-};
+}
 
-type PuppetVariantMetadata = {
+interface PuppetVariantMetadata {
   targetMemberId: string | null;
   name: string | null;
   isDefault: boolean;
   isBehindParent: boolean;
-};
+}
 
-type PuppetVariantGroupMetadata = {
+interface PuppetVariantGroupMetadata {
   group: string;
   defaultVariantId: string | null;
   variants: PuppetVariantMetadata[];
-};
+}
 
-type PuppetMetadata = {
+interface PuppetMetadata {
   id: string;
   source: string;
   width: number | null;
@@ -34,7 +34,7 @@ type PuppetMetadata = {
   rootMemberId: string | null;
   members: PuppetMemberMetadata[];
   variantGroups: PuppetVariantGroupMetadata[];
-};
+}
 
 // Module-level caches for processed puppet data and metadata
 const puppetCache = new LRUCache<string, SVGGElement>(20);
@@ -44,7 +44,7 @@ const cssEscape = (value: string) => {
   if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
     return CSS.escape(value);
   }
-  return value.replace(/([.*+?^${}()|[\]\\])/g, "\\$1");
+  return value.replace(/([.*+?^${}()|[\\])/g, "\\$1");
 };
 
 const applyMetadataToGroup = (
@@ -68,7 +68,7 @@ const applyMetadataToGroup = (
   }
 
   for (let i = behindElements.length - 1; i >= 0; i--) {
-    const el = behindElements[i]!;
+    const el = behindElements[i];
     const parent = el.parentNode;
     if (!parent) continue;
     if (parent.firstChild !== el) parent.insertBefore(el, parent.firstChild);
@@ -83,7 +83,7 @@ const fallbackReorderBehindElements = (group: SVGGElement) => {
     ) as NodeListOf<SVGGElement>,
   );
   for (let i = behind.length - 1; i >= 0; i--) {
-    const el = behind[i]!;
+    const el = behind[i];
     const parent = el.parentNode;
     if (!parent) continue;
     if (parent.firstChild !== el) parent.insertBefore(el, parent.firstChild);
@@ -146,7 +146,7 @@ const toMetadataUrl = (src: string) => {
 
 const fetchMetadata = async (
   url: string | null,
-  toast: (props: any) => void,
+  toast: (props: Toast) => void,
 ) => {
   if (!url) return null;
   const cached = metadataCache.get(url);
@@ -172,14 +172,14 @@ const fetchMetadata = async (
   }
 };
 
-type Props = {
+interface Props {
   src: string;
   as?: "g" | "svg";
   className?: string;
   transform?: string;
   style?: CSSProperties;
   onReady?: (rootGroup: SVGGElement, metadata?: PuppetMetadata | null) => void;
-};
+}
 
 export function SvgPuppetInlineSimple({
   src,
@@ -209,7 +209,7 @@ export function SvgPuppetInlineSimple({
       if (!host) return;
 
       // Clean up previous puppet if any
-      if (injectedRef.current && injectedRef.current.parentNode) {
+      if (injectedRef.current?.parentNode) {
         injectedRef.current.parentNode.removeChild(injectedRef.current);
       }
 
@@ -226,7 +226,7 @@ export function SvgPuppetInlineSimple({
       const cachedG = puppetCache.get(src);
       if (cachedG) {
         const metadata = metadataUrl
-          ? metadataCache.get(metadataUrl) ?? null
+          ? (metadataCache.get(metadataUrl) ?? null)
           : null;
         if (!cancelled) {
           injectPuppet(cachedG.cloneNode(true) as SVGGElement, metadata);
@@ -267,11 +267,11 @@ export function SvgPuppetInlineSimple({
       }
     }
 
-    run();
+    void run();
 
     return () => {
       cancelled = true;
-      if (injectedRef.current && injectedRef.current.parentNode) {
+      if (injectedRef.current?.parentNode) {
         injectedRef.current.parentNode.removeChild(injectedRef.current);
       }
       injectedRef.current = null;

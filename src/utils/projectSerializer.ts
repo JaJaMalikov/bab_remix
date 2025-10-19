@@ -88,7 +88,7 @@ export function serializeProject(params: {
       if (puppetRoot) {
         // Find the source by looking at stored data or reconstruct from DOM
         // For now, we'll store it in a data attribute when dropping
-        source = el.getAttribute("data-source") || "";
+        source = el.getAttribute("data-source") ?? "";
 
         // Get all member rotations
         memberTransforms = {};
@@ -135,7 +135,7 @@ export function serializeProject(params: {
         transform.scaleY = scale.y;
       }
 
-      source = el.getAttribute("data-source") || el.getAttribute("href") || "";
+      source = (el.getAttribute("data-source") ?? el.getAttribute("href")) || "";
     }
 
     return {
@@ -166,7 +166,7 @@ export function serializeProject(params: {
  */
 export function saveProjectToFile(
   projectData: ProjectData,
-  filename: string = "animation.bab.json",
+  filename = "animation.bab.json",
 ) {
   const json = JSON.stringify(projectData, null, 2);
   const blob = new Blob([json], { type: "application/json" });

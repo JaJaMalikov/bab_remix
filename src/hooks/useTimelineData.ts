@@ -1,24 +1,24 @@
-import { useMemo } from 'react';
-import type { SceneItem } from '../context/UiContext';
-import type { AnimationTrack, Keyframe } from '../context/AnimationContext';
+import { useMemo } from "react";
+import type { SceneItem } from "../context/UiContext";
+import type { AnimationTrack, Keyframe } from "../context/AnimationContext";
 
 // Helper
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
 
 // Exported types for use in Timeline component
-export type PositionKeyframe = { frame: number; axis: 'x' | 'y'; value: number };
-export type RotationKeyframe = { frame: number; value: number };
-export type VisibilitySegment = { start: number; end: number; visible: boolean };
+export interface PositionKeyframe { frame: number; axis: 'x' | 'y'; value: number }
+export interface RotationKeyframe { frame: number; value: number }
+export interface VisibilitySegment { start: number; end: number; visible: boolean }
 
-export type ItemTrackData = {
+export interface ItemTrackData {
   id: string;
   label: string;
-  type: 'puppet' | 'image';
+  type: "puppet" | "image";
   position: PositionKeyframe[];
   rotation: RotationKeyframe[];
   visibility: VisibilitySegment[];
-};
+}
 
 export const useTimelineData = (
   sceneItems: SceneItem[],
@@ -31,7 +31,7 @@ export const useTimelineData = (
       {
         id: string;
         label: string;
-        type: 'puppet' | 'image';
+        type: "puppet" | "image";
         positionX: Map<number, number>;
         positionY: Map<number, number>;
         rotation: Map<number, number>;
@@ -58,7 +58,7 @@ export const useTimelineData = (
       const processKeyframes = (kf: Keyframe, setter: (frame: number, value: number) => void) => {
         const frame = clamp(kf.frame, 0, frameDivisor);
         const numericValue =
-          typeof kf.value === 'number'
+          typeof kf.value === "number"
             ? kf.value
             : parseFloat(String(kf.value));
         if (!Number.isNaN(numericValue)) {
@@ -66,19 +66,19 @@ export const useTimelineData = (
         }
       };
 
-      if (track.property === 'x' && track.targetMemberId === null) {
-        track.keyframes.forEach((kf) => processKeyframes(kf, (frame, value) => entry.positionX.set(frame, value)));
+      if (track.property === "x" && track.targetMemberId === null) {
+        track.keyframes.forEach((kf) => { processKeyframes(kf, (frame, value) => entry.positionX.set(frame, value)); });
       }
 
-      if (track.property === 'y' && track.targetMemberId === null) {
-        track.keyframes.forEach((kf) => processKeyframes(kf, (frame, value) => entry.positionY.set(frame, value)));
+      if (track.property === "y" && track.targetMemberId === null) {
+        track.keyframes.forEach((kf) => { processKeyframes(kf, (frame, value) => entry.positionY.set(frame, value)); });
       }
 
-      if (track.property === 'rotation' && track.targetMemberId === null) {
-        track.keyframes.forEach((kf) => processKeyframes(kf, (frame, value) => entry.rotation.set(frame, value)));
+      if (track.property === "rotation" && track.targetMemberId === null) {
+        track.keyframes.forEach((kf) => { processKeyframes(kf, (frame, value) => entry.rotation.set(frame, value)); });
       }
 
-      if (track.property === 'visible' && track.targetMemberId === null) {
+      if (track.property === "visible" && track.targetMemberId === null) {
         track.keyframes.forEach((kf) => {
           const frame = clamp(kf.frame, 0, frameDivisor);
           entry.visibility.set(frame, Boolean(kf.value));
@@ -123,10 +123,10 @@ export const useTimelineData = (
     return Array.from(map.values()).map((entry) => {
       const position: PositionKeyframe[] = [];
       entry.positionX.forEach((value, frame) => {
-        position.push({ frame, value, axis: 'x' });
+        position.push({ frame, value, axis: "x" });
       });
       entry.positionY.forEach((value, frame) => {
-        position.push({ frame, value, axis: 'y' });
+        position.push({ frame, value, axis: "y" });
       });
       position.sort((a, b) =>
         a.frame === b.frame ? (a.axis > b.axis ? 1 : -1) : a.frame - b.frame,

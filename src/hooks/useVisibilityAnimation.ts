@@ -9,26 +9,26 @@ export const useVisibilityAnimation = () => {
   useEffect(() => {
     const itemVisibility = new Map<string, boolean>();
 
-    tracks.forEach(track => {
-      if (track.property === 'visible' && track.targetMemberId === null) {
-        const value = getValueAtFrame(track.targetId, null, 'visible', currentFrame);
+    tracks.forEach((track) => {
+      if (track.property === "visible" && track.targetMemberId === null) {
+        const value = getValueAtFrame(track.targetId, null, "visible", currentFrame);
         if (value !== null) {
           itemVisibility.set(track.targetId, Boolean(value));
         }
       }
     });
 
-    sceneItems.forEach(item => {
+    sceneItems.forEach((item) => {
       const el = item.el as SVGGraphicsElement;
       const visible = itemVisibility.has(item.id) ? itemVisibility.get(item.id)! : !itemVisibility.size;
 
-      el.setAttribute('data-visibility-state', visible ? 'visible' : 'hidden');
+      el.setAttribute("data-visibility-state", visible ? "visible" : "hidden");
       if (visible) {
-        el.removeAttribute('display');
-        el.style.display = '';
+        el.removeAttribute("display");
+        el.style.display = "";
       } else {
-        el.setAttribute('display', 'none');
-        el.style.display = 'none';
+        el.setAttribute("display", "none");
+        el.style.display = "none";
       }
     });
   }, [currentFrame, tracks, sceneItems, getValueAtFrame]);

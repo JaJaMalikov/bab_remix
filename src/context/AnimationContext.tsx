@@ -21,7 +21,7 @@ export type AnimationProperty =
   | "attachment"
   | "visible";
 
-type KeyframeValue = number | string | boolean;
+export type KeyframeValue = number | string | boolean;
 
 export interface AttachedObject {
   type: "image" | "text" | "audio";
@@ -117,7 +117,7 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({
       attachedObject?: AttachedObject,
     ) => {
       setTracks((prev) => {
-        const trackKey = `${targetId}:${targetMemberId || "null"}:${property}`;
+        const trackKey = `${targetId}:${targetMemberId ?? "null"}:${property}`;
         const trackIndex = prev.findIndex(
           (t) =>
             t.targetId === targetId &&
@@ -290,7 +290,7 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({
         if (
           currentFrame === 0 ||
           previousValue === null ||
-          Math.abs((currentValue as number) - (previousValue as number)) > 1e-4
+          Math.abs(currentValue - (previousValue as number)) > 1e-4
         ) {
           addKeyframe(item.id, null, prop, currentFrame, currentValue);
         }
@@ -304,7 +304,7 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({
     (item: SceneItem, currentFrame: number) => {
       const el = item.el as SVGGraphicsElement;
       const displayAttr = el.getAttribute("display");
-      const styleDisplay = el.style?.display || "";
+      const styleDisplay = el.style.display || "";
       const isVisible = displayAttr !== "none" && styleDisplay !== "none";
       const prevVisible = getValueAtFrame(
         item.id,
@@ -446,7 +446,7 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({
           null,
           "attachment",
           currentFrame,
-          currentValue || "",
+          currentValue ?? "",
         );
       }
     },
@@ -534,7 +534,7 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     window.addEventListener("project:load", handleProjectLoad);
-    return () => window.removeEventListener("project:load", handleProjectLoad);
+    return () => { window.removeEventListener("project:load", handleProjectLoad); };
   }, []);
 
   const value = useMemo(

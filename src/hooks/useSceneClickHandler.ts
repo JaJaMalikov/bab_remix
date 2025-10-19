@@ -1,6 +1,6 @@
-import React, { useCallback } from 'react';
-import type { SceneItem } from '../context/UiContext';
-import { getRotationFromTransform } from '../utils/svgTransform';
+import React, { useCallback } from "react";
+import type { SceneItem } from "../context/UiContext";
+import { getRotationFromTransform } from "../utils/svgTransform";
 
 interface ClickHandlerArgs {
   dragMovedRef: React.MutableRefObject<boolean>;
@@ -43,9 +43,9 @@ export const useSceneClickHandler = ({
 
         // Only select a member if specifically clicking on one (not the background)
         const limb = (e.target as Element)?.closest(
-          '[data-membre]',
+          "[data-membre]",
         ) as SVGGElement | null;
-        if (limb && limb.id) {
+        if (limb?.id) {
           const puppetRoot = puppetAnchor.firstChild as SVGGElement | null;
           if (puppetRoot) {
             setUiSelectedPuppet(puppetRoot);
@@ -54,8 +54,7 @@ export const useSceneClickHandler = ({
             setUiAngle(Math.round(a));
           }
         } else {
-          // Clicked on puppet but not on a member - deselect member
-          setUiSelectedLimb('');
+          setUiSelectedLimb("");
         }
         return;
       }
@@ -65,17 +64,17 @@ export const useSceneClickHandler = ({
         '[data-draggable="true"]',
       ) as SVGGraphicsElement | null;
       if (img) {
-        const imgId = img.getAttribute('data-id');
+        const imgId = img.getAttribute("data-id");
         if (imgId) {
           setSelectedItemId(imgId);
-          setUiSelectedLimb('');
+          setUiSelectedLimb("");
         }
         return;
       }
 
       // Clicked on empty space - deselect all
       setSelectedItemId(null);
-      setUiSelectedLimb('');
+      setUiSelectedLimb("");
     },
     [dragMovedRef, sceneItems, setSelectedItemId, setUiAngle, setUiSelectedLimb, setUiSelectedPuppet],
   );

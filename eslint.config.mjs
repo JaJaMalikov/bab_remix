@@ -22,9 +22,9 @@ export default tseslint.config(
     rules: {
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "warn",
-      "complexity": ["warn", 15],
+      complexity: ["warn", 15],
       "max-lines-per-function": ["warn", { "max": 100, "skipComments": true, "skipBlankLines": true }],
       "max-depth": ["warn", 4],
     },
-  },
+  }
 );

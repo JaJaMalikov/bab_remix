@@ -20,7 +20,7 @@ const getAnchorTranslation = (anchor: SVGGElement | null) => {
 const findSceneRoot = (element: SVGGraphicsElement) => {
   const svg = element.ownerSVGElement;
   if (!svg) return null;
-  return svg.querySelector("[data-scene]") as SVGGElement | null;
+  return svg.querySelector("[data-scene]");
 };
 
 const findAnchorById = (element: SVGGraphicsElement) => {

@@ -7,7 +7,7 @@ export interface Position {
   y: number;
 }
 
-type Options = {
+interface Options {
   storageKey?: string;
   panelWidth?: number;
   panelHeight?: number;
@@ -67,8 +67,8 @@ export const useDraggable = (
       const snapThreshold = 20;
       const windowWidth = window.innerWidth;
       const windowHeight = window.innerHeight;
-      const panelW = optionsRef.current.panelWidth || 300;
-      const panelH = optionsRef.current.panelHeight || 400;
+      const panelW = optionsRef.current.panelWidth ?? 300;
+      const panelH = optionsRef.current.panelHeight ?? 400;
 
       // Snap to left edge
       if (x < snapThreshold && x > -snapThreshold) {
