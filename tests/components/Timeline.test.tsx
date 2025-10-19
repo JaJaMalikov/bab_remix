@@ -74,18 +74,25 @@ describe("Timeline", () => {
   });
 
   it("should render tracks when there are scene items", () => {
-    useUi.setState({ sceneItems: [{ id: "item-1", type: "image", el: document.createElement("div") }] });
+    useUi.setState({
+      sceneItems: [
+        {
+          id: "item-1",
+          type: "image",
+          label: "Image 1",
+          el: document.createElement("div"),
+        },
+      ],
+    });
     render(<Timeline />);
-    screen.debug();
-    // Use getByTitle on the container of the track label
-    const trackLabel = screen.getByTitle("item-1");
+    const trackLabel = screen.getByText("Image 1");
     expect(trackLabel).toBeInTheDocument();
-    expect(trackLabel.className).toContain("timeline-track-label");
+    expect(trackLabel.closest(".timeline-track-label")).not.toBeNull();
   });
 
   it("should not render tracks when there are no scene items", () => {
     render(<Timeline />);
-    expect(screen.queryByTitle("item-1")).not.toBeInTheDocument();
+    expect(screen.queryByText("Image 1")).not.toBeInTheDocument();
   });
 
   describe("Keyframe Navigation", () => {

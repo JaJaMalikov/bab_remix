@@ -1,4 +1,5 @@
 import { AnimationTrack } from "../context/AnimationContext";
+import { parseTransformAttribute } from "./svgTransform";
 
 const parseNumber = (value: string | null, fallback = 0) => {
   if (value === null) return fallback;
@@ -8,13 +9,10 @@ const parseNumber = (value: string | null, fallback = 0) => {
 
 const parseAnchorTranslation = (anchor: SVGGElement | null) => {
   if (!anchor) return { tx: 0, ty: 0 };
-  const transformAttr = anchor.getAttribute("transform") || "";
-  const match = transformAttr.match(/translate\(([-\d.]+)[,\s]+([-\d.]+)\)/);
-  const tx = match ? parseFloat(match[1] || "0") : 0;
-  const ty = match ? parseFloat(match[2] || "0") : 0;
+  const { translate } = parseTransformAttribute(anchor);
   return {
-    tx: Number.isFinite(tx) ? tx : 0,
-    ty: Number.isFinite(ty) ? ty : 0,
+    tx: translate?.x ?? 0,
+    ty: translate?.y ?? 0,
   };
 };
 
@@ -78,13 +76,10 @@ export function serializeProject(params: {
 
     if (item.type === "puppet") {
       // Get puppet position from transform attribute
-      const transformAttr = el.getAttribute("transform") || "";
-      const match = transformAttr.match(
-        /translate\(([-\d.]+)[,\s]+([-\d.]+)\)/,
-      );
-      if (match) {
-        transform.x = parseFloat(match[1] || "0");
-        transform.y = parseFloat(match[2] || "0");
+      const { translate } = parseTransformAttribute(el);
+      if (translate) {
+        transform.x = translate.x;
+        transform.y = translate.y;
       }
 
       // Get source from first child (the puppet SVG element)
@@ -131,17 +126,13 @@ export function serializeProject(params: {
       transform.x = sceneX;
       transform.y = sceneY;
 
-      const transformAttr = graphicEl.getAttribute("transform") || "";
-      const rotMatch = transformAttr.match(/rotate\(([-\d.]+)/);
-      const scaleMatch = transformAttr.match(
-        /scale\(([-\d.]+)(?:[,\s]+([-\d.]+))?\)/,
-      );
-      if (rotMatch) transform.rotation = parseFloat(rotMatch[1] || "0");
-      if (scaleMatch) {
-        transform.scaleX = parseFloat(scaleMatch[1] || "1");
-        transform.scaleY = scaleMatch[2]
-          ? parseFloat(scaleMatch[2])
-          : transform.scaleX;
+      const { rotate, scale } = parseTransformAttribute(graphicEl);
+      if (rotate !== null) {
+        transform.rotation = rotate;
+      }
+      if (scale) {
+        transform.scaleX = scale.x;
+        transform.scaleY = scale.y;
       }
 
       source = el.getAttribute("data-source") || el.getAttribute("href") || "";

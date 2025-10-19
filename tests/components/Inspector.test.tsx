@@ -1,4 +1,4 @@
-import { render, screen, within, act } from "@testing-library/react";
+import { render, screen, within, act, fireEvent } from "@testing-library/react";
 import { Inspector } from "../../src/components/Inspector";
 import { resetUiState, useUi } from "../../src/context/UiContext";
 import * as AnimationContext from "../../src/context/AnimationContext";
@@ -104,5 +104,48 @@ describe("Inspector", () => {
         within(propertiesGroup).getByText("Puppet 1"),
       ).toBeInTheDocument();
     }
+  });
+
+  it("should allow deselecting the current item", () => {
+    act(() => {
+      useUi.setState({
+        sceneItems: testSceneItems,
+        selectedItemId: "1",
+      });
+    });
+
+    render(<Inspector />);
+    const deselectButton = screen.getByRole("button", { name: /Deselect/i });
+    fireEvent.click(deselectButton);
+
+    expect(useUi.getState().selectedItemId).toBeNull();
+    expect(screen.queryByRole("button", { name: /Deselect/i })).not.toBeInTheDocument();
+  });
+
+  it("should delete the selected item and remove associated tracks", () => {
+    const svgRoot = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const puppetGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    svgRoot.appendChild(puppetGroup);
+
+    const itemsWithDom = [
+      { ...testSceneItems[0], el: puppetGroup },
+      testSceneItems[1],
+    ];
+
+    act(() => {
+      useUi.setState({
+        sceneItems: itemsWithDom,
+        selectedItemId: "1",
+      });
+    });
+
+    render(<Inspector />);
+    const deleteButtons = screen.getAllByTitle(/Delete item/i);
+    fireEvent.click(deleteButtons[0]!);
+
+    expect(animationMock.removeAllTracksForTarget).toHaveBeenCalledWith("1");
+    expect(useUi.getState().sceneItems).toHaveLength(1);
+    expect(useUi.getState().selectedItemId).toBeNull();
+    expect(puppetGroup.isConnected).toBe(false);
   });
 });

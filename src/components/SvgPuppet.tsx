@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { CSSProperties, RefObject } from "react";
 import { useToast } from "../hooks/use-toast";
-
+import { LRUCache } from "../utils/lruCache";
 
 type PuppetMemberMetadata = {
   id: string;
@@ -37,8 +37,8 @@ type PuppetMetadata = {
 };
 
 // Module-level caches for processed puppet data and metadata
-const puppetCache = new Map<string, SVGGElement>();
-const metadataCache = new Map<string, PuppetMetadata | null>();
+const puppetCache = new LRUCache<string, SVGGElement>(20);
+const metadataCache = new LRUCache<string, PuppetMetadata | null>(32);
 
 const cssEscape = (value: string) => {
   if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
@@ -144,10 +144,14 @@ const toMetadataUrl = (src: string) => {
   return `${base.replace(/\.svg$/i, ".json")}${query}`;
 };
 
-const fetchMetadata = async (url: string | null, toast: (props: any) => void) => {
+const fetchMetadata = async (
+  url: string | null,
+  toast: (props: any) => void,
+) => {
   if (!url) return null;
-  if (metadataCache.has(url)) {
-    return metadataCache.get(url) ?? null;
+  const cached = metadataCache.get(url);
+  if (cached !== undefined) {
+    return cached;
   }
   try {
     const res = await fetch(url);
@@ -219,10 +223,10 @@ export function SvgPuppetInlineSimple({
       const metadataUrl = toMetadataUrl(src);
 
       // 1. Check cache first
-      if (puppetCache.has(src)) {
-        const cachedG = puppetCache.get(src)!;
+      const cachedG = puppetCache.get(src);
+      if (cachedG) {
         const metadata = metadataUrl
-          ? (metadataCache.get(metadataUrl) ?? null)
+          ? metadataCache.get(metadataUrl) ?? null
           : null;
         if (!cancelled) {
           injectPuppet(cachedG.cloneNode(true) as SVGGElement, metadata);

@@ -300,7 +300,7 @@ For projects with many items, implement virtualization using `react-window` or s
 // - svgTransform.ts:43
 ```
 
-**Recommendation:** Centralize in `svgTransform.ts` and export a single function.
+**Recommendation (Implemented 2025-10-18):** Centralize in `svgTransform.ts` and export a single function. `projectSerializer.ts` now reuses `parseTransformAttribute` to read translate/rotate/scale, removing duplicated regex parsing.
 
 2. **CORS Headers Pattern:**
 Should be defined once and reused (though currently no edge functions).
@@ -512,32 +512,7 @@ const metadataCache = new Map<string, PuppetMetadata | null>();
 // ⚠️ Unbounded caches - could grow indefinitely
 ```
 
-**Recommendation:** Implement LRU cache with size limit:
-```typescript
-class LRUCache<K, V> {
-  private cache = new Map<K, V>();
-  constructor(private maxSize: number) {}
-
-  get(key: K): V | undefined {
-    const value = this.cache.get(key);
-    if (value !== undefined) {
-      // Move to end (most recent)
-      this.cache.delete(key);
-      this.cache.set(key, value);
-    }
-    return value;
-  }
-
-  set(key: K, value: V): void {
-    if (this.cache.size >= this.maxSize) {
-      // Remove least recently used (first item)
-      const firstKey = this.cache.keys().next().value;
-      this.cache.delete(firstKey);
-    }
-    this.cache.set(key, value);
-  }
-}
-```
+**Recommendation (Implemented 2025-10-18):** Replace the unbounded Maps with a capped LRU cache to avoid runaway memory usage. `src/utils/lruCache.ts` now provides a reusable helper, and `src/components/SvgPuppet.tsx` instantiates `new LRUCache<string, SVGGElement>(20)` and `new LRUCache<string, PuppetMetadata | null>(32)` so cached puppets/metadata are evicted once the limit is reached.
 
 ### 5.3 Bundle Size ⭐⭐⭐⭐☆
 
