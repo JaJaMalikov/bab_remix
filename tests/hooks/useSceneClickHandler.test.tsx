@@ -24,6 +24,9 @@ describe("useSceneClickHandler", () => {
     const setUiSelectedPuppet = vi.fn();
     const setUiSelectedLimb = vi.fn();
     const setUiAngle = vi.fn();
+    const setShowInspector = vi.fn();
+    const setShowLibrary = vi.fn();
+    const setShowLayers = vi.fn();
 
     const { result } = renderHook(() =>
       useSceneClickHandler({
@@ -33,6 +36,9 @@ describe("useSceneClickHandler", () => {
         setUiSelectedPuppet,
         setUiSelectedLimb,
         setUiAngle,
+        setShowInspector,
+        setShowLibrary,
+        setShowLayers,
       }),
     );
 
@@ -43,6 +49,9 @@ describe("useSceneClickHandler", () => {
       setUiSelectedPuppet,
       setUiSelectedLimb,
       setUiAngle,
+      setShowInspector,
+      setShowLibrary,
+      setShowLayers,
     };
   };
 

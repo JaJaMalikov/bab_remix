@@ -67,12 +67,19 @@ describe("useTimelineData", () => {
     const [track] = result.current;
     expect(track.id).toBe("item-1");
     expect(track.label).toBe("Image 1");
-    expect(track.position).toEqual([
-      { frame: 5, axis: "x", value: 10 },
-      { frame: 10, axis: "y", value: 15 },
-      { frame: 25, axis: "x", value: 30 },
+
+    // Filter keyframes by type
+    const positionKeyframes = track.keyframes.filter(kf => kf.type === "position");
+    const rotationKeyframes = track.keyframes.filter(kf => kf.type === "rotation");
+
+    expect(positionKeyframes).toEqual([
+      expect.objectContaining({ frame: 5, axis: "x", value: 10 }),
+      expect.objectContaining({ frame: 10, axis: "y", value: 15 }),
+      expect.objectContaining({ frame: 25, axis: "x", value: 30 }),
     ]);
-    expect(track.rotation).toEqual([{ frame: 12, value: 45 }]);
+    expect(rotationKeyframes).toEqual([
+      expect.objectContaining({ frame: 12, value: 45 })
+    ]);
     expect(track.visibility).toEqual([
       { start: 0, end: 18, visible: true },
       { start: 18, end: 30, visible: false },
@@ -105,7 +112,13 @@ describe("useTimelineData", () => {
 
     expect(result.current).toHaveLength(1);
     const [track] = result.current;
-    expect(track.position).toEqual([{ frame: 60, axis: "x", value: 42 }]);
-    expect(track.rotation).toEqual([]);
+
+    const positionKeyframes = track.keyframes.filter(kf => kf.type === "position");
+    const rotationKeyframes = track.keyframes.filter(kf => kf.type === "rotation");
+
+    expect(positionKeyframes).toEqual([
+      expect.objectContaining({ frame: 60, axis: "x", value: 42 })
+    ]);
+    expect(rotationKeyframes).toEqual([]);
   });
 });

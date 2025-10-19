@@ -75,10 +75,11 @@ export const useTimelineData = (
         track.keyframes.forEach((kf) => {
           const numericValue = toNumber(kf.value);
           if (numericValue === null) return;
+          const clampedFrame = clamp(kf.frame, 0, frameDivisor);
           entry.keyframes.push({
             id: `${track.id}:${kf.frame}`,
             trackId: track.id,
-            frame: kf.frame,
+            frame: clampedFrame,
             type: "position",
             axis,
             value: numericValue,
@@ -90,10 +91,11 @@ export const useTimelineData = (
         track.keyframes.forEach((kf) => {
           const numericValue = toNumber(kf.value);
           if (numericValue === null) return;
+          const clampedFrame = clamp(kf.frame, 0, frameDivisor);
           entry.keyframes.push({
             id: `${track.id}:${kf.frame}`,
             trackId: track.id,
-            frame: kf.frame,
+            frame: clampedFrame,
             type: "rotation",
             value: numericValue,
           });

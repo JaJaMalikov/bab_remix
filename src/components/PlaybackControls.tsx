@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Icons } from "./ui/icons";
+import { useFpsCounter } from "../hooks/useFpsCounter";
 
 interface PlaybackControlsProps {
   /** Indique si l'animation est en cours de lecture. */
@@ -63,6 +64,9 @@ export function PlaybackControls({
   const NextKeyframeIcon = Icons.nextKeyframe;
   const [durationDraft, setDurationDraft] = useState(() => duration.toString());
   const [fpsDraft, setFpsDraft] = useState(() => fps.toString());
+
+  // FPS counter for performance monitoring
+  const actualFps = useFpsCounter(isPlaying);
 
   useEffect(() => {
     setDurationDraft(duration.toString());
@@ -223,6 +227,18 @@ export function PlaybackControls({
               className="timeline-readout-field no-scrollbar"
             />
           </label>
+          {isPlaying && actualFps > 0 && (
+            <div
+              className="timeline-readout"
+              title="FPS réel pendant la lecture (performance)"
+              style={{
+                color: actualFps < fps * 0.9 ? '#ef4444' : actualFps >= fps * 0.95 ? '#22c55e' : '#f59e0b'
+              }}
+            >
+              <span className="timeline-readout-label">Réel</span>
+              <span className="timeline-readout-value">{actualFps}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>
