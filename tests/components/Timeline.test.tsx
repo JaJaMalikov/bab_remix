@@ -3,20 +3,26 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Timeline } from "../../src/components/Timeline";
 import { useUi, resetUiState } from "../../src/context/UiContext";
 import * as AnimationContext from "../../src/context/AnimationContext";
+import "@testing-library/jest-dom"
 
 describe("Timeline", () => {
   const createAnimationMock = (props: Partial<AnimationContext.AnimationState> = {}) => ({
     duration: 300,
+    fps: 30,
     currentFrame: 0,
     tracks: [],
     playing: false,
     setPlaying: vi.fn(),
     setCurrentFrame: vi.fn(),
+    setDuration: vi.fn(),
+    setFps: vi.fn(),
     snapshotKeyframes: vi.fn(),
     addKeyframe: vi.fn(),
     getValueAtFrame: vi.fn(),
     removeAllTracksForTarget: vi.fn(),
     removeKeyframe: vi.fn(),
+    moveKeyframes: vi.fn(),
+    duplicateKeyframes: vi.fn(),
     getTrack: vi.fn(),
     ...props,
   });

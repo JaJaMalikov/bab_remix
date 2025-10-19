@@ -92,6 +92,19 @@ export interface AnimationState {
 const Ctx = createContext<AnimationState | null>(null);
 
 /**
+ * Precision thresholds for detecting meaningful changes when snapshotting keyframes.
+ * These prevent creating unnecessary keyframes for imperceptible changes while ensuring
+ * significant changes are captured.
+ */
+const PRECISION_THRESHOLDS = {
+  rotation: 0.1,      // 0.1 degree - smaller changes are imperceptible
+  x: 0.5,             // 0.5 pixel - sub-pixel rendering makes smaller changes invisible
+  y: 0.5,             // 0.5 pixel
+  scaleX: 0.001,      // 0.1% scale change
+  scaleY: 0.001,      // 0.1% scale change
+} as const;
+
+/**
  * Fournit le contexte de l'animation à l'application.
  * Doit englober tous les composants qui utilisent le hook `useAnimation`.
  */
@@ -379,10 +392,11 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({
           currentFrame - 1,
         );
 
+        const threshold = PRECISION_THRESHOLDS[prop] ?? 1e-4;
         if (
           currentFrame === 0 ||
           previousValue === null ||
-          Math.abs(currentValue - (previousValue as number)) > 1e-4
+          Math.abs(currentValue - (previousValue as number)) > threshold
         ) {
           addKeyframe(item.id, null, prop, currentFrame, currentValue);
         }
@@ -439,10 +453,11 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({
           currentFrame - 1,
         );
 
+        const threshold = PRECISION_THRESHOLDS.rotation;
         if (
           currentFrame === 0 ||
           previousValue === null ||
-          Math.abs(currentValue - (previousValue as number)) > 1e-4
+          Math.abs(currentValue - (previousValue as number)) > threshold
         ) {
           addKeyframe(
             item.id,
@@ -587,10 +602,8 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const loop = (now: number) => {
       const elapsed = now - startTimeRef.current;
-      const frame = Math.max(
-        0,
-        Math.floor((elapsed / 1000) * effectiveFps),
-      ); // never negative
+      const exactFrame = (elapsed / 1000) * effectiveFps;
+      const frame = Math.max(0, Math.round(exactFrame)); // Use round instead of floor to prevent drift
 
       if (frame >= duration) {
         setCurrentFrame(0);
