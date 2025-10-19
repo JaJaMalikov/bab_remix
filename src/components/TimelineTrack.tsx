@@ -26,6 +26,8 @@ interface TimelineTrackProps {
   currentFrame: number;
   /** Les keyframes actuellement sélectionnées. */
   selectedKeyframes: Set<string>;
+  /** Offset de drag actuel (en frames). */
+  dragOffset?: number;
   /** Callback déclenché au début d'un drag. */
   onKeyframePointerDown: (
     keyframe: TimelineKeyframe,
@@ -46,6 +48,7 @@ export const TimelineTrack = React.memo(
     zoom,
     currentFrame,
     selectedKeyframes,
+    dragOffset = 0,
     onKeyframePointerDown,
     onVisibilityTrackClick,
   }: TimelineTrackProps) {
@@ -61,6 +64,13 @@ export const TimelineTrack = React.memo(
     const x = e.clientX - rect.left;
     const frame = Math.max(0, Math.min(duration, Math.round(x / pixelsPerFrame)));
     onVisibilityTrackClick(frame);
+  };
+
+  // Helper to prevent overlapping keyframes (X/Y at same frame)
+  const getVerticalOffset = (kf: TrackKeyframe): string => {
+    if (kf.type === "position" && kf.axis === "x") return "calc(50% - 4px)";
+    if (kf.type === "position" && kf.axis === "y") return "calc(50% + 4px)";
+    return "50%";
   };
 
   return (
@@ -101,6 +111,28 @@ export const TimelineTrack = React.memo(
             })}
           </div>
 
+          {/* Ghost keyframes (visual feedback during drag) */}
+          {dragOffset !== 0 && keyframes
+            .filter((kf) => selectedKeyframes.has(kf.id) && kf.frame !== kf.displayFrame)
+            .map((keyframe) => {
+              const originalLeft = keyframe.frame * pixelsPerFrame;
+              return (
+                <div
+                  key={`ghost-${keyframe.id}`}
+                  className={cn(
+                    "timeline-keyframe-ghost",
+                    keyframe.type === "position" && `position-${keyframe.axis}`,
+                    keyframe.type === "rotation" && "rotation",
+                    keyframe.type === "visibility" && "visibility",
+                  )}
+                  style={{
+                    left: originalLeft,
+                    top: getVerticalOffset(keyframe),
+                  }}
+                />
+              );
+            })}
+
           {/* Keyframes */}
           {keyframes.map((keyframe) => {
             const left = keyframe.displayFrame * pixelsPerFrame;
@@ -138,7 +170,10 @@ export const TimelineTrack = React.memo(
                   keyframe.type === "visibility" && "visibility",
                   isSelected && "is-selected",
                 )}
-                style={{ left }}
+                style={{
+                  left,
+                  top: getVerticalOffset(keyframe),
+                }}
                 title={tooltipParts.join(" • ")}
                 aria-pressed={isSelected}
                 onPointerDown={(event) => {

@@ -557,6 +557,7 @@ export const Timeline: React.FC = React.memo(() => {
                       zoom={zoom}
                       currentFrame={currentFrame}
                       selectedKeyframes={selectedKeyframeIds}
+                      dragOffset={dragOffset}
                       onKeyframePointerDown={handleKeyframePointerDown}
                       onVisibilityTrackClick={(frame) => {
                         setCurrentFrame(frame);
