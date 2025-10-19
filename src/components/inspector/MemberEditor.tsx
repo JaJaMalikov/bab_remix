@@ -1,8 +1,11 @@
 import React from "react";
 
 interface MemberEditorProps {
+  /** La liste des membres (membres) du pantin sélectionné. */
   limbList: { id: string; name: string }[];
+  /** L'ID du membre actuellement sélectionné. */
   selectedLimb: string | null;
+  /** Callback appelé lorsqu'un membre est sélectionné dans la liste. */
   onSelectLimb: (limbId: string) => void;
 }
 

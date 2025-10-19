@@ -1,10 +1,15 @@
 import React, { useRef } from "react";
 
 interface TimelineRulerProps {
+  /** La durée totale de l'animation en frames. */
   duration: number;
+  /** La frame actuellement affichée. */
   currentFrame: number;
+  /** Le niveau de zoom de la timeline. */
   zoom: number;
+  /** Callback appelé lorsque l'utilisateur clique ou glisse sur la règle pour changer de frame. */
   onSeek: (frame: number) => void;
+  /** Callback optionnel appelé lorsque l'utilisateur zoome avec la molette de la souris. */
   onZoom?: (delta: number) => void;
 }
 

@@ -4,6 +4,7 @@ import type { SceneItem } from "../../context/UiContext";
 import { useUi } from "../../context/UiContext";
 
 interface ItemPropertiesProps {
+  /** L'élément de la scène actuellement sélectionné. */
   item: SceneItem;
 }
 

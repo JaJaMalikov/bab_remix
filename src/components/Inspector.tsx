@@ -25,12 +25,14 @@ import {
   embedAttachmentIntoMember,
   releaseAttachmentFromMember,
 } from "../utils/attachment";
+import { useToast } from "../hooks/use-toast";
 import {
   applyVariantSelection,
   findVisibleVariant,
 } from "../utils/svgVariants";
 
 function InspectorComponent() {
+  const { toast } = useToast();
   const {
     sceneItems,
     selectedItemId,
@@ -447,8 +449,13 @@ function InspectorComponent() {
         });
 
         window.dispatchEvent(new Event("animation:refresh"));
-      } catch {
-        alert(errorMessage);
+      } catch (err) {
+        toast({
+          variant: "destructive",
+          title: "Erreur",
+          description: errorMessage,
+        });
+        console.error(err);
       }
     },
     [selectedItem, ensureInitialSnapshot, addKeyframe, currentFrame],

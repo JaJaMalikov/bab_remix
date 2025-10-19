@@ -2,10 +2,15 @@ import React from "react";
 import type { SceneItem } from "../../context/UiContext";
 
 interface SceneItemListProps {
+  /** La liste des éléments présents dans la scène. */
   items: SceneItem[];
+  /** L'ID de l'élément actuellement sélectionné. */
   selectedId: string | null;
+  /** Callback appelé lorsqu'un élément est sélectionné. */
   onSelectItem: (id: string) => void;
+  /** Callback appelé pour désélectionner tous les éléments. */
   onDeselectAll: () => void;
+  /** Callback appelé lorsqu'un élément doit être supprimé. */
   onDeleteItem: (id: string) => void;
 }
 

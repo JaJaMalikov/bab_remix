@@ -2,9 +2,13 @@ import React from "react";
 import type { SceneItem } from "../../context/UiContext";
 
 interface AttachmentEditorProps {
+  /** L'élément de la scène actuellement sélectionné (doit être une image). */
   selectedItem: SceneItem;
+  /** La liste de tous les éléments de la scène, pour trouver les pantins cibles. */
   sceneItems: SceneItem[];
+  /** Callback pour attacher l'image à un membre de pantin. */
   handleAttachToMember: (targetValue: string) => void;
+  /** Callback pour détacher l'image du membre auquel elle est attachée. */
   handleDetachFromMember: () => void;
 }
 

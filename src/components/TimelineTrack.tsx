@@ -12,14 +12,23 @@ interface VisibilitySegment {
 }
 
 interface TimelineTrackProps {
+  /** Le nom de la piste, affiché sur le côté. */
   name: string;
+  /** Le type d'élément associé à la piste (pantin ou image). */
   type: "puppet" | "image";
+  /** La liste des keyframes à afficher sur la piste. */
   keyframes: Keyframe[];
+  /** La liste des segments de visibilité à afficher. */
   visibilitySegments: VisibilitySegment[];
+  /** La durée totale de l'animation. */
   duration: number;
+  /** Le niveau de zoom de la timeline. */
   zoom: number;
+  /** La frame actuelle, pour afficher la tête de lecture. */
   currentFrame: number;
+  /** Callback appelé lors d'un clic sur une keyframe. */
   onKeyframeClick?: (keyframe: Keyframe) => void;
+  /** Callback appelé lors d'un clic sur la piste de visibilité. */
   onVisibilityTrackClick?: (frame: number) => void;
 }
 

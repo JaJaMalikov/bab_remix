@@ -14,13 +14,12 @@ import { Theme } from "@radix-ui/themes";
 
 export default function App() {
   return (
-    				<Theme appearance="dark" accentColor="red" grayColor="sage">
-
-    <UiProvider>
-      <AnimationProvider>
-        <RootShell />
-      </AnimationProvider>
-    </UiProvider>
+    <Theme appearance="dark" accentColor="red" grayColor="sage">
+      <UiProvider>
+        <AnimationProvider>
+          <RootShell />
+        </AnimationProvider>
+      </UiProvider>
     </Theme>
   );
 }

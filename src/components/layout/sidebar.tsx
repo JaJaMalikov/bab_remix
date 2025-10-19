@@ -5,6 +5,7 @@ import { useUi } from "../../context/UiContext";
 import { useAnimation } from "../../context/AnimationContext";
 import { Icons } from "../ui/icons";
 import { cn } from "../../lib/utils";
+import { useToast } from "../../hooks/use-toast";
 import {
   serializeProject,
   saveProjectToFile,
@@ -25,6 +26,7 @@ const SIDEBAR_ITEMS = [
 type SidebarPanel = (typeof SIDEBAR_ITEMS)[number]["id"];
 
 export function Sidebar() {
+  const { toast } = useToast();
   const {
     showLibrary,
     setShowLibrary,
@@ -89,7 +91,11 @@ export function Sidebar() {
       );
     } catch (error) {
       console.error("Failed to load project:", error);
-      alert("Failed to load project file");
+      toast({
+        variant: "destructive",
+        title: "Erreur de chargement",
+        description: "Impossible de charger le fichier de projet.",
+      });
     }
   }, [sceneItems]);
 

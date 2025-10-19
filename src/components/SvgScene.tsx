@@ -13,6 +13,7 @@ import { useAssetDropHandler } from "../hooks/useAssetDropHandler";
 import { useSceneClickHandler } from "../hooks/useSceneClickHandler";
 import { useLimbRotator } from "../hooks/useLimbRotator";
 import { useProjectLoader } from "../hooks/useProjectLoader";
+import { useToast } from "../hooks/use-toast";
 
 export const SvgScene = memo(() => {
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -20,6 +21,7 @@ export const SvgScene = memo(() => {
   const bgRef = useRef<SVGImageElement | null>(null);
   const sceneRef = useRef<SVGGElement | null>(null);
   const viewSizeRef = useRef<{ w: number; h: number } | null>(null);
+  const { toast } = useToast();
 
   // Apply animation values during playback
   useAnimationPlayback();
@@ -88,32 +90,41 @@ export const SvgScene = memo(() => {
       img.onerror = reject;
     });
     img.src = href;
-    const { w, h } = await p;
+    try {
+      const { w, h } = await p;
 
-    const svg = svgRef.current!;
-    svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
-    svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
-    viewSizeRef.current = { w, h };
+      const svg = svgRef.current!;
+      svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+      svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+      viewSizeRef.current = { w, h };
 
-    const { viewport } = ensureContainers();
-    if (!bgRef.current) {
-      const bg = document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        "image",
-      );
-      bg.setAttribute("x", "0");
-      bg.setAttribute("y", "0");
-      bg.setAttribute("width", String(w));
-      bg.setAttribute("height", String(h));
-      bg.setAttribute("href", href);
-      viewport.insertBefore(bg, viewport.firstChild);
-      bgRef.current = bg as SVGImageElement;
-    } else {
-      bgRef.current.setAttribute("width", String(w));
-      bgRef.current.setAttribute("height", String(h));
-      bgRef.current.setAttribute("href", href);
+      const { viewport } = ensureContainers();
+      if (!bgRef.current) {
+        const bg = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "image",
+        );
+        bg.setAttribute("x", "0");
+        bg.setAttribute("y", "0");
+        bg.setAttribute("width", String(w));
+        bg.setAttribute("height", String(h));
+        bg.setAttribute("href", href);
+        viewport.insertBefore(bg, viewport.firstChild);
+        bgRef.current = bg as SVGImageElement;
+      } else {
+        bgRef.current.setAttribute("width", String(w));
+        bgRef.current.setAttribute("height", String(h));
+        bgRef.current.setAttribute("href", href);
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Impossible de charger l'image du décor.",
+      });
+      console.error("Failed to load decor image:", error);
     }
-  }, [ensureContainers]);
+  }, [ensureContainers, toast]);
 
   const initializeVisibilityForItem = useCallback(
     (itemId: string) => {
@@ -193,7 +204,9 @@ export const SvgScene = memo(() => {
 
   // Default decor at startup
   useEffect(() => {
-    setDecor("/assets/decors/scene.png").catch(() => {});
+    setDecor("/assets/decors/scene.png").catch((error) => {
+      console.error("Failed to set default decor:", error);
+    });
     ensureContainers();
   }, [ensureContainers, setDecor]);
 

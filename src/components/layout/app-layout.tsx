@@ -1,9 +1,16 @@
 import { PropsWithChildren } from "react";
 
 import { Sidebar } from "./sidebar";
+import { Toaster } from "../ui/toaster";
 
 interface AppLayoutProps extends PropsWithChildren {
+  /**
+   * Slot pour le panneau latéral droit (ex: Inspecteur, Bibliothèque).
+   */
   sidePanel?: React.ReactNode;
+  /**
+   * Slot pour la timeline en bas de l'écran.
+   */
   timeline?: React.ReactNode;
 }
 
@@ -26,6 +33,7 @@ export function AppLayout({
           {timeline}
         </main>
       </div>
+      <Toaster />
     </div>
   );
 }

@@ -80,6 +80,10 @@ export interface AnimationState {
 
 const Ctx = createContext<AnimationState | null>(null);
 
+/**
+ * Fournit le contexte de l'animation à l'application.
+ * Doit englober tous les composants qui utilisent le hook `useAnimation`.
+ */
 export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -91,6 +95,17 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({
   const startTimeRef = useRef<number>(0);
   const lastFrameRef = useRef<number>(-1);
 
+  /**
+   * Ajoute ou met à jour une keyframe sur une piste d'animation.
+   * Si la piste n'existe pas, elle est créée.
+   * @param targetId ID de l'élément de la scène (pantin ou image).
+   * @param targetMemberId ID du membre du pantin, ou null si la cible est l'élément entier.
+   * @param property Propriété à animer.
+   * @param frame Numéro de la frame pour cette keyframe.
+   * @param value Valeur de la propriété à cette frame.
+   * @param variant Nom du variant (pour la propriété `activeVariant`).
+   * @param attachedObject Informations sur l'objet attaché (pour la propriété `attachment`).
+   */
   const addKeyframe = useCallback(
     (
       targetId: string,
@@ -151,16 +166,33 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({
     [],
   );
 
+  /**
+   * Supprime une keyframe d'une piste d'animation.
+   * Si la piste devient vide, elle est supprimée.
+   * @param trackId ID de la piste d'animation.
+   * @param frame Numéro de la frame à supprimer.
+   */
   const removeKeyframe = useCallback((trackId: string, frame: number) => {
     setTracks((prev) => {
-      const track = prev.find((t) => t.id === trackId);
-      if (!track) return prev;
-      track.keyframes = track.keyframes.filter((kf) => kf.frame !== frame);
-      // Remove track if no keyframes left
-      if (track.keyframes.length === 0) {
+      const trackIndex = prev.findIndex((t) => t.id === trackId);
+      if (trackIndex === -1) return prev;
+
+      const track = prev[trackIndex];
+      const updatedKeyframes = track.keyframes.filter(
+        (kf) => kf.frame !== frame,
+      );
+
+      if (updatedKeyframes.length === 0) {
+        // Remove track if no keyframes left
         return prev.filter((t) => t.id !== trackId);
       }
-      return [...prev];
+
+      const updatedTrack = { ...track, keyframes: updatedKeyframes };
+      return [
+        ...prev.slice(0, trackIndex),
+        updatedTrack,
+        ...prev.slice(trackIndex + 1),
+      ];
     });
   }, []);
 
@@ -180,6 +212,14 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({
     [tracks],
   );
 
+  /**
+   * Calcule la valeur d'une propriété à une frame donnée, en interpolant entre les keyframes.
+   * @param targetId ID de l'élément de la scène.
+   * @param targetMemberId ID du membre du pantin, ou null.
+   * @param property Propriété à évaluer.
+   * @param frame Numéro de la frame à laquelle calculer la valeur.
+   * @returns La valeur interpolée, ou null si la piste n'existe pas.
+   */
   const getValueAtFrame = useCallback(
     (
       targetId: string,
@@ -413,6 +453,11 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({
     [getValueAtFrame, addKeyframe],
   );
 
+  /**
+   * Capture l'état actuel des éléments de la scène et crée des keyframes si nécessaire.
+   * Compare l'état actuel à la frame précédente pour ne créer des keyframes que si des changements ont eu lieu.
+   * @param items Tableau des éléments de la scène à capturer.
+   */
   const snapshotKeyframes = useCallback(
     (items: SceneItem[]) => {
       items.forEach((item) => {
@@ -525,6 +570,16 @@ export const AnimationProvider: React.FC<{ children: React.ReactNode }> = ({
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 };
 
+/**
+ * Hook pour accéder à l'état et aux actions de l'animation.
+ * Gère les pistes, les keyframes, la lecture et les snapshots.
+ *
+ * @example
+ * const { addKeyframe, getValueAtFrame } = useAnimation();
+ * addKeyframe('puppet-1', 'arm', 'rotation', 30, 45);
+ *
+ * @see {@link AnimationTrack} for track structure
+ */
 export const useAnimation = () => {
   const ctx = useContext(Ctx);
   if (!ctx)

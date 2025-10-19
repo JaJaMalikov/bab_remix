@@ -1,46 +1,141 @@
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Timeline } from "../../src/components/Timeline";
-import { resetUiState, useUi } from "../../src/context/UiContext";
+import { useUi, resetUiState } from "../../src/context/UiContext";
 import * as AnimationContext from "../../src/context/AnimationContext";
-import { vi } from "vitest";
 
 describe("Timeline", () => {
-  const createAnimationMock = () => ({
-    duration: 100,
+  const createAnimationMock = (props: Partial<AnimationContext.AnimationState> = {}) => ({
+    duration: 300,
     currentFrame: 0,
-    setCurrentFrame: vi.fn(),
     tracks: [],
-    removeKeyframe: vi.fn(),
     playing: false,
     setPlaying: vi.fn(),
+    setCurrentFrame: vi.fn(),
     snapshotKeyframes: vi.fn(),
     addKeyframe: vi.fn(),
     getValueAtFrame: vi.fn(),
+    removeAllTracksForTarget: vi.fn(),
+    removeKeyframe: vi.fn(),
+    getTrack: vi.fn(),
+    ...props,
   });
 
+  let animationMock: ReturnType<typeof createAnimationMock>;
+
   beforeEach(() => {
-    act(() => {
-      resetUiState();
-      useUi.setState({
-        timelineHeight: 100,
-        sceneItems: [],
-      });
-    });
+    animationMock = createAnimationMock();
     vi.spyOn(AnimationContext, "useAnimation").mockReturnValue(
-      createAnimationMock() as never,
+      animationMock as never,
     );
+    resetUiState();
+    useUi.setState({ timelineHeight: 100, sceneItems: [] });
   });
 
   afterEach(() => {
-    act(() => {
-      resetUiState();
-    });
     vi.restoreAllMocks();
   });
 
-  it("should render the timeline without crashing", () => {
+  it("should render playback controls", () => {
     render(<Timeline />);
     expect(screen.getByTitle("Lecture")).toBeInTheDocument();
-    expect(screen.getByText("Frame")).toBeInTheDocument();
+    expect(screen.getByTitle("Revenir au début")).toBeInTheDocument();
+    expect(screen.getByText(/Durée/)).toBeInTheDocument();
+  });
+
+  it('should show pause button when playing', () => {
+    animationMock = createAnimationMock({ playing: true });
+    vi.spyOn(AnimationContext, 'useAnimation').mockReturnValue(animationMock as never);
+    render(<Timeline />);
+    expect(screen.getByTitle("Mettre en pause")).toBeInTheDocument();
+  });
+
+  it("should call setPlaying(true) when play button is clicked", () => {
+    render(<Timeline />);
+    const playButton = screen.getByTitle("Lecture");
+    fireEvent.click(playButton);
+    expect(animationMock.setPlaying).toHaveBeenCalledWith(true);
+  });
+
+  it("should call setPlaying(false) when pause button is clicked", () => {
+    animationMock = createAnimationMock({ playing: true });
+    vi.spyOn(AnimationContext, 'useAnimation').mockReturnValue(animationMock as never);
+    render(<Timeline />);
+    const pauseButton = screen.getByTitle("Mettre en pause");
+    fireEvent.click(pauseButton);
+    expect(animationMock.setPlaying).toHaveBeenCalledWith(false);
+  });
+
+  it("should call setCurrentFrame(0) when stop button is clicked", () => {
+    render(<Timeline />);
+    const stopButton = screen.getByTitle("Revenir au début");
+    fireEvent.click(stopButton);
+    expect(animationMock.setCurrentFrame).toHaveBeenCalledWith(0);
+  });
+
+  it("should render tracks when there are scene items", () => {
+    useUi.setState({ sceneItems: [{ id: "item-1", type: "image", el: document.createElement("div") }] });
+    render(<Timeline />);
+    screen.debug();
+    // Use getByTitle on the container of the track label
+    const trackLabel = screen.getByTitle("item-1");
+    expect(trackLabel).toBeInTheDocument();
+    expect(trackLabel.className).toContain("timeline-track-label");
+  });
+
+  it("should not render tracks when there are no scene items", () => {
+    render(<Timeline />);
+    expect(screen.queryByTitle("item-1")).not.toBeInTheDocument();
+  });
+
+  describe("Keyframe Navigation", () => {
+    it("should disable prev/next keyframe buttons when no keyframes are present", () => {
+      render(<Timeline />);
+      expect(screen.getByTitle("Keyframe précédente")).toBeDisabled();
+      expect(screen.getByTitle("Keyframe suivante")).toBeDisabled();
+    });
+
+    it("should enable next keyframe button when a future keyframe exists", () => {
+      animationMock = createAnimationMock({
+        currentFrame: 10,
+        tracks: [
+          {
+            id: "track-1",
+            targetId: "item-1",
+            targetMemberId: null,
+            property: "x",
+            keyframes: [{ frame: 50, value: 100 }],
+          },
+        ],
+      });
+      vi.spyOn(AnimationContext, "useAnimation").mockReturnValue(
+        animationMock as never,
+      );
+      render(<Timeline />);
+      expect(screen.getByTitle("Keyframe précédente")).toBeDisabled();
+      expect(screen.getByTitle("Keyframe suivante")).not.toBeDisabled();
+    });
+
+    it("should navigate to the next keyframe", () => {
+      animationMock = createAnimationMock({
+        currentFrame: 10,
+        tracks: [
+          {
+            id: "track-1",
+            targetId: "item-1",
+            targetMemberId: null,
+            property: "x",
+            keyframes: [{ frame: 50, value: 100 }],
+          },
+        ],
+      });
+      vi.spyOn(AnimationContext, "useAnimation").mockReturnValue(
+        animationMock as never,
+      );
+      render(<Timeline />);
+      const nextButton = screen.getByTitle("Keyframe suivante");
+      fireEvent.click(nextButton);
+      expect(animationMock.setCurrentFrame).toHaveBeenCalledWith(50);
+    });
   });
 });

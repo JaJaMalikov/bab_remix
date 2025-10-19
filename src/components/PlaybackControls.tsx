@@ -1,20 +1,35 @@
 import { Icons } from "./ui/icons";
 
 interface PlaybackControlsProps {
+  /** Indique si l'animation est en cours de lecture. */
   isPlaying: boolean;
+  /** La frame actuellement affichée dans la timeline. */
   currentFrame: number;
+  /** La durée totale de l'animation en frames. */
   duration: number;
+  /** Le niveau de zoom actuel de la timeline. */
   zoom: number;
+  /** Indique s'il y a une keyframe avant la frame courante. */
   hasPrevKeyframe: boolean;
+  /** Indique s'il y a une keyframe après la frame courante. */
   hasNextKeyframe: boolean;
+  /** Callback pour démarrer la lecture. */
   onPlay: () => void;
+  /** Callback pour mettre la lecture en pause. */
   onPause: () => void;
+  /** Callback pour arrêter la lecture et revenir au début. */
   onStop: () => void;
+  /** Callback pour sauter à la keyframe précédente. */
   onPrevKeyframe: () => void;
+  /** Callback pour sauter à la keyframe suivante. */
   onNextKeyframe: () => void;
+  /** Callback pour créer un snapshot de l'état actuel. */
   onSnapshot: () => void;
+  /** Callback pour zoomer dans la timeline. */
   onZoomIn: () => void;
+  /** Callback pour dézoomer dans la timeline. */
   onZoomOut: () => void;
+  /** Callback pour réinitialiser le niveau de zoom. */
   onZoomReset: () => void;
 }
 

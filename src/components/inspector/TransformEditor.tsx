@@ -4,10 +4,15 @@ import { Input } from "../ui/input";
 import { Slider } from "../ui/slider";
 
 interface TransformEditorProps {
+  /** L'élément de la scène actuellement sélectionné. */
   selectedItem: SceneItem;
+  /** L'objet contenant les transformations actuelles de l'élément (position, rotation, échelle). */
   transform: { x: number; y: number; rotation: number; scaleX: number; scaleY: number; };
+  /** Callback pour gérer le changement de position (X ou Y). */
   handlePositionChange: (axis: 'x' | 'y', value: number) => void;
+  /** Callback pour gérer le changement de rotation. */
   handleRotationChange: (value: number) => void;
+  /** Callback pour gérer le changement d'échelle (X ou Y). */
   handleScaleChange: (axis: 'scaleX' | 'scaleY', value: number) => void;
 }
 

@@ -3,7 +3,9 @@ import { Slider } from "../ui/slider";
 import React from "react";
 
 interface MemberTransformEditorProps {
+  /** L'angle de rotation actuel du membre sélectionné. */
   angle: number;
+  /** Callback appelé lorsque l'angle de rotation est modifié. */
   onAngleChange: (angle: number) => void;
 }
 

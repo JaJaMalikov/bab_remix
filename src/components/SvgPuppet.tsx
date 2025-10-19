@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { CSSProperties, RefObject } from "react";
+import { useToast } from "../hooks/use-toast";
+
 
 type PuppetMemberMetadata = {
   id: string;
@@ -142,7 +144,7 @@ const toMetadataUrl = (src: string) => {
   return `${base.replace(/\.svg$/i, ".json")}${query}`;
 };
 
-const fetchMetadata = async (url: string | null) => {
+const fetchMetadata = async (url: string | null, toast: (props: any) => void) => {
   if (!url) return null;
   if (metadataCache.has(url)) {
     return metadataCache.get(url) ?? null;
@@ -150,7 +152,6 @@ const fetchMetadata = async (url: string | null) => {
   try {
     const res = await fetch(url);
     if (!res.ok) {
-      metadataCache.set(url, null);
       return null;
     }
     const data = (await res.json()) as PuppetMetadata;
@@ -158,7 +159,11 @@ const fetchMetadata = async (url: string | null) => {
     return data;
   } catch (error) {
     console.error(`Failed to load puppet metadata from ${url}`, error);
-    metadataCache.set(url, null);
+    toast({
+      variant: "destructive",
+      title: "Erreur de chargement",
+      description: `Impossible de charger les métadonnées du pantin: ${url}`,
+    });
     return null;
   }
 };
@@ -183,6 +188,8 @@ export function SvgPuppetInlineSimple({
   const ref = useRef<SVGSVGElement | SVGGElement | null>(null);
   const injectedRef = useRef<SVGGElement | null>(null);
   const onReadyRef = useRef<typeof onReady>(null);
+  const { toast } = useToast();
+
   useEffect(() => {
     onReadyRef.current = onReady;
   }, [onReady]);
@@ -226,7 +233,7 @@ export function SvgPuppetInlineSimple({
       // 2. If not in cache, fetch and process
       try {
         const [metadata, response] = await Promise.all([
-          fetchMetadata(metadataUrl),
+          fetchMetadata(metadataUrl, toast),
           fetch(src),
         ]);
         if (cancelled) return;
@@ -248,6 +255,11 @@ export function SvgPuppetInlineSimple({
         }
       } catch (error) {
         console.error(`Failed to load or process puppet from ${src}`, error);
+        toast({
+          variant: "destructive",
+          title: "Erreur de chargement",
+          description: `Impossible de charger le pantin: ${src}`,
+        });
       }
     }
 
@@ -260,7 +272,7 @@ export function SvgPuppetInlineSimple({
       }
       injectedRef.current = null;
     };
-  }, [src]);
+  }, [src, toast]);
 
   if (as === "svg") {
     return (

@@ -169,6 +169,11 @@ const reorderSceneItems = (
   return updated;
 };
 
+/**
+ * Store Zustand pour l'état global de l'interface utilisateur.
+ * Gère la sélection, la visibilité des panneaux, et les éléments de la scène.
+ * L'état de la mise en page est persisté dans le localStorage.
+ */
 export const useUi = create<UiState>()(
   persist(
     (set) => ({
@@ -242,8 +247,14 @@ export const useUi = create<UiState>()(
   ),
 );
 
+/**
+ * Composant wrapper pour le contexte UI. Actuellement un simple passthrough.
+ */
 export const UiProvider = ({ children }: { children: ReactNode }) => <>{children}</>;
 
+/**
+ * Réinitialise l'état de l'interface utilisateur à ses valeurs par défaut.
+ */
 export const resetUiState = () => {
   useUi.setState(createBaseState());
 };
