@@ -4,11 +4,12 @@ import { SvgPuppetInlineSimple } from "./SvgPuppet";
 import { Asset } from "./AssetItem";
 import { useUi } from "../context/UiContext";
 import type { PuppetMetadata as UiPuppetMetadata } from "../context/UiContext";
-import { useSceneDrag } from "../hooks/useSceneDrag";
+import { useSceneDrag, SceneDragStartInfo } from "../hooks/useSceneDrag";
 import { useScenePanZoom } from "../hooks/useScenePanZoom";
 import { useAnimationPlayback } from "../hooks/useAnimationPlayback";
 import { applyVariantSelection } from "../utils/svgVariants";
-import { useAnimation } from "../context/AnimationContext";
+import { readItemTransform } from "../utils/svgTransform";
+import { useAnimation, AnimationProperty } from "../context/AnimationContext";
 import { useAssetDropHandler } from "../hooks/useAssetDropHandler";
 import { useSceneClickHandler } from "../hooks/useSceneClickHandler";
 import { useLimbRotator } from "../hooks/useLimbRotator";
@@ -30,6 +31,9 @@ export const SvgScene = memo(() => {
     setSelectedLimb: setUiSelectedLimb,
     setAngle: setUiAngle,
     setSelectedItemId,
+    setShowInspector,
+    setShowLibrary,
+    setShowLayers,
     sceneItems,
     addSceneItem,
     setFitInView,
@@ -53,10 +57,44 @@ export const SvgScene = memo(() => {
     viewSizeRef,
   });
 
+  // Ensure dragged items are selected and inspector is shown
+  const handleDragStartSelection = useCallback(
+    (info: SceneDragStartInfo) => {
+      if (!info.itemId) return;
+      setSelectedItemId(info.itemId);
+      setShowInspector(true);
+      setShowLibrary(false);
+      setShowLayers(false);
+      setUiSelectedLimb("");
+      if (info.type === "puppet") {
+        const puppetRoot = info.element.firstChild as SVGGElement | null;
+        setUiSelectedPuppet(puppetRoot);
+      } else {
+        setUiSelectedPuppet(null);
+      }
+      window.dispatchEvent(
+        new CustomEvent("item:transformed", {
+          detail: { id: info.itemId, final: false },
+        }),
+      );
+    },
+    [
+      setSelectedItemId,
+      setShowInspector,
+      setShowLibrary,
+      setShowLayers,
+      setUiSelectedLimb,
+      setUiSelectedPuppet,
+    ],
+  );
+
   // Drag logic hook depends on coordinate conversion from the pan/zoom hook
-  const dragMovedRef = useSceneDrag(svgRef, toSceneCoords);
+  const dragMovedRef = useSceneDrag(svgRef, toSceneCoords, {
+    onDragStart: handleDragStartSelection,
+  });
   const { currentFrame, addKeyframe, snapshotKeyframes } = useAnimation();
   const didInitialSnapshotRef = useRef(false);
+  const lastTransformsRef = useRef<Map<string, Record<string, number>>>(new Map());
 
   const ensureInitialSnapshot = useCallback(() => {
     if (currentFrame === 0 && !didInitialSnapshotRef.current) {
@@ -152,6 +190,9 @@ export const SvgScene = memo(() => {
     setUiSelectedPuppet,
     setUiSelectedLimb,
     setUiAngle,
+    setShowInspector,
+    setShowLibrary,
+    setShowLayers,
   });
 
   useLimbRotator({
@@ -174,6 +215,70 @@ export const SvgScene = memo(() => {
     setDecor,
     ensureContainers,
   });
+
+  // Auto keyframing for drag/transform operations even when inspector is hidden
+  useEffect(() => {
+    const THRESHOLD = 0.01;
+    const handleTransformUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent<{ id?: string; final?: boolean }>;
+      const detail = customEvent.detail || {};
+      if (!detail.id) return;
+
+      const item = sceneItems.find((i) => i.id === detail.id);
+      if (!item) return;
+
+      const snapshot = readItemTransform(item.el, item.type);
+
+      if (!detail.final) {
+        return;
+      }
+
+      const lastSnapshot = lastTransformsRef.current.get(item.id) ?? {};
+      const changedProps: Array<{ property: AnimationProperty; value: number }> = [];
+
+      const recordIfChanged = (
+        prop: keyof typeof snapshot,
+        property: AnimationProperty,
+      ) => {
+        const next = snapshot[prop];
+        const prev = lastSnapshot[prop];
+        if (typeof next !== "number") return;
+        if (typeof prev !== "number" || Math.abs(prev - next) > THRESHOLD) {
+          changedProps.push({ property, value: next });
+        }
+      };
+
+      if (item.type === "puppet") {
+        recordIfChanged("x", "x");
+        recordIfChanged("y", "y");
+      } else if (item.type === "image") {
+        const graphicEl = item.el as SVGGraphicsElement;
+        const isEmbeddedAttachment =
+          graphicEl.getAttribute("data-attached-mode") === "embedded";
+        if (!isEmbeddedAttachment) {
+          recordIfChanged("x", "x");
+          recordIfChanged("y", "y");
+        }
+        recordIfChanged("rotation", "rotation");
+        recordIfChanged("scaleX", "scaleX");
+        recordIfChanged("scaleY", "scaleY");
+      }
+
+      if (changedProps.length > 0) {
+        ensureInitialSnapshot();
+        changedProps.forEach(({ property, value }) => {
+          addKeyframe(item.id, null, property, currentFrame, value);
+        });
+      }
+
+      lastTransformsRef.current.set(item.id, snapshot);
+    };
+
+    window.addEventListener("item:transformed", handleTransformUpdate);
+    return () => {
+      window.removeEventListener("item:transformed", handleTransformUpdate);
+    };
+  }, [sceneItems, addKeyframe, currentFrame, ensureInitialSnapshot]);
 
   // Effect for drag/drop from library and click-to-select-limb
   useEffect(() => {

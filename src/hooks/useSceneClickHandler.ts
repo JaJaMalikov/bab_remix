@@ -9,6 +9,9 @@ interface ClickHandlerArgs {
   setUiSelectedPuppet: (puppet: SVGGElement | null) => void;
   setUiSelectedLimb: (limbId: string) => void;
   setUiAngle: (angle: number) => void;
+  setShowInspector: (value: React.SetStateAction<boolean>) => void;
+  setShowLibrary: (value: React.SetStateAction<boolean>) => void;
+  setShowLayers: (value: React.SetStateAction<boolean>) => void;
 }
 
 const getLimbRotationFromDom = (g: SVGGElement): number => {
@@ -22,6 +25,9 @@ export const useSceneClickHandler = ({
   setUiSelectedPuppet,
   setUiSelectedLimb,
   setUiAngle,
+  setShowInspector,
+  setShowLibrary,
+  setShowLayers,
 }: ClickHandlerArgs) => {
   const onClick = useCallback(
     (e: MouseEvent) => {
@@ -39,6 +45,9 @@ export const useSceneClickHandler = ({
         const puppetItem = sceneItems.find((item) => item.el === puppetAnchor);
         if (puppetItem) {
           setSelectedItemId(puppetItem.id);
+          setShowInspector(true);
+          setShowLibrary(false);
+          setShowLayers(false);
         }
 
         // Only select a member if specifically clicking on one (not the background)
@@ -68,6 +77,9 @@ export const useSceneClickHandler = ({
         if (imgId) {
           setSelectedItemId(imgId);
           setUiSelectedLimb("");
+          setShowInspector(true);
+          setShowLibrary(false);
+          setShowLayers(false);
         }
         return;
       }
@@ -76,7 +88,17 @@ export const useSceneClickHandler = ({
       setSelectedItemId(null);
       setUiSelectedLimb("");
     },
-    [dragMovedRef, sceneItems, setSelectedItemId, setUiAngle, setUiSelectedLimb, setUiSelectedPuppet],
+    [
+      dragMovedRef,
+      sceneItems,
+      setSelectedItemId,
+      setShowInspector,
+      setShowLibrary,
+      setShowLayers,
+      setUiAngle,
+      setUiSelectedLimb,
+      setUiSelectedPuppet,
+    ],
   );
 
   return { onClick };

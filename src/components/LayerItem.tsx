@@ -13,7 +13,17 @@ interface LayerItemProps {
  * It uses useCallback for its event handlers to prevent unnecessary re-renders.
  */
 export const LayerItem = memo(({ item }: LayerItemProps) => {
-  const { bringForward, sendBackward, setSelectedItemId, setShowInspector, setShowLayers, setShowLibrary } = useUi();
+  const {
+    bringForward,
+    sendBackward,
+    setSelectedItemId,
+    setSelectedPuppet,
+    setSelectedLimb,
+    setAngle,
+    setShowInspector,
+    setShowLayers,
+    setShowLibrary,
+  } = useUi();
 
   // Memoize the callbacks to prevent re-creation
   const handleSendBackward = useCallback(() => {
@@ -26,10 +36,34 @@ export const LayerItem = memo(({ item }: LayerItemProps) => {
 
   const handleSelect = useCallback(() => {
     setSelectedItemId(item.id);
+    setSelectedLimb("");
+    setAngle(0);
+    if (item.type === "puppet") {
+      const puppetRoot = item.el.firstChild as SVGGElement | null;
+      setSelectedPuppet(puppetRoot);
+    } else {
+      setSelectedPuppet(null);
+    }
     setShowInspector(true);
     setShowLayers(false);
     setShowLibrary(false);
-  }, [setSelectedItemId, setShowInspector, setShowLayers, setShowLibrary, item.id]);
+    window.dispatchEvent(
+      new CustomEvent("item:transformed", {
+        detail: { id: item.id, final: false },
+      }),
+    );
+  }, [
+    item.el,
+    item.id,
+    item.type,
+    setAngle,
+    setSelectedItemId,
+    setSelectedLimb,
+    setSelectedPuppet,
+    setShowInspector,
+    setShowLayers,
+    setShowLibrary,
+  ]);
 
   return (
     <div className="flex items-center gap-2 rounded border border-border bg-muted/40 px-2 py-1.5 text-xs text-foreground">

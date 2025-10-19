@@ -30,6 +30,24 @@ type DraggingRef =
 
 interface Coords { x: number; y: number }
 
+export type SceneDragStartInfo =
+  | {
+      type: "puppet";
+      itemId: string | null;
+      element: SVGGElement;
+      event: MouseEvent;
+    }
+  | {
+      type: "image";
+      itemId: string | null;
+      element: SVGGraphicsElement;
+      event: MouseEvent;
+    };
+
+interface DragOptions {
+  onDragStart?: (info: SceneDragStartInfo) => void;
+}
+
 /**
  * A hook to manage dragging puppets and images within the SVG scene.
  * @param svgRef Ref to the main SVG element.
@@ -39,9 +57,11 @@ interface Coords { x: number; y: number }
 export const useSceneDrag = (
   svgRef: React.RefObject<SVGSVGElement | null>,
   toSceneCoords: (clientX: number, clientY: number) => Coords,
+  options?: DragOptions,
 ) => {
   const draggingRef = useRef<DraggingRef>(null);
   const dragMovedRef = useRef(false);
+  const onDragStart = options?.onDragStart;
 
   const getTranslate = useCallback((el: SVGGElement) => {
     try {
@@ -93,6 +113,12 @@ export const useSceneDrag = (
           ty0: ty,
           itemId: anchor.getAttribute("data-id"),
         };
+        onDragStart?.({
+          type: "puppet",
+          itemId: draggingRef.current.itemId,
+          element: anchor,
+          event: e,
+        });
         e.preventDefault();
       } else if (img) {
         const x0 = parseNumber(img.getAttribute("x"), 0);
@@ -106,6 +132,12 @@ export const useSceneDrag = (
           y0,
           itemId: img.getAttribute("data-id"),
         };
+        onDragStart?.({
+          type: "image",
+          itemId: draggingRef.current.itemId,
+          element: img,
+          event: e,
+        });
         e.preventDefault();
       }
     };
@@ -180,7 +212,7 @@ export const useSceneDrag = (
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
     };
-  }, [svgRef, toSceneCoords, getTranslate]);
+  }, [svgRef, toSceneCoords, getTranslate, onDragStart]);
 
   return dragMovedRef;
 };

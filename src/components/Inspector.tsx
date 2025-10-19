@@ -1,10 +1,4 @@
-import React, {
-  useMemo,
-  useCallback,
-  useState,
-  useEffect,
-  useRef,
-} from "react";
+import React, { useMemo, useCallback, useState, useEffect, useRef } from "react";
 import { useUi } from "../context/UiContext";
 import { useAnimation, AnimationProperty } from "../context/AnimationContext";
 import { SceneItemList } from "./inspector/SceneItemList";
@@ -58,7 +52,7 @@ function InspectorComponent() {
   );
 
 
-  const didInitialSnapshotRef = React.useRef(false);
+  const didInitialSnapshotRef = useRef(false);
 
   const ensureInitialSnapshot = useCallback(() => {
     if (currentFrame === 0 && !didInitialSnapshotRef.current) {
@@ -76,9 +70,6 @@ function InspectorComponent() {
     scaleY: 1,
   });
   const [transformRefresh, setTransformRefresh] = useState(0);
-  const lastTransformsRef = useRef<Map<string, Record<string, number>>>(
-    new Map(),
-  );
 
   // Active variants per puppet (keyed by puppetId:groupName)
   const [activeVariants, setActiveVariants] = useState<Record<string, string>>(
@@ -87,75 +78,15 @@ function InspectorComponent() {
 
   // Listen for drag/transform updates
   useEffect(() => {
-    const THRESHOLD = 0.01;
-    const handleTransformUpdate = (event: Event) => {
+    const handleTransformUpdate = () => {
       setTransformRefresh((prev) => prev + 1);
-
-      const customEvent = event as CustomEvent<{
-        id?: string;
-        final?: boolean;
-      }>;
-      const detail = customEvent.detail || {};
-      if (!detail.id) return;
-
-      const item = sceneItems.find((i) => i.id === detail.id);
-      if (!item) return;
-
-      const snapshot = readItemTransform(item.el, item.type);
-      const isFinal = Boolean(detail.final);
-
-      if (isFinal) {
-        const lastSnapshot = lastTransformsRef.current.get(item.id) ?? {};
-        const changedProps: Array<{
-          property: AnimationProperty;
-          value: number;
-        }> = [];
-
-        const diff = (
-          prop: keyof typeof snapshot,
-          property: AnimationProperty,
-        ) => {
-          const next = snapshot[prop];
-          const prev = lastSnapshot[prop];
-          if (typeof next !== "number") return;
-
-          if (typeof prev !== "number" || Math.abs(prev - next) > THRESHOLD) {
-            changedProps.push({ property, value: next });
-          }
-        };
-
-        if (item.type === "puppet") {
-          diff("x", "x");
-          diff("y", "y");
-        } else if (item.type === "image") {
-          const graphicEl = item.el as SVGGraphicsElement;
-          const isEmbeddedAttachment =
-            graphicEl.getAttribute("data-attached-mode") === "embedded";
-          if (!isEmbeddedAttachment) {
-            diff("x", "x");
-            diff("y", "y");
-          }
-          diff("rotation", "rotation");
-          diff("scaleX", "scaleX");
-          diff("scaleY", "scaleY");
-        }
-
-        if (changedProps.length > 0) {
-          ensureInitialSnapshot();
-          changedProps.forEach(({ property, value }) => {
-            addKeyframe(item.id, null, property, currentFrame, value);
-          });
-        }
-
-        lastTransformsRef.current.set(item.id, snapshot);
-      }
     };
 
     window.addEventListener("item:transformed", handleTransformUpdate);
     return () => {
       window.removeEventListener("item:transformed", handleTransformUpdate);
     };
-  }, [sceneItems, addKeyframe, currentFrame, ensureInitialSnapshot]);
+  }, []);
 
   // Initialize default variants when selecting a puppet
   useEffect(() => {
