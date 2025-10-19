@@ -85,8 +85,8 @@ export function LibraryPanel() {
       </TabsList>
       {CATEGORY_TABS.map(({ value }) => (
         <TabsContent key={value} value={value} className="mt-3 flex-1 overflow-hidden">
-          <div className="h-full overflow-y-auto">
-            <div className="grid grid-cols-2 gap-2">
+          <div className="h-full overflow-y-auto no-scrollbar">
+            <div className="grid grid-cols-1 gap-2">
               {assetsByCategory[value].map((asset) => (
                 <AssetItem key={asset.path} asset={asset} />
               ))}

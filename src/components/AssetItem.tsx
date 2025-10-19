@@ -34,7 +34,7 @@ export const AssetItem = memo(({ asset }: AssetItemProps) => {
       draggable
       onDragStart={handleDragStart}
       onDoubleClick={handleDoubleClick}
-      className="flex cursor-grab flex-col gap-1 rounded border border-transparent bg-muted/40 p-2 text-left transition hover:border-primary/60 hover:bg-muted/60 active:cursor-grabbing"
+      className="flex cursor-grab flex-col gap-1 rounded border border-transparent bg-muted/40 p-1 text-left transition hover:border-primary/60 hover:bg-muted/60 active:cursor-grabbing"
     >
       <div className="aspect-square overflow-hidden rounded border border-border bg-background/60">
         <img

@@ -81,6 +81,16 @@
     --keyframe-default: 221.2 83.2% 53.3%; /* same as primary */
   }
 
+  .no-scrollbar {
+    @apply flex-shrink-0 overflow-x-auto overflow-y-hidden;
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+
   * {
     @apply border-[hsl(var(--border))];
   }
@@ -195,6 +205,7 @@
 
   .timeline-tracks-scroll {
     @apply flex-1 overflow-y-auto overflow-x-hidden;
+    scrollbar-width: none;
   }
 
   .timeline-tracks-container {
