@@ -1,3 +1,4 @@
+import React from "react";
 import { cn } from "../lib/utils";
 import type {
   TimelineKeyframe,
@@ -35,18 +36,19 @@ interface TimelineTrackProps {
   onVisibilityTrackClick?: (frame: number) => void;
 }
 
-export function TimelineTrack({
-  name,
-  type,
-  keyframes,
-  visibilitySegments,
-  duration,
-  zoom,
-  currentFrame,
-  selectedKeyframes,
-  onKeyframePointerDown,
-  onVisibilityTrackClick,
-}: TimelineTrackProps) {
+export const TimelineTrack = React.memo(
+  function TimelineTrack({
+    name,
+    type,
+    keyframes,
+    visibilitySegments,
+    duration,
+    zoom,
+    currentFrame,
+    selectedKeyframes,
+    onKeyframePointerDown,
+    onVisibilityTrackClick,
+  }: TimelineTrackProps) {
   const pixelsPerFrame = 2 * zoom;
   const totalWidth = duration * pixelsPerFrame;
 
@@ -157,4 +159,22 @@ export function TimelineTrack({
       </div>
     </div>
   );
-}
+  },
+  (prevProps, nextProps) => {
+    // Only re-render if data actually changed (not just currentFrame for playhead)
+    // The playhead position is updated via style.left which doesn't require full re-render
+    return (
+      prevProps.name === nextProps.name &&
+      prevProps.type === nextProps.type &&
+      prevProps.keyframes === nextProps.keyframes &&
+      prevProps.visibilitySegments === nextProps.visibilitySegments &&
+      prevProps.duration === nextProps.duration &&
+      prevProps.zoom === nextProps.zoom &&
+      prevProps.selectedKeyframes === nextProps.selectedKeyframes &&
+      prevProps.onKeyframePointerDown === nextProps.onKeyframePointerDown &&
+      prevProps.onVisibilityTrackClick === nextProps.onVisibilityTrackClick &&
+      // Allow currentFrame to change (playhead updates are cheap via inline style)
+      prevProps.currentFrame === nextProps.currentFrame
+    );
+  }
+);

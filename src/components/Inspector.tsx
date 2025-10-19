@@ -8,6 +8,7 @@ import { AttachmentEditor } from "./inspector/AttachmentEditor";
 import { VariantEditor } from "./inspector/VariantEditor";
 import { MemberEditor } from "./inspector/MemberEditor";
 import { MemberTransformEditor } from "./inspector/MemberTransformEditor";
+import { LiveTransformDisplay } from "./inspector/LiveTransformDisplay";
 import {
   setRotationWithOrigin,
   getRotationFromTransform,
@@ -61,14 +62,7 @@ function InspectorComponent() {
     }
   }, [currentFrame, sceneItems, snapshotKeyframes]);
 
-  // Live transform state
-  const [transform, setTransform] = useState({
-    x: 0,
-    y: 0,
-    rotation: 0,
-    scaleX: 1,
-    scaleY: 1,
-  });
+  // Transform refresh counter - triggers LiveTransformDisplay update
   const [transformRefresh, setTransformRefresh] = useState(0);
 
   // Active variants per puppet (keyed by puppetId:groupName)
@@ -117,11 +111,7 @@ function InspectorComponent() {
     });
   }, [selectedItem, activeVariants]);
 
-  // Read transform from DOM whenever selectedItem, currentFrame, or drag updates
-  useEffect(() => {
-    if (!selectedItem) return;
-    setTransform(readItemTransform(selectedItem.el, selectedItem.type));
-  }, [selectedItem, currentFrame, transformRefresh]);
+  // Transform is now managed by LiveTransformDisplay component
 
   // Get limb list for selected puppet
   const limbList = useMemo(() => {
@@ -234,15 +224,13 @@ function InspectorComponent() {
   const handlePositionChange = useCallback(
     (axis: "x" | "y", value: number) => {
       if (!selectedItem) return;
-      const newTransform = { ...transform, [axis]: value };
-      setTransform(newTransform);
 
       const el = selectedItem.el;
       if (selectedItem.type === "puppet") {
-        el.setAttribute(
-          "transform",
-          `translate(${newTransform.x}, ${newTransform.y})`,
-        );
+        const currentTransform = readItemTransform(el, selectedItem.type);
+        const x = axis === "x" ? value : currentTransform.x;
+        const y = axis === "y" ? value : currentTransform.y;
+        el.setAttribute("transform", `translate(${x}, ${y})`);
       } else {
         const graphicEl = el as SVGGraphicsElement;
         graphicEl.setAttribute(axis, String(value));
@@ -259,47 +247,51 @@ function InspectorComponent() {
       // Auto keyframe for position
       ensureInitialSnapshot();
       addKeyframe(selectedItem.id, null, axis, currentFrame, value);
+
+      // Trigger transform display refresh
+      setTransformRefresh((prev) => prev + 1);
     },
-    [selectedItem, transform, addKeyframe, currentFrame, ensureInitialSnapshot],
+    [selectedItem, addKeyframe, currentFrame, ensureInitialSnapshot],
   );
 
   // Handle rotation change for images
   const handleRotationChange = useCallback(
     (value: number) => {
       if (!selectedItem || selectedItem.type !== "image") return;
-      const newTransform = { ...transform, rotation: value };
-      setTransform(newTransform);
 
       const el = selectedItem.el as SVGGraphicsElement;
-      setImageTransform(el, value, newTransform.scaleX, newTransform.scaleY);
+      const currentTransform = readItemTransform(el, selectedItem.type);
+      setImageTransform(el, value, currentTransform.scaleX, currentTransform.scaleY);
 
       // Auto keyframe for image rotation
       ensureInitialSnapshot();
       addKeyframe(selectedItem.id, null, "rotation", currentFrame, value);
+
+      // Trigger transform display refresh
+      setTransformRefresh((prev) => prev + 1);
     },
-    [selectedItem, transform, addKeyframe, currentFrame, ensureInitialSnapshot],
+    [selectedItem, addKeyframe, currentFrame, ensureInitialSnapshot],
   );
 
   // Handle scale change for images
   const handleScaleChange = useCallback(
     (axis: "scaleX" | "scaleY", value: number) => {
       if (!selectedItem || selectedItem.type !== "image") return;
-      const newTransform = { ...transform, [axis]: value };
-      setTransform(newTransform);
 
       const el = selectedItem.el as SVGGraphicsElement;
-      setImageTransform(
-        el,
-        newTransform.rotation,
-        newTransform.scaleX,
-        newTransform.scaleY,
-      );
+      const currentTransform = readItemTransform(el, selectedItem.type);
+      const scaleX = axis === "scaleX" ? value : currentTransform.scaleX;
+      const scaleY = axis === "scaleY" ? value : currentTransform.scaleY;
+      setImageTransform(el, currentTransform.rotation, scaleX, scaleY);
 
       // Auto keyframe for image scale
       ensureInitialSnapshot();
       addKeyframe(selectedItem.id, null, axis, currentFrame, value);
+
+      // Trigger transform display refresh
+      setTransformRefresh((prev) => prev + 1);
     },
-    [selectedItem, transform, addKeyframe, currentFrame, ensureInitialSnapshot],
+    [selectedItem, addKeyframe, currentFrame, ensureInitialSnapshot],
   );
 
   // Get current variant for a group
@@ -496,13 +488,21 @@ function InspectorComponent() {
         <>
           <ItemProperties item={selectedItem} />
 
-          <TransformEditor
+          <LiveTransformDisplay
             selectedItem={selectedItem}
-            transform={transform}
-            handlePositionChange={handlePositionChange}
-            handleRotationChange={handleRotationChange}
-            handleScaleChange={handleScaleChange}
-          />
+            currentFrame={currentFrame}
+            transformRefresh={transformRefresh}
+          >
+            {(transform) => (
+              <TransformEditor
+                selectedItem={selectedItem}
+                transform={transform}
+                handlePositionChange={handlePositionChange}
+                handleRotationChange={handleRotationChange}
+                handleScaleChange={handleScaleChange}
+              />
+            )}
+          </LiveTransformDisplay>
 
           <AttachmentEditor
             selectedItem={selectedItem}

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { SceneItem } from "../context/UiContext";
 import type { AnimationTrack } from "../context/AnimationContext";
+import { perfMonitor } from "../utils/performanceMonitor";
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
@@ -45,6 +46,7 @@ export const useTimelineData = (
   frameDivisor: number,
 ): ItemTrackData[] =>
   useMemo(() => {
+    perfMonitor.startMeasure("timeline-data");
     const map = new Map<
       string,
       {
@@ -150,11 +152,14 @@ export const useTimelineData = (
       return segments;
     };
 
-    return Array.from(map.values()).map((entry) => ({
+    const result = Array.from(map.values()).map((entry) => ({
       id: entry.id,
       label: entry.label,
       type: entry.type,
       keyframes: entry.keyframes.sort((a, b) => a.frame - b.frame),
       visibility: buildVisibilitySegments(entry.visibilityMap),
     }));
+
+    perfMonitor.endMeasure("timeline-data");
+    return result;
   }, [sceneItems, tracks, frameDivisor]);

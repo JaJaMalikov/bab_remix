@@ -2,6 +2,7 @@ import { PropsWithChildren } from "react";
 
 import { Sidebar } from "./sidebar";
 import { Toaster } from "../ui/toaster";
+import { DevPerformancePanel } from "../DevPerformancePanel";
 
 interface AppLayoutProps extends PropsWithChildren {
   /**
@@ -34,6 +35,7 @@ export function AppLayout({
         </main>
       </div>
       <Toaster />
+      <DevPerformancePanel />
     </div>
   );
 }

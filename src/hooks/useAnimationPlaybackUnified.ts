@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from "react";
 import { useAnimation } from "../context/AnimationContext";
 import { SceneItem, useUi } from "../context/UiContext";
+import { perfMonitor } from "../utils/performanceMonitor";
 import {
   setRotationWithOrigin,
   setImageTransform,
@@ -34,8 +35,13 @@ export const useAnimationPlaybackUnified = () => {
   }, []);
 
   useEffect(() => {
+    perfMonitor.startMeasure("playback-frame");
+
     // Skip playback if in recording mode - manual edits take precedence
-    if (recording) return;
+    if (recording) {
+      perfMonitor.endMeasure("playback-frame");
+      return;
+    }
 
     // Collect all updates from tracks in a single pass
     const updates = {
@@ -213,5 +219,7 @@ export const useAnimationPlaybackUnified = () => {
         }
       }
     });
+
+    perfMonitor.endMeasure("playback-frame");
   }, [currentFrame, tracks, sceneItems, getValueAtFrame, clearAttachmentAttributes, recording]);
 };
