@@ -1,8 +1,53 @@
 # Timeline Tracks UI/UX Check-up
 
-**Date:** 2025-10-19
+**Date:** 2025-10-19 (Initial) | 2025-10-20 (Final)
 **Scope:** Timeline tracks interface, keyframes, visibility segments
-**Status:** ✅ Analyse complète
+**Status:** ✅ ✅ ✅ **TOUTES LES PHASES COMPLÉTÉES** | 🎉 Phase 1-2-3 + BONUS
+
+---
+
+## 🎯 Résumé des Implémentations (19 Oct 2025)
+
+### ✅ Phase 1 - Fixes Critiques (COMPLÈTE)
+- **Décalage vertical X/Y** : Keyframes Position X/Y décalées de ±4px pour éviter superposition
+- **Ghost keyframes** : Feedback visuel pendant le drag avec keyframes fantômes en pointillés
+- **Contraste visibility** : Segments visibles avec bordure + fond, segments cachés avec pattern diagonal
+
+### ✅ Phase 2 - Améliorations UX (COMPLÈTE)
+- **Visual feedback click** : Animation pulse-fade lors du clic sur la track de visibilité (300ms)
+- **Radix Tooltip** : Remplacement des `title` natifs par Radix UI Tooltip avec positioning intelligent
+  - Composant `src/components/ui/tooltip.tsx` créé
+  - `TooltipProvider` ajouté dans `App.tsx` (delayDuration: 200ms)
+  - Tooltips formatés avec séparateurs visuels dans `TimelineTrack.tsx`
+- **Keyboard shortcuts** : Raccourcis clavier complets implémentés
+  - Hook `useTimelineKeyboardShortcuts.ts` créé et intégré dans Timeline
+  - Delete : Suppression des keyframes sélectionnées
+  - Ctrl+D : Duplication (+1 frame)
+  - Ctrl+A : Sélection de toutes les keyframes
+  - ← / → : Nudge ±1 frame
+  - Shift+← / Shift+→ : Nudge ±10 frames
+- **Selection badge** : Badge avec compteur affiché dans le label du track
+
+### 🎁 BONUS - Aide aux Raccourcis
+- **Dialog raccourcis clavier** : Icône ? dans la sidebar
+  - Composant `src/components/ui/dialog.tsx` créé
+  - Composant `KeyboardShortcutsDialog.tsx` avec tous les raccourcis documentés
+  - Accessible via l'icône help en bas de la sidebar
+
+### ✅ Phase 3 - Améliorations Avancées (COMPLÈTE)
+- **Context Menu** : Menu contextuel sur clic droit sur les keyframes
+  - Composant `src/components/ui/context-menu.tsx` créé
+  - Actions : Copy Value, Paste Value, Duplicate, Delete
+  - Raccourcis affichés dans le menu
+  - Paste désactivé si aucune valeur copiée
+  - Delete avec style destructive (rouge)
+- **Accessibilité améliorée** : Visibility track accessible
+  - `role="button"` et `tabIndex={0}` pour navigation clavier
+  - `aria-label` descriptif pour screen readers
+  - Support Enter et Espace pour toggle visibility
+
+### 📋 Prochaines Étapes (Optionnel)
+- **Snap to grid** : Magnétisme lors du drag (Bonus)
 
 ---
 
@@ -369,21 +414,22 @@ const selectedCount = keyframes.filter(kf =>
 
 ## 7. Plan d'Action Priorisé
 
-### Phase 1 - Critiques (2-3h)
+### Phase 1 - Critiques (2-3h) ✅ COMPLÉTÉE
 1. ✅ **Décalage vertical keyframes X/Y**
 2. ✅ **Ghost keyframes pendant drag**
 3. ✅ **Meilleur contraste visibility segments**
 
-### Phase 2 - Moyennes (2h)
-4. Visual feedback click visibility track
-5. Radix Tooltip pour meilleurs tooltips
-6. Keyboard shortcuts essentiels (Delete, Arrows)
+### Phase 2 - Moyennes (2h) ✅ COMPLÉTÉE
+4. ✅ **Visual feedback click visibility track** - Ajouté avec animation pulse-fade
+5. ✅ **Radix Tooltip pour meilleurs tooltips** - Implémenté avec positioning intelligent
+6. ✅ **Keyboard shortcuts essentiels** - Hook dédié avec Delete, Arrows, Ctrl+D, Ctrl+A
+7. ✅ **Selection badge** - Compteur affiché dans le label du track
+8. ✅ **BONUS: Dialog aide raccourcis** - Icône ? dans sidebar avec documentation complète
 
-### Phase 3 - Améliorations (3h)
-7. Context menu
-8. Selection badge
-9. Snap to grid
-10. Amélioration accessibilité
+### Phase 3 - Améliorations (3h) ✅ COMPLÉTÉE
+9. ✅ **Context menu** - Menu sur clic droit avec Copy/Paste/Duplicate/Delete
+10. ✅ **Accessibilité visibility track** - aria-label + keyboard support
+11. ⏳ **Snap to grid** - Bonus (optionnel)
 
 ---
 

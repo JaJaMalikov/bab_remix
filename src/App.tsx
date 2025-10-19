@@ -10,14 +10,17 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { AppLayout } from "./components/layout/app-layout";
 import { SidePanel } from "./components/layout/side-panel";
 import { LibraryPanel } from "./components/features/library-panel";
+import { TooltipProvider } from "./components/ui/tooltip";
 
 export default function App() {
   return (
-    <UiProvider>
-      <AnimationProvider>
-        <RootShell />
-      </AnimationProvider>
-    </UiProvider>
+    <TooltipProvider delayDuration={200}>
+      <UiProvider>
+        <AnimationProvider>
+          <RootShell />
+        </AnimationProvider>
+      </UiProvider>
+    </TooltipProvider>
   );
 }
 

@@ -19,6 +19,7 @@ import {
   UploadIcon,
   SymbolIcon,
   ViewVerticalIcon,
+  QuestionMarkCircledIcon,
 } from "@radix-ui/react-icons";
 
 export const Icons = {
@@ -42,4 +43,5 @@ export const Icons = {
   zoomReset: ReloadIcon,
   prevKeyframe: DoubleArrowLeftIcon,
   nextKeyframe: DoubleArrowRightIcon,
+  help: QuestionMarkCircledIcon,
 };

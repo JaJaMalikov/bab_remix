@@ -1,5 +1,5 @@
 import * as Tooltip from "@radix-ui/react-tooltip";
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState } from "react";
 
 import { useUi } from "../../context/UiContext";
 import { useAnimation } from "../../context/AnimationContext";
@@ -11,6 +11,7 @@ import {
   saveProjectToFile,
   loadProjectFromFile,
 } from "../../utils/projectSerializer";
+import { KeyboardShortcutsDialog } from "../KeyboardShortcutsDialog";
 
 const SIDEBAR_ITEMS = [
   { id: "library", label: "Library", icon: Icons.library, shortcut: "Ctrl+L" },
@@ -41,6 +42,7 @@ export function Sidebar() {
   } = useUi();
 
   const { tracks, duration, fps } = useAnimation();
+  const [showShortcutsDialog, setShowShortcutsDialog] = useState(false);
 
   const activePanel = useMemo<SidebarPanel | null>(() => {
     if (showLibrary) return "library";
@@ -228,8 +230,34 @@ export function Sidebar() {
               <Tooltip.Arrow className="fill-border" />
             </Tooltip.Content>
           </Tooltip.Root>
+
+          <Tooltip.Root>
+            <Tooltip.Trigger asChild>
+              <button
+                type="button"
+                onClick={() => setShowShortcutsDialog(true)}
+                className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground"
+                aria-label="Keyboard Shortcuts"
+              >
+                <Icons.help className="h-5 w-5" aria-hidden />
+              </button>
+            </Tooltip.Trigger>
+            <Tooltip.Content
+              className="z-50 rounded-md border border-border bg-popover px-2.5 py-1 text-xs text-popover-foreground shadow-md"
+              side="right"
+              sideOffset={8}
+            >
+              Keyboard Shortcuts
+              <Tooltip.Arrow className="fill-border" />
+            </Tooltip.Content>
+          </Tooltip.Root>
         </div>
       </Tooltip.Provider>
+
+      <KeyboardShortcutsDialog
+        open={showShortcutsDialog}
+        onOpenChange={setShowShortcutsDialog}
+      />
     </aside>
   );
 }

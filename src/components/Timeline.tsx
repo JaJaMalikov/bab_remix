@@ -14,6 +14,7 @@ import type {
 import { useTimelineData } from "../hooks/useTimelineData";
 import type { TimelineKeyframe } from "../hooks/useTimelineData";
 import { useVerticalResize } from "../hooks/useVerticalResize";
+import { useTimelineKeyboardShortcuts } from "../hooks/useTimelineKeyboardShortcuts";
 import { TimelineRuler } from "./TimelineRuler";
 import { TimelineTrack } from "./TimelineTrack";
 import { PlaybackControls } from "./PlaybackControls";
@@ -95,6 +96,7 @@ export const Timeline: React.FC = React.memo(() => {
   );
   const selectedKeyframeIdsRef = useRef<Set<string>>(new Set());
   const [dragStateValue, setDragStateValue] = useState<DragState | null>(null);
+  const [copiedKeyframeValue, setCopiedKeyframeValue] = useState<number | boolean | null>(null);
   const dragStateRef = useRef<DragState | null>(null);
   const setDragState = useCallback(
     (
@@ -125,6 +127,21 @@ export const Timeline: React.FC = React.memo(() => {
   const frameDivisor = Math.max(maxFrameIndex, 1);
 
   const itemTrackData = useTimelineData(sceneItems, tracks, frameDivisor);
+
+  // Rassembler toutes les keyframes pour les raccourcis clavier
+  const allKeyframes = useMemo(() => {
+    return itemTrackData.flatMap((item) => item.keyframes);
+  }, [itemTrackData]);
+
+  // Gestion des raccourcis clavier de la Timeline
+  useTimelineKeyboardShortcuts({
+    selectedKeyframeIds,
+    setSelectedKeyframeIds,
+    allKeyframes,
+    duration,
+    isTimelineVisible: true, // Le composant est rendu donc visible
+  });
+
   const keyframeLookup = useMemo(() => {
     const map = new Map<
       string,
@@ -558,11 +575,13 @@ export const Timeline: React.FC = React.memo(() => {
                       currentFrame={currentFrame}
                       selectedKeyframes={selectedKeyframeIds}
                       dragOffset={dragOffset}
+                      copiedValue={copiedKeyframeValue}
                       onKeyframePointerDown={handleKeyframePointerDown}
                       onVisibilityTrackClick={(frame) => {
                         setCurrentFrame(frame);
                         toggleVisibilityAtFrame(trackData.id, frame);
                       }}
+                      onCopyValue={setCopiedKeyframeValue}
                     />
                   );
                 })}

@@ -297,6 +297,13 @@
     @apply truncate text-sm font-medium text-[hsl(var(--foreground))];
   }
 
+  .timeline-selection-badge {
+    @apply ml-auto flex h-5 min-w-5 items-center justify-center rounded-full;
+    @apply bg-[hsl(var(--primary)/0.2)] px-1.5 text-[10px] font-semibold;
+    @apply text-[hsl(var(--primary))];
+    border: 1px solid hsl(var(--primary)/0.4);
+  }
+
   .timeline-track-empty {
     @apply flex h-full items-center justify-center px-8 py-6 text-center text-sm text-[hsl(var(--muted-foreground))];
   }
@@ -402,9 +409,27 @@
     border-radius: 9999px;
   }
 
+  /* Visual feedback for visibility track clicks */
+  .timeline-visibility-click-feedback {
+    @apply absolute top-0 bottom-0 w-0.5 bg-[hsl(var(--primary))];
+    pointer-events: none;
+    animation: pulse-fade 300ms ease-out;
+  }
+
   @keyframes pulse {
     0%, 100% { opacity: 0.4; }
     50% { opacity: 0.7; }
+  }
+
+  @keyframes pulse-fade {
+    0% {
+      opacity: 1;
+      transform: scaleY(1);
+    }
+    100% {
+      opacity: 0;
+      transform: scaleY(1.2);
+    }
   }
 
   @media (max-width: 960px) {
