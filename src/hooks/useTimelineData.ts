@@ -3,6 +3,9 @@ import type { SceneItem } from "../context/UiContext";
 import type { AnimationTrack } from "../context/AnimationContext";
 import { perfMonitor } from "../utils/performanceMonitor";
 
+const MEASURE_INTERVAL = 4;
+let timelineMeasureTick = 0;
+
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
 
@@ -48,7 +51,12 @@ export const useTimelineData = (
   frameDivisor: number,
 ): ItemTrackData[] =>
   useMemo(() => {
-    perfMonitor.startMeasure("timeline-data");
+    const shouldMeasure =
+      perfMonitor.isEnabled() && timelineMeasureTick++ % MEASURE_INTERVAL === 0;
+
+    if (shouldMeasure) {
+      perfMonitor.startMeasure("timeline-data");
+    }
     const map = new Map<
       string,
       {
@@ -162,6 +170,9 @@ export const useTimelineData = (
       visibility: buildVisibilitySegments(entry.visibilityMap),
     }));
 
-    perfMonitor.endMeasure("timeline-data");
+    if (shouldMeasure) {
+      perfMonitor.endMeasure("timeline-data");
+    }
+
     return result;
   }, [sceneItems, tracks, frameDivisor]);

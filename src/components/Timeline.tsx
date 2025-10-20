@@ -12,7 +12,7 @@ import type {
   KeyframeMutation,
 } from "../context/AnimationContext";
 import { useTimelineData } from "../hooks/useTimelineData";
-import type { TimelineKeyframe } from "../hooks/useTimelineData";
+import type { ItemTrackData, TimelineKeyframe } from "../hooks/useTimelineData";
 import { useVerticalResize } from "../hooks/useVerticalResize";
 import { useTimelineKeyboardShortcuts } from "../hooks/useTimelineKeyboardShortcuts";
 import { TimelineRuler } from "./TimelineRuler";
@@ -21,9 +21,33 @@ import { PlaybackControls } from "./PlaybackControls";
 
 const MIN_HEIGHT = 46;
 const MAX_HEIGHT = 147;
+const TRACK_ROW_HEIGHT = 44;
+const VIRTUAL_OVERSCAN = 6;
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
+
+type MemoizedKeyframe = TimelineKeyframe & { displayFrame: number };
+
+interface CachedTrackEntry {
+  sourceKeyframes: TimelineKeyframe[];
+  computed: MemoizedKeyframe[];
+  lookup: Map<string, MemoizedKeyframe>;
+}
+
+interface RenderTrackData {
+  id: string;
+  label: string;
+  type: "puppet" | "image";
+  keyframes: MemoizedKeyframe[];
+  visibility: ItemTrackData["visibility"];
+  memberId?: string | null;
+}
+
+interface SelectionState {
+  orderedIds: string[];
+  set: Set<string>;
+}
 
 interface DragState {
   pointerId: number;
@@ -91,13 +115,46 @@ export const Timeline: React.FC = React.memo(() => {
   }, [containerWidth, duration]);
 
   const [zoom, setZoom] = useState(defaultZoom);
-  const [selectedKeyframeIds, setSelectedKeyframeIds] = useState<Set<string>>(
-    () => new Set(),
+  const [selectionState, updateSelectionState] = useState<SelectionState>(() => ({
+    orderedIds: [],
+    set: new Set<string>(),
+  }));
+  const selectedKeyframeIds = selectionState.set;
+  const selectedKeyframeIdsRef = useRef<Set<string>>(selectedKeyframeIds);
+  const setSelectedKeyframeIds = useCallback(
+    (value: React.SetStateAction<Set<string>>) => {
+      updateSelectionState((prev) => {
+        const resolved =
+          typeof value === "function"
+            ? (value as (current: Set<string>) => Set<string>)(prev.set)
+            : value;
+        const nextSet = new Set(resolved);
+        const nextIds = Array.from(nextSet).sort();
+
+        if (
+          nextIds.length === prev.orderedIds.length &&
+          nextIds.every((id, index) => id === prev.orderedIds[index])
+        ) {
+          return prev;
+        }
+
+        return {
+          orderedIds: nextIds,
+          set: nextSet,
+        } satisfies SelectionState;
+      });
+    },
+    [],
   );
-  const selectedKeyframeIdsRef = useRef<Set<string>>(new Set());
   const [dragStateValue, setDragStateValue] = useState<DragState | null>(null);
   const [copiedKeyframeValue, setCopiedKeyframeValue] = useState<number | boolean | null>(null);
   const dragStateRef = useRef<DragState | null>(null);
+  const keyframeCacheRef = useRef<Map<string, CachedTrackEntry>>(new Map());
+  const tracksViewportRef = useRef<HTMLDivElement | null>(null);
+  const [verticalViewportHeight, setVerticalViewportHeight] = useState(
+    () => timelineHeight,
+  );
+  const [verticalScrollTop, setVerticalScrollTop] = useState(0);
   const setDragState = useCallback(
     (
       value:
@@ -127,6 +184,85 @@ export const Timeline: React.FC = React.memo(() => {
   const frameDivisor = Math.max(maxFrameIndex, 1);
 
   const itemTrackData = useTimelineData(sceneItems, tracks, frameDivisor);
+  const dragOffset = dragStateValue?.offset ?? 0;
+
+  const memoizedTrackData = useMemo<RenderTrackData[]>(() => {
+    const nextCache = new Map<string, CachedTrackEntry>();
+    const computedTracks = itemTrackData.map((track) => {
+      const cacheEntry = keyframeCacheRef.current.get(track.id);
+      const nextLookup = new Map<string, MemoizedKeyframe>();
+      const memoKeyframes = track.keyframes.map((kf) => {
+        const isSelected = selectedKeyframeIds.has(kf.id);
+        const offset = isSelected ? dragOffset : 0;
+        const displayFrame = clamp(kf.frame + offset, 0, maxFrameIndex);
+        const previous = cacheEntry?.lookup.get(kf.id);
+
+        if (
+          previous &&
+          previous.displayFrame === displayFrame &&
+          previous.frame === kf.frame &&
+          previous.value === kf.value &&
+          previous.type === kf.type &&
+          previous.axis === kf.axis
+        ) {
+          nextLookup.set(kf.id, previous);
+          return previous;
+        }
+
+        const memoized: MemoizedKeyframe = {
+          ...kf,
+          displayFrame,
+        };
+        nextLookup.set(kf.id, memoized);
+        return memoized;
+      });
+
+      const entry: CachedTrackEntry = {
+        sourceKeyframes: track.keyframes,
+        computed: memoKeyframes,
+        lookup: nextLookup,
+      };
+
+      nextCache.set(track.id, entry);
+
+      return {
+        id: track.id,
+        label: track.label,
+        type: track.type,
+        keyframes: memoKeyframes,
+        visibility: track.visibility,
+        memberId: track.memberId,
+      } satisfies RenderTrackData;
+    });
+
+    keyframeCacheRef.current = nextCache;
+    return computedTracks;
+  }, [itemTrackData, selectedKeyframeIds, dragOffset, maxFrameIndex]);
+
+  const totalTrackCount = memoizedTrackData.length;
+  const effectiveViewportHeight =
+    verticalViewportHeight > 0 ? verticalViewportHeight : timelineHeight;
+  const totalTrackHeight = totalTrackCount * TRACK_ROW_HEIGHT;
+  const startIndex = Math.max(
+    0,
+    Math.floor(verticalScrollTop / TRACK_ROW_HEIGHT) - VIRTUAL_OVERSCAN,
+  );
+  const computedEndIndex = Math.min(
+    totalTrackCount,
+    Math.ceil(
+      (verticalScrollTop + effectiveViewportHeight) / TRACK_ROW_HEIGHT,
+    ) + VIRTUAL_OVERSCAN,
+  );
+  const endIndex = totalTrackCount
+    ? Math.max(startIndex + 1, computedEndIndex)
+    : computedEndIndex;
+  const visibleTracks = memoizedTrackData.slice(startIndex, endIndex);
+  const offsetY = startIndex * TRACK_ROW_HEIGHT;
+  const visibleBlockHeight = visibleTracks.length
+    ? visibleTracks.length * TRACK_ROW_HEIGHT
+    : totalTrackCount > 0
+      ? TRACK_ROW_HEIGHT
+      : 0;
 
   // Rassembler toutes les keyframes pour les raccourcis clavier
   const allKeyframes = useMemo(() => {
@@ -164,6 +300,37 @@ export const Timeline: React.FC = React.memo(() => {
       setTimelineHeight(MAX_HEIGHT);
     }
   }, [timelineHeight, setTimelineHeight]);
+
+  useEffect(() => {
+    const element = tracksViewportRef.current;
+    if (!element) {
+      return;
+    }
+
+    if (typeof ResizeObserver === "undefined") {
+      setVerticalViewportHeight(element.clientHeight || timelineHeight);
+      return;
+    }
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) {
+        setVerticalViewportHeight(entry.contentRect.height);
+      }
+    });
+
+    observer.observe(element);
+    setVerticalViewportHeight(element.clientHeight);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [timelineHeight]);
+
+  useEffect(() => {
+    const maxScroll = Math.max(totalTrackHeight - effectiveViewportHeight, 0);
+    setVerticalScrollTop((prev) => Math.min(prev, maxScroll));
+  }, [totalTrackHeight, effectiveViewportHeight]);
 
   useEffect(() => {
     setSelectedKeyframeIds((prev) => {
@@ -425,6 +592,13 @@ export const Timeline: React.FC = React.memo(() => {
     };
   }, [dragStateValue, handlePointerMove, handlePointerUp]);
 
+  const handleTracksVerticalScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      setVerticalScrollTop(event.currentTarget.scrollTop);
+    },
+    [],
+  );
+
   const handleZoomIn = useCallback(() => {
     setZoom((prev) => Math.min(prev + 0.3, 5));
   }, []);
@@ -470,7 +644,6 @@ export const Timeline: React.FC = React.memo(() => {
     }, []);
 
   const showTrackRows = sceneItems.length > 0;
-  const dragOffset = dragStateValue?.offset ?? 0;
 
   const hasPrevKeyframe = useMemo(
     () => keyframeFrames.some((frame) => frame < currentFrame),
@@ -545,48 +718,67 @@ export const Timeline: React.FC = React.memo(() => {
           </div>
 
           {/* Tracks */}
-          <div className="timeline-tracks-scroll">
-            {showTrackRows && (
+          <div
+            ref={tracksViewportRef}
+            className="timeline-tracks-scroll"
+            onScroll={handleTracksVerticalScroll}
+          >
+            {showTrackRows && totalTrackCount > 0 ? (
               <div
-                ref={tracksScrollRef}
-                className="timeline-tracks-container"
-                onScroll={(e) => { syncScroll(e.currentTarget.scrollLeft, 'tracks'); }}
+                style={{
+                  height: totalTrackHeight,
+                  position: "relative",
+                }}
               >
-                {itemTrackData.map((trackData) => {
-                  const renderedKeyframes = trackData.keyframes.map((kf) => {
-                    const isSelected = selectedKeyframeIds.has(kf.id);
-                    const offset = isSelected ? dragOffset : 0;
-                    const targetFrame = clamp(kf.frame + offset, 0, maxFrameIndex);
-                    return {
-                      ...kf,
-                      displayFrame: targetFrame,
-                    };
-                  });
-
-                  return (
-                    <TimelineTrack
-                      key={trackData.id}
-                      name={trackData.label}
-                      type={trackData.type}
-                      keyframes={renderedKeyframes}
-                      visibilitySegments={trackData.visibility}
-                      duration={duration}
-                      zoom={zoom}
-                      currentFrame={currentFrame}
-                      selectedKeyframes={selectedKeyframeIds}
-                      dragOffset={dragOffset}
-                      copiedValue={copiedKeyframeValue}
-                      onKeyframePointerDown={handleKeyframePointerDown}
-                      onVisibilityTrackClick={(frame) => {
-                        setCurrentFrame(frame);
-                        toggleVisibilityAtFrame(trackData.id, frame);
-                      }}
-                      onCopyValue={setCopiedKeyframeValue}
-                    />
-                  );
-                })}
+                <div
+                  style={{
+                    position: "absolute",
+                    top: offsetY,
+                    left: 0,
+                    right: 0,
+                  }}
+                >
+                  <div
+                    ref={tracksScrollRef}
+                    className="timeline-tracks-container"
+                    onScroll={(e) => {
+                      syncScroll(e.currentTarget.scrollLeft, "tracks");
+                    }}
+                    style={{ height: visibleBlockHeight }}
+                  >
+                    {visibleTracks.map((trackData) => (
+                      <div
+                        key={trackData.id}
+                        style={{ height: TRACK_ROW_HEIGHT }}
+                      >
+                        <TimelineTrack
+                          name={trackData.label}
+                          type={trackData.type}
+                          keyframes={trackData.keyframes}
+                          visibilitySegments={trackData.visibility}
+                          duration={duration}
+                          zoom={zoom}
+                          currentFrame={currentFrame}
+                          selectedKeyframes={selectedKeyframeIds}
+                          dragOffset={dragOffset}
+                          copiedValue={copiedKeyframeValue}
+                          onKeyframePointerDown={handleKeyframePointerDown}
+                          onVisibilityTrackClick={(frame) => {
+                            setCurrentFrame(frame);
+                            toggleVisibilityAtFrame(trackData.id, frame);
+                          }}
+                          onCopyValue={setCopiedKeyframeValue}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-            )}
+            ) : showTrackRows ? (
+              <div className="timeline-track-empty">
+                Aucune piste disponible.
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
