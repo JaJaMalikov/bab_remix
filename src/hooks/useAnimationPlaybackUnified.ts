@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useMemo, useRef } from "react";
 import { useAnimation } from "../context/AnimationContext";
 import { SceneItem, useUi } from "../context/UiContext";
 import { perfMonitor } from "../utils/performanceMonitor";
@@ -14,6 +14,14 @@ import {
   releaseAttachmentFromMember,
 } from "../utils/attachment";
 
+interface AppliedTransformState {
+  x?: number;
+  y?: number;
+  rotation?: number;
+  scaleX?: number;
+  scaleY?: number;
+}
+
 /**
  * Unified animation playback hook that applies all animation properties to the DOM.
  * This replaces the separate useVisibilityAnimation, useTransformAnimation,
@@ -23,6 +31,19 @@ import {
 export const useAnimationPlaybackUnified = () => {
   const { currentFrame, getValueAtFrame, tracks, recording } = useAnimation();
   const { sceneItems } = useUi();
+
+  const sceneItemMap = useMemo(() => {
+    const map = new Map<string, SceneItem>();
+    sceneItems.forEach((item) => {
+      map.set(item.id, item);
+    });
+    return map;
+  }, [sceneItems]);
+
+  const visibilityStateRef = useRef(new Map<string, boolean>());
+  const transformStateRef = useRef(new Map<string, AppliedTransformState>());
+  const variantStateRef = useRef(new Map<string, string>());
+  const attachmentStateRef = useRef(new Map<string, string>());
 
   const clearAttachmentAttributes = useCallback((imageEl: SVGGraphicsElement) => {
     if (imageEl.getAttribute("data-attached-mode") === "embedded") {
@@ -37,196 +58,275 @@ export const useAnimationPlaybackUnified = () => {
   useEffect(() => {
     perfMonitor.startMeasure("playback-frame");
 
-    // Skip playback if in recording mode - manual edits take precedence
     if (recording) {
       perfMonitor.endMeasure("playback-frame");
       return;
     }
 
-    // Use requestAnimationFrame to batch DOM updates in a single browser frame
-    // This prevents layout thrashing and improves smoothness
     const rafId = requestAnimationFrame(() => {
-      // Collect all updates from tracks in a single pass
       const updates = {
         visibility: new Map<string, boolean>(),
-        transforms: new Map<string, Record<string, number>>(),
-        variants: new Map<string, { group: string; value: string; item: SceneItem }>(),
+        transforms: new Map<string, Partial<AppliedTransformState>>(),
+        variants: new Map<string, { group: string; value: string }>(),
         attachments: new Map<string, string>(),
       };
 
-    // Single iteration over tracks to collect all animation values
-    tracks.forEach((track) => {
-      const value = getValueAtFrame(
-        track.targetId,
-        track.targetMemberId,
-        track.property,
-        currentFrame
-      );
+      tracks.forEach((track) => {
+        const value = getValueAtFrame(
+          track.targetId,
+          track.targetMemberId,
+          track.property,
+          currentFrame,
+        );
 
-      if (value === null) return;
+        if (value === null) return;
 
-      switch (track.property) {
-        case "visible":
-          if (track.targetMemberId === null) {
-            updates.visibility.set(track.targetId, Boolean(value));
-          }
-          break;
-
-        case "x":
-        case "y":
-        case "rotation":
-        case "scaleX":
-        case "scaleY": {
-          const numericValue = typeof value === "number" ? value : parseFloat(String(value));
-          if (!isNaN(numericValue)) {
-            const targetKey = `${track.targetId}:${track.targetMemberId || "null"}`;
+        switch (track.property) {
+          case "visible":
+            if (track.targetMemberId === null) {
+              updates.visibility.set(track.targetId, Boolean(value));
+            }
+            break;
+          case "x":
+          case "y":
+          case "rotation":
+          case "scaleX":
+          case "scaleY": {
+            const numericValue =
+              typeof value === "number" ? value : parseFloat(String(value));
+            if (!Number.isFinite(numericValue)) {
+              return;
+            }
+            const targetKey = `${track.targetId}:${track.targetMemberId ?? "null"}`;
             const existing = updates.transforms.get(targetKey) ?? {};
             existing[track.property] = numericValue;
             updates.transforms.set(targetKey, existing);
+            break;
           }
-          break;
-        }
-
-        case "activeVariant":
-          if (typeof value === "string" && track.targetMemberId) {
-            const item = sceneItems.find((i) => i.id === track.targetId);
-            if (item && item.type === "puppet") {
+          case "activeVariant":
+            if (typeof value === "string" && track.targetMemberId) {
               updates.variants.set(`${track.targetId}:${track.targetMemberId}`, {
                 group: track.targetMemberId,
                 value,
-                item,
               });
             }
+            break;
+          case "attachment":
+            if (track.targetMemberId === null) {
+              updates.attachments.set(track.targetId, String(value));
+            }
+            break;
+        }
+      });
+
+      sceneItemMap.forEach((item, itemId) => {
+        const previous = visibilityStateRef.current.get(itemId);
+        const next = updates.visibility.has(itemId)
+          ? updates.visibility.get(itemId)!
+          : previous ?? true;
+
+        if (previous !== next) {
+          visibilityStateRef.current.set(itemId, next);
+          const el = item.el as SVGGraphicsElement;
+          el.setAttribute("data-visibility-state", next ? "visible" : "hidden");
+          if (next) {
+            el.removeAttribute("display");
+            el.style.display = "";
+          } else {
+            el.setAttribute("display", "none");
+            el.style.display = "none";
           }
-          break;
+        } else if (previous === undefined) {
+          visibilityStateRef.current.set(itemId, next);
+        }
+      });
 
-        case "attachment":
-          if (track.targetMemberId === null) {
-            updates.attachments.set(track.targetId, String(value));
+      updates.transforms.forEach((transforms, targetKey) => {
+        const [targetId, memberIdStr] = targetKey.split(":");
+        const memberId = memberIdStr === "null" ? null : memberIdStr;
+        const item = sceneItemMap.get(targetId);
+        if (!item) return;
+
+        if (memberId && item.type === "puppet") {
+          if (transforms.rotation === undefined) {
+            return;
           }
-          break;
-      }
-    });
-
-    // Apply visibility updates
-    sceneItems.forEach((item) => {
-      const el = item.el as SVGGraphicsElement;
-      const visible = updates.visibility.has(item.id)
-        ? updates.visibility.get(item.id)!
-        : !updates.visibility.size; // Default: visible if no visibility tracks exist
-
-      el.setAttribute("data-visibility-state", visible ? "visible" : "hidden");
-      if (visible) {
-        el.removeAttribute("display");
-        el.style.display = "";
-      } else {
-        el.setAttribute("display", "none");
-        el.style.display = "none";
-      }
-    });
-
-    // Apply transform updates
-    updates.transforms.forEach((transforms, targetKey) => {
-      const [targetId, memberIdStr] = targetKey.split(":");
-      const memberId = memberIdStr === "null" ? null : memberIdStr;
-      const item = sceneItems.find((i) => i.id === targetId);
-      if (!item) return;
-
-      if (memberId && item.type === "puppet") {
-        // Apply rotation to puppet member
-        const puppetRoot = item.el.firstChild as SVGGElement | null;
-        if (puppetRoot) {
+          const state = transformStateRef.current.get(targetKey) ?? {};
+          if (state.rotation === transforms.rotation) {
+            return;
+          }
+          const puppetRoot = item.el.firstChild as SVGGElement | null;
+          if (!puppetRoot) return;
           const memberEl = puppetRoot.querySelector(
-            `#${CSS.escape(memberId)}`
+            `#${CSS.escape(memberId)}`,
           ) as SVGGElement | null;
-          if (memberEl && transforms.rotation !== undefined) {
-            setRotationWithOrigin(memberEl, transforms.rotation);
-          }
+          if (!memberEl) return;
+          setRotationWithOrigin(memberEl, transforms.rotation);
+          transformStateRef.current.set(targetKey, {
+            ...state,
+            rotation: transforms.rotation,
+          });
+          return;
         }
-      } else if (!memberId) {
-        // Apply transform to whole item
+
+        if (memberId) {
+          return;
+        }
+
         if (item.type === "puppet") {
-          const parsed = parseTransformAttribute(item.el);
-          const x = transforms.x ?? parsed.translate?.x ?? 0;
-          const y = transforms.y ?? parsed.translate?.y ?? 0;
-          item.el.setAttribute("transform", `translate(${x}, ${y})`);
-        } else {
-          const imgEl = item.el as SVGGraphicsElement;
-          const x = transforms.x ?? parseNumber(imgEl.getAttribute("x"), 0);
-          const y = transforms.y ?? parseNumber(imgEl.getAttribute("y"), 0);
-          imgEl.setAttribute("x", String(x));
-          imgEl.setAttribute("y", String(y));
+          const existing = transformStateRef.current.get(targetKey);
+          const state = existing ?? (() => {
+            const parsed = parseTransformAttribute(item.el as SVGGraphicsElement);
+            const initialState: AppliedTransformState = {
+              x: parsed.translate?.x ?? 0,
+              y: parsed.translate?.y ?? 0,
+            };
+            transformStateRef.current.set(targetKey, initialState);
+            return initialState;
+          })();
 
+          const nextX = transforms.x ?? state.x ?? 0;
+          const nextY = transforms.y ?? state.y ?? 0;
+
+          if (nextX !== state.x || nextY !== state.y) {
+            (item.el as SVGGraphicsElement).setAttribute(
+              "transform",
+              `translate(${nextX}, ${nextY})`,
+            );
+            state.x = nextX;
+            state.y = nextY;
+          }
+          return;
+        }
+
+        const imgEl = item.el as SVGGraphicsElement;
+        const existing = transformStateRef.current.get(targetKey);
+        const state = existing ?? (() => {
+          const initialState: AppliedTransformState = {
+            x: parseNumber(imgEl.getAttribute("x"), 0),
+            y: parseNumber(imgEl.getAttribute("y"), 0),
+          };
           const parsed = parseTransformAttribute(imgEl);
-          const rotation = transforms.rotation ?? parsed.rotate ?? 0;
-          const scaleX = transforms.scaleX ?? parsed.scale?.x ?? 1;
-          const scaleY = transforms.scaleY ?? parsed.scale?.y ?? 1;
-          setImageTransform(imgEl, rotation, scaleX, scaleY);
+          initialState.rotation = parsed.rotate ?? 0;
+          initialState.scaleX = parsed.scale?.x ?? 1;
+          initialState.scaleY = parsed.scale?.y ?? 1;
+          transformStateRef.current.set(targetKey, initialState);
+          return initialState;
+        })();
+
+        const nextX = transforms.x ?? state.x ?? 0;
+        const nextY = transforms.y ?? state.y ?? 0;
+
+        if (nextX !== state.x) {
+          imgEl.setAttribute("x", String(nextX));
+          state.x = nextX;
         }
-      }
-    });
-
-    // Apply variant updates
-    updates.variants.forEach(({ group, value, item }) => {
-      const puppetRoot = item.el.firstChild as SVGGElement | null;
-      if (puppetRoot) {
-        const variantGroup = item.metadata?.variantGroups.find((g) => g.group === group);
-        if (variantGroup) {
-          applyVariantSelection(puppetRoot, variantGroup, value);
+        if (nextY !== state.y) {
+          imgEl.setAttribute("y", String(nextY));
+          state.y = nextY;
         }
-      }
-    });
 
-    // Apply attachment updates
-    const puppets = new Map<string, { anchor: SVGGElement; item: SceneItem }>();
-    sceneItems.forEach((item) => {
-      if (item.type === "puppet") {
-        puppets.set(item.id, { anchor: item.el as SVGGElement, item });
-      }
-    });
+        const nextRotation = transforms.rotation ?? state.rotation ?? 0;
+        const nextScaleX = transforms.scaleX ?? state.scaleX ?? 1;
+        const nextScaleY = transforms.scaleY ?? state.scaleY ?? 1;
 
-    updates.attachments.forEach((value, targetId) => {
-      const item = sceneItems.find((i) => i.id === targetId);
-      if (item && item.type === "image") {
+        if (
+          nextRotation !== state.rotation ||
+          nextScaleX !== state.scaleX ||
+          nextScaleY !== state.scaleY
+        ) {
+          setImageTransform(imgEl, nextRotation, nextScaleX, nextScaleY);
+          state.rotation = nextRotation;
+          state.scaleX = nextScaleX;
+          state.scaleY = nextScaleY;
+        }
+      });
+
+      updates.variants.forEach((variant, key) => {
+        const [targetId, group] = key.split(":");
+        const item = sceneItemMap.get(targetId);
+        if (!item || item.type !== "puppet") return;
+
+        const previous = variantStateRef.current.get(key);
+        if (previous === variant.value) {
+          return;
+        }
+
+        const puppetRoot = item.el.firstChild as SVGGElement | null;
+        if (!puppetRoot) return;
+
+        const variantGroup = item.metadata?.variantGroups.find(
+          (variantDef) => variantDef.group === group,
+        );
+        if (!variantGroup) return;
+
+        applyVariantSelection(puppetRoot, variantGroup, variant.value);
+        variantStateRef.current.set(key, variant.value);
+      });
+
+      const puppets = new Map<string, { anchor: SVGGElement; item: SceneItem }>();
+      sceneItemMap.forEach((item) => {
+        if (item.type === "puppet") {
+          puppets.set(item.id, { anchor: item.el as SVGGElement, item });
+        }
+      });
+
+      updates.attachments.forEach((value, targetId) => {
+        const item = sceneItemMap.get(targetId);
+        if (!item || item.type !== "image") return;
+
         const imageEl = item.el as SVGGraphicsElement;
+        const previous = attachmentStateRef.current.get(targetId);
 
         if (!value.includes(":")) {
-          clearAttachmentAttributes(imageEl);
-        } else {
-          const [puppetId, memberId] = value.split(":");
-          const puppetEntry = puppets.get(puppetId);
-          if (puppetEntry) {
-            const puppetRoot = puppetEntry.anchor.firstChild as SVGGElement | null;
-            const member = puppetRoot ? findVisibleVariant(puppetRoot, memberId) : null;
-            if (member) {
-              const currentPuppet = imageEl.getAttribute("data-attached-to-puppet");
-              const currentMember = imageEl.getAttribute("data-attached-to-member");
-              if (currentPuppet !== puppetId || currentMember !== memberId) {
-                if (imageEl.getAttribute("data-attached-mode") === "embedded") {
-                  releaseAttachmentFromMember(imageEl);
-                }
-                const embedded = embedAttachmentIntoMember({
-                  element: imageEl,
-                  member,
-                  anchor: puppetEntry.anchor,
-                });
-                if (embedded) {
-                  imageEl.setAttribute("data-attached-to-puppet", puppetId);
-                  imageEl.setAttribute("data-attached-to-member", memberId);
-                  imageEl.removeAttribute("data-attachment-offset-cx");
-                  imageEl.removeAttribute("data-attachment-offset-cy");
-                }
-              }
-            }
+          if (previous !== undefined) {
+            clearAttachmentAttributes(imageEl);
+            attachmentStateRef.current.delete(targetId);
           }
+          return;
         }
-      }
-    });
+
+        if (previous === value) {
+          return;
+        }
+
+        const [puppetId, memberId] = value.split(":");
+        const puppetEntry = puppets.get(puppetId);
+        if (!puppetEntry) return;
+
+        const puppetRoot = puppetEntry.anchor.firstChild as SVGGElement | null;
+        const member = puppetRoot ? findVisibleVariant(puppetRoot, memberId) : null;
+        if (!member) return;
+
+        if (imageEl.getAttribute("data-attached-mode") === "embedded") {
+          releaseAttachmentFromMember(imageEl);
+        }
+
+        const embedded = embedAttachmentIntoMember({
+          element: imageEl,
+          member,
+          anchor: puppetEntry.anchor,
+        });
+
+        if (embedded) {
+          imageEl.setAttribute("data-attached-to-puppet", puppetId);
+          imageEl.setAttribute("data-attached-to-member", memberId);
+          imageEl.removeAttribute("data-attachment-offset-cx");
+          imageEl.removeAttribute("data-attachment-offset-cy");
+          attachmentStateRef.current.set(targetId, value);
+        }
+      });
 
       perfMonitor.endMeasure("playback-frame");
     });
 
-    // Cleanup: cancel RAF if effect re-runs before completion
     return () => cancelAnimationFrame(rafId);
-  }, [currentFrame, tracks, sceneItems, getValueAtFrame, clearAttachmentAttributes, recording]);
+  }, [
+    currentFrame,
+    tracks,
+    sceneItemMap,
+    getValueAtFrame,
+    clearAttachmentAttributes,
+    recording,
+  ]);
 };

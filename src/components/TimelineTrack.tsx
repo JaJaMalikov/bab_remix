@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { cn } from "../lib/utils";
 import type {
   TimelineKeyframe,
@@ -77,6 +77,7 @@ export const TimelineTrack = React.memo(
 
   // State for visual feedback on visibility track clicks
   const [clickFeedback, setClickFeedback] = useState<number | null>(null);
+  const clickFeedbackTimeoutRef = useRef<number | null>(null);
 
   const handleVisibilityClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!onVisibilityTrackClick) return;
@@ -87,7 +88,13 @@ export const TimelineTrack = React.memo(
 
     // Visual feedback
     setClickFeedback(frame);
-    setTimeout(() => setClickFeedback(null), 300);
+    if (clickFeedbackTimeoutRef.current !== null) {
+      window.clearTimeout(clickFeedbackTimeoutRef.current);
+    }
+    clickFeedbackTimeoutRef.current = window.setTimeout(() => {
+      setClickFeedback(null);
+      clickFeedbackTimeoutRef.current = null;
+    }, 300);
 
     onVisibilityTrackClick(frame);
   };
@@ -151,6 +158,14 @@ export const TimelineTrack = React.memo(
 
   // Compter les keyframes sélectionnées dans ce track
   const selectedCount = keyframes.filter((kf) => selectedKeyframes.has(kf.id)).length;
+
+  useEffect(() => {
+    return () => {
+      if (clickFeedbackTimeoutRef.current !== null) {
+        window.clearTimeout(clickFeedbackTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="timeline-track">
